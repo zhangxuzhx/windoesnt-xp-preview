@@ -495,7 +495,8 @@ body {
 .pz-screen { position: relative; flex: 1; min-width: 0; padding: 3px; background: #4a4a4a; border-radius: 6px; box-shadow: inset 0 0 0 1px #222; }
 .pz-ecg { display: block; width: 100%; height: 76px; image-rendering: pixelated; border-radius: 3px; }
 .pz-bpm { position: absolute; right: 8px; top: 6px; color: #3cff5a; font: 10px "Courier New", monospace; }
-.pz-status { min-height: 16px; text-align: center; font-size: 12px; }
+.pz-status { min-height: 32px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 12px; line-height: 1.35; white-space: pre-line; }
+.pz-say { position: absolute; left: 50%; bottom: 34px; margin-left: -110px; width: 220px; white-space: pre-line; z-index: 2; }
 /* 针式打印机：纸从上面一格一格冒出来 */
 .pz-printer { position: relative; height: 68px; }
 .pz-pbody { position: absolute; left: 50%; bottom: 0; width: 150px; height: 26px; margin-left: -75px; background: linear-gradient(#e4e1d6, #b9b4a4); border: 1px solid #777; border-radius: 4px 4px 2px 2px; }
@@ -512,6 +513,26 @@ body {
 .pz-printer.jam .pz-led { background: #e22; animation: blink .4s steps(1) infinite; }
 .pz-printer.jam .pz-paper { transform: rotate(-5deg) skewX(-8deg); }
 .pz-printer.hit .pz-pbody { animation: shake .3s; }
+/* 挂号问年龄：计算器那样的数字键 */
+.ag { padding: 10px 12px; }
+.ag-q { white-space: pre-line; line-height: 1.4; margin-bottom: 8px; }
+.ag-lcd {
+  height: 26px; line-height: 26px; padding: 0 8px; margin-bottom: 8px; text-align: right;
+  font: bold 16px "Courier New", monospace; color: #1d2a12; background: #c6dcb4;
+  border: 1px solid #6b6a63; box-shadow: inset 1px 1px 0 rgba(0, 0, 0, .25);
+}
+.ag-lcd.empty { color: #7d8f6f; }
+.ag-lcd.bad { animation: shake .3s; }
+.ag-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.ag-key { min-width: 0; padding: 0; }
+#stage .ag-key { font: bold 13px Tahoma, sans-serif; }   /* #stage button 会把字体颜色统一成继承，这里要压过它 */
+#stage .ag-key.fn { color: #b00; }
+.ag-btns { display: flex; justify-content: center; margin-top: 10px; }
+/* 打印机发疯：机身一直抖、黄灯狂闪、纸一张张往上射 */
+.pz-printer.spew .pz-pbody { animation: shake .25s infinite; }
+.pz-printer.spew .pz-led { background: #fc0; animation: blink .15s steps(1) infinite; }
+.pz-printer.spew .pz-paper { height: 40px; transition: none; animation: pzShoot .38s steps(3) infinite; }
+@keyframes pzShoot { from { transform: translateY(14px); opacity: 1; } to { transform: translateY(-26px); opacity: 0; } }
 /* 拍多了冒烟 */
 .pz-smoke { display: none; position: absolute; left: 50%; bottom: 20px; width: 40px; height: 30px; margin-left: 30px; }
 .pz-printer.smoking .pz-smoke { display: block; }
@@ -527,6 +548,7 @@ body {
 .dx-k { flex: none; font-weight: bold; }
 .dx-v { flex: 1; min-width: 0; }
 .dx-foot { position: relative; height: 42px; display: flex; align-items: center; gap: 4px; }
+.dx-btns { display: flex; justify-content: center; gap: 8px; margin-top: 6px; font-family: Tahoma, "Microsoft YaHei", sans-serif; }
 .dx-sign { width: 80px; height: 24px; }
 .dx-sign svg { display: block; width: 100%; height: 100%; }
 .dx-stamp {
@@ -734,6 +756,8 @@ body {
 .bl-title { display: flex; align-items: center; gap: 5px; font-weight: bold; margin-bottom: 3px; }
 .bl-ico { width: 16px; height: 16px; }
 .bl-text { white-space: pre-line; }
+.bl-text:empty { display: none; }
+.bl-title:has(+ .bl-text:empty) { margin-bottom: 0; }
 .bl-close {
   position: absolute; right: 5px; top: 5px; width: 15px; height: 15px; padding: 0;
   border: 1px solid #a0a0a0; border-radius: 2px; background: #fff;
