@@ -1,0 +1,44 @@
+{
+  "room-bg": {
+    "file": "room-bg.png",
+    "w": 136,
+    "h": 73,
+    "frames": 1
+  },
+  "tv": {
+    "file": "tv.png",
+    "w": 30,
+    "h": 26,
+    "frames": 3
+  },
+  "fan": {
+    "file": "fan.png",
+    "w": 14,
+    "h": 30,
+    "frames": 4
+  },
+  "table": {
+    "file": "table.png",
+    "w": 40,
+    "h": 12,
+    "frames": 1
+  },
+  "man": {
+    "file": "man.png",
+    "w": 20,
+    "h": 26,
+    "frames": 4
+  },
+  "man-run": {
+    "file": "man-run.png",
+    "w": 18,
+    "h": 24,
+    "frames": 2
+  },
+  "woman": {
+    "file": "woman.png",
+    "w": 20,
+    "h": 26,
+    "frames": 3
+  }
+}
