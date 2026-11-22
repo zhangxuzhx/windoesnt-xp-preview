@@ -42,6 +42,8 @@
   EX.setTasks = (path, fn) => tasks.set(path, fn);
   const groupsFor = new Map();     // 路径 → () => [{ title, nodes }]（我的电脑那种分组显示）
   EX.setGroups = (path, fn) => groupsFor.set(path, fn);
+  const views = new Map();         // 路径 → (右边那块, ctx) => 自己画（新建文件夹(2) 最里面的“家”）
+  EX.setView = (path, fn) => views.set(path, fn);
   const live = new Set();          // 开着的窗口，清单一变就重画
   OS.on('fs:change', () => live.forEach(fn => fn()));
   OS.fsClip = null;
@@ -79,8 +81,9 @@
     ]);
     const win = OS.wm.open({ title: '', icon: 'folder', width: 456, height: 270, appId: o.appId || null, content, center: true,
       onClose: () => live.delete(redraw) });
-    const ctx = { win, go: p => go(p), get path() { return cur; }, refresh: () => render() };
-    const redraw = () => { if (win.isClosed) return; if (!FS.get(cur)) { cur = FS.parentOf(cur) || FS.ROOT; } render(); };
+    const ctx = { win, go: p => go(p), get path() { return cur; }, refresh: () => render(),
+      setBusy: v => { busy = !!v; backBtn.disabled = busy || !hist.length; upBtn.disabled = busy || !FS.parentOf(cur); } };
+    const redraw = () => { if (win.isClosed || busy) return; if (!FS.get(cur)) { cur = FS.parentOf(cur) || FS.ROOT; } render(); };
     live.add(redraw);
 
     function go(p, isBack) {
@@ -107,6 +110,7 @@
       viewEl.textContent = '';
       viewEl.className = 'ex-view fx-view fx-' + (viewMode === '列表' ? 'list' : viewMode === '详细信息' ? 'details' : 'icons');
       sel = null; lastTap = null;
+      if (views.has(cur)) { views.get(cur)(viewEl, ctx); status.textContent = n && n.status ? n.status(n) : ''; drawPane(); return; }
       const groups = groupsFor.has(cur) ? groupsFor.get(cur)() : [{ nodes: FS.list(cur, showHidden()) }];
       let count = 0;
       if (viewMode === '详细信息') {
@@ -135,7 +139,7 @@
         if (busy) return;
         pick(node, nd);
         const now = Date.now();
-        if (lastTap === node && now - lastT < 450) { lastTap = null; openNode(nd); } else { lastTap = node; lastT = now; }
+        if (lastTap === node && now - lastT < OS.dblMs()) { lastTap = null; openNode(nd); } else { lastTap = node; lastT = now; }
       });
       OS.ui.onContext(node, () => { if (busy) return null; pick(node, nd); lastTap = null; return itemMenu(nd); });
       return node;
@@ -179,7 +183,7 @@
       detBox.textContent = '';
       if (!n) return;
       detBox.appendChild(el('div', { class: 'ex-det-name', text: labelOf(n) }));
-      detBox.appendChild(el('div', { class: 'ex-det-note', text: n.detail ? n.detail(n) : (n.typeName || FS.kindName(n.kind)) + (n.folder ? '' : '\n修改日期：' + FS.dateText(n.date || n.at || fixedDate)) }));
+      detBox.appendChild(el('div', { class: 'ex-det-note', text: n.detail ? n.detail(n, !!sel) : (n.typeName || FS.kindName(n.kind)) + (n.folder ? '' : '\n修改日期：' + FS.dateText(n.date || n.at || fixedDate)) }));
     }
     // 目录树：桌面 ▸ 我的文档 / 我的电脑 ▸ A: C: D: / 网上邻居 / 回收站，点 + 展开
     function drawTree() {
@@ -321,7 +325,7 @@
       });
     }
     function newFolder() {
-      if (!FS.writable(cur)) { OS.ui.dialog({ title: '新建', icon: 'warn', text: L.noNew }); return; }
+      if (!FS.writable(cur)) { OS.ui.dialog({ title: '新建', icon: 'warn', text: (FS.get(cur) || {}).noNew || L.noNew }); return; }
       const name = FS.freeName(cur, '新建文件夹');
       // XP 的老规矩：路径不能超过 260（按 GBK 算，一个汉字两个）→ 套娃套太深就蓝屏
       if (FS.pathBytes(FS.join(cur, name)) > PATH_MAX) {
@@ -332,7 +336,7 @@
       FS.createFolder(cur, name);
     }
     function newText() {
-      if (!FS.writable(cur)) { OS.ui.dialog({ title: '新建', icon: 'warn', text: L.noNew }); return; }
+      if (!FS.writable(cur)) { OS.ui.dialog({ title: '新建', icon: 'warn', text: (FS.get(cur) || {}).noNew || L.noNew }); return; }
       FS.createFile(cur, '新建 文本文档.txt', 'txt', { text: '' });
     }
     function props(nd) {
@@ -345,16 +349,7 @@
       if (nd.user) lines.push('创建者：你');
       OS.ui.dialog({ title: '「' + labelOf(nd) + '」属性', icon: 'info', text: lines.join('\n') });
     }
-    function folderOptions() {
-      const box = el('input', { type: 'checkbox' });
-      box.checked = showHidden();
-      const ok = el('button', { class: 'xpbtn default', text: '确定' });
-      const no = el('button', { class: 'xpbtn', text: '取消' });
-      const w = OS.wm.open({ title: L.optTitle, width: 250, modal: true, taskbar: false, minimizable: false, maximizable: false, className: 'is-dialog',
-        content: el('div', { class: 'fx-opt' }, [el('div', { class: 'fx-opt-h', text: '查看' }), el('label', { class: 'fx-opt-row' }, [box, el('span', { text: L.hiddenOpt })]), el('div', { class: 'dlg-btns' }, [ok, no])]) });
-      ok.addEventListener('click', () => { OS.sound.play('click'); OS.save.set('fsShowHidden', box.checked); w.close(); OS.emit('fs:change'); });
-      no.addEventListener('click', () => { OS.sound.play('click'); w.close(); });
-    }
+    function folderOptions() { EX.folderOptions(); }
 
     go(path || FS.ROOT);
     if (!cur) { cur = FS.ROOT; render(); }
@@ -390,26 +385,45 @@
   EX.openFile = function (nd, ctx) {
     const kind = nd.kind;
     // 文字类：记事本；.doc：写字板。别人的 / 系统的只读，保存时各有一句
-    if (['txt', 'ini', 'inf', 'dmp', 'url', 'dat', 'tmp'].indexOf(kind) >= 0 || kind === 'doc') {
+    // .doc / .rtf：写字板（带排版）
+    if ((kind === 'doc' || kind === 'rtf') && OS.wordpad) {
+      const where = FS.writable(FS.parentOf(nd.path)) ? { type: 'fs', path: nd.path } : { type: 'ro', msg: nd.roMsg };
+      OS.wordpad.open({ name: nd.name, doc: FS.docOf(nd) || OS.wordpad.fromText(FS.text(nd)), where });
+      return;
+    }
+    if (['txt', 'ini', 'inf', 'dmp', 'url', 'dat', 'tmp'].indexOf(kind) >= 0) {
       let text = FS.text(nd);
       // 日记的 .LOG：每打开一次，最后自动加一行现在的时间（XP 记事本真有这功能）
       if (nd.log && /^\.LOG/.test(text)) {
-        const d = new Date();
+        const d = OS.clock.now();
         text = text.replace(/\s+$/, '') + '\n\n' + OS.pad2(d.getHours()) + ':' + OS.pad2(d.getMinutes()) + ' ' + OS.YEAR + '/' + (d.getMonth() + 1) + '/' + d.getDate() + '\n';
         FS.setText(nd.path, text);
       }
       if (nd.user && kind === 'txt' && OS.notepad.garble) text = OS.notepad.garble(text);   // 联通乱码
       const where = FS.writable(FS.parentOf(nd.path)) ? { type: 'fs', path: nd.path } : { type: 'ro', msg: nd.roMsg };
-      OS.notepad.open({ name: nd.name, text, where, wordpad: kind === 'doc', redLast: nd.redLast });
+      OS.notepad.open({ name: nd.name, text, where });
       return;
     }
     if (kind === 'jpg' || kind === 'bmp') {
+      if (OS.abcsee) { OS.abcsee.view(nd); return; }   // 所有图片都用 ABCSee 大眼看图开
       if (nd.slip && OS.showSlip) { OS.showSlip(nd.slip, nd.name); return; }
       if (nd.draw) { EX.viewImage(nd.name, nd.draw, nd.picSize); return; }
     }
     if (kind === 'mp3' && nd.track != null && OS.qianqian) { OS.qianqian.play(nd.track); return; }
     if ((kind === 'exe' || kind === 'lnk') && nd.app) { OS.apps.open(nd.app); return; }
     OS.ui.dialog({ title: nd.name, icon: 'error', text: nd.cantOpen || L.cantOpen });
+  };
+
+  /* ================= 工具 ▸ 文件夹选项（控制面板里也能开） ================= */
+  EX.folderOptions = function () {
+    const box = el('input', { type: 'checkbox' });
+    box.checked = showHidden();
+    const ok = el('button', { class: 'xpbtn default', text: '确定' });
+    const no = el('button', { class: 'xpbtn', text: '取消' });
+    const w = OS.wm.open({ title: L.optTitle, width: 250, modal: true, taskbar: false, minimizable: false, maximizable: false, className: 'is-dialog',
+      content: el('div', { class: 'fx-opt' }, [el('div', { class: 'fx-opt-h', text: '查看' }), el('label', { class: 'fx-opt-row' }, [box, el('span', { text: L.hiddenOpt })]), el('div', { class: 'dlg-btns' }, [ok, no])]) });
+    ok.addEventListener('click', () => { OS.sound.play('click'); OS.save.set('fsShowHidden', box.checked); w.close(); OS.emit('fs:change'); });
+    no.addEventListener('click', () => { OS.sound.play('click'); w.close(); });
   };
 
   /* ================= 图片和传真查看器 ================= */

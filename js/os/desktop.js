@@ -8,45 +8,31 @@
   const el = OS.el;
   const D = OS.desktop = {};
   const CELL_W = 78, CELL_H = 68, ICON_W = 76;
-  const DOUBLE_TAP_MS = 450;
 
-  // 自己画的壁纸：蓝天、草坡、一块写着“此处无木牌”的木牌、一只羊
-  const WALLPAPER =
-    '<svg id="wallpaper" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">' +
-    '<defs>' +
-    '<linearGradient id="wpSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a63c9"/><stop offset=".5" stop-color="#5d9be8"/><stop offset=".78" stop-color="#a9d0fb"/><stop offset="1" stop-color="#d9ecff"/></linearGradient>' +
-    '<linearGradient id="wpHillA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fc23f"/><stop offset="1" stop-color="#2d7a1c"/></linearGradient>' +
-    '<linearGradient id="wpHillB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8bd94f"/><stop offset=".6" stop-color="#4ea02a"/><stop offset="1" stop-color="#2a6e17"/></linearGradient>' +
-    '<radialGradient id="wpCloud"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".6" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>' +
-    '</defs>' +
-    '<rect width="1600" height="900" fill="url(#wpSky)"/>' +
-    '<path d="M0 600 C220 520 520 520 820 590 C1080 650 1320 560 1600 520 V900 H0Z" fill="url(#wpHillA)"/>' +
-    '<path d="M0 690 C300 590 700 560 1040 640 C1260 690 1450 690 1600 650 V900 H0Z" fill="url(#wpHillB)"/>' +
-    '</svg>';
+  // 壁纸、云、木牌、羊都是 Codex 画的（assets/scene/）。坐标一律按 1600×900 的壁纸算；画面是 4:3，左右各裁掉 200
+  const SCENE = 'assets/scene/';
+  const SCENE_V = '?v=3';   // 换了图就改这个号，玩过的人浏览器里存的旧图才会换掉（2：壁纸和云换成写实风景照；3：木牌和羊也换成写实的）。os.css 里羊、木牌、碎片的链接也跟着改
+  const WALLPAPER = '<img id="wallpaper" src="' + SCENE + 'wallpaper.webp' + SCENE_V + '" alt="" draggable="false">';
+  const preload = src => { const im = new Image(); im.src = SCENE + src + SCENE_V; return im; };
+  const IMG = { wall: preload('wallpaper.webp'), sign: preload('sign.webp'), sheep: preload('sheep.webp') };
 
-  // 天上的云单独画（要能点、能抖）。每朵由几个椭圆拼成，坐标按壁纸算：[cx, cy, rx, ry]
+  // 天上的云单独画（要能点、能抖）：左上角坐标 + 大小
   const CLOUDS = [
-    [[300, 200, 230, 60], [430, 170, 140, 55]],
-    [[1050, 140, 260, 55], [1190, 170, 160, 50]],
-    [[760, 310, 180, 40]],
-    [[1450, 340, 150, 35]]
+    { src: 'cloud-1.webp', x: 70, y: 115, w: 500, h: 150 },
+    { src: 'cloud-2.webp', x: 790, y: 85, w: 560, h: 140 },
+    { src: 'cloud-3.webp', x: 580, y: 270, w: 360, h: 90 },
+    { src: 'cloud-4.webp', x: 1300, y: 305, w: 300, h: 80 }
   ];
 
-  // 草坡上的“此处无木牌”单独画（要能点、能抖、能被砍断）。位置按壁纸坐标 (1110, 548) 算
-  const SIGN_AT = { x: 1110, y: 548 }, SIGN_BOX = { x: -78, y: -44, w: 156, h: 122 };
-  const SIGN_SVG =
-    '<svg viewBox="-78 -44 156 122" xmlns="http://www.w3.org/2000/svg">' +
-    '<rect x="-4" y="0" width="8" height="74" fill="#7a4f25"/>' +
-    '<rect x="-74" y="-40" width="148" height="46" rx="4" fill="#c8924f" stroke="#7a4f25" stroke-width="4"/>' +
-    '<text x="0" y="-9" font-size="23" text-anchor="middle" fill="#4a2c0f" font-weight="bold" font-family="sans-serif">此处无木牌</text></svg>';
+  // 草坡上的“此处无木牌”单独画（要能点、能抖、能被砍断）：两根桩子落地的中点在 (1110, 626)
+  // sign.webp 三格：完整的 ／ 劈开的左半块 ／ 右半块（三格叠起来对得上）
+  const SIGN_AT = { x: 1110, y: 626 }, SIGN_BOX = { x: -78, y: -119, w: 156, h: 122 };
 
-  // 草坡上的羊单独画（要能点、能晃、能炸）。位置按壁纸坐标 (1290, 668) 算
-  const SHEEP_AT = { x: 1290, y: 668 }, SHEEP_BOX = { x: -26, y: -24, w: 78, h: 58 };
-  const SHEEP_SVG =
-    '<svg viewBox="-26 -24 78 58" xmlns="http://www.w3.org/2000/svg">' +
-    '<path d="M4 18 V31 M28 18 V31" stroke="#333" stroke-width="4"/>' +
-    '<g fill="#fff"><circle cx="0" cy="0" r="16"/><circle cx="16" cy="-5" r="15"/><circle cx="32" cy="0" r="16"/><circle cx="16" cy="8" r="16"/></g>' +
-    '<ellipse cx="-13" cy="2" rx="9" ry="8" fill="#333"/></svg>';
+  // 草坡上的羊单独画（要能点、能晃、能炸、能走、能吃）：脚踩在 (1300, 700)
+  // sheep.webp 一格 160×120，脚底在格子 (80, 116)；画得比 Codex 建议的稍大一点，跟原来的羊一样大
+  const SHEEP_AT = { x: 1300, y: 700 }, SHEEP_BOX = { x: -46, y: -66.7, w: 92, h: 69 };
+  // 写字板插的羊、画图补的羊：站着那一格
+  const SHEEP_HTML = '<i class="sheep-pic"></i>';
 
   let root, iconLayer, watermark;
   const icons = {};
@@ -64,7 +50,7 @@
     parent.appendChild(root);
 
     bindBand();
-    OS.ui.onContext(iconLayer, () => OS.menus.desktop());
+    OS.ui.onContext(iconLayer, () => (shellOn ? OS.menus.desktop() : null));   // explorer.exe 被结束了：桌面右键没反应
     initClouds();
     initSign();
     initSheep();
@@ -127,18 +113,29 @@
   let clouds = [], cloudTaps = 0, cloudLast = 0;
 
   function initClouds() {
-    clouds = CLOUDS.map(parts => {
-      const x0 = Math.min(...parts.map(e => e[0] - e[2])), x1 = Math.max(...parts.map(e => e[0] + e[2]));
-      const y0 = Math.min(...parts.map(e => e[1] - e[3])), y1 = Math.max(...parts.map(e => e[1] + e[3]));
-      const svg = '<svg viewBox="0 0 ' + (x1 - x0) + ' ' + (y1 - y0) + '" xmlns="http://www.w3.org/2000/svg">' +
-        '<defs><radialGradient id="wpc_' + x0 + '"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".6" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>' +
-        '<g fill="url(#wpc_' + x0 + ')">' + parts.map(e => '<ellipse cx="' + (e[0] - x0) + '" cy="' + (e[1] - y0) + '" rx="' + e[2] + '" ry="' + e[3] + '"/>').join('') + '</g></svg>';
-      const node = el('div', { class: 'wpcloud', html: svg });
-      node.box = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
-      node.parts = parts;
+    clouds = CLOUDS.map(c => {
+      const img = el('img', { src: SCENE + c.src + SCENE_V, alt: '', draggable: 'false' });
+      const node = el('div', { class: 'wpcloud' }, [img]);
+      node.box = c;
+      node.img = img;
+      // 记下每个点透不透明：点到云的实心部分才算点中
+      const read = () => {
+        try {
+          const cv = el('canvas'); cv.width = c.w; cv.height = c.h;
+          const g = cv.getContext('2d'); g.drawImage(img, 0, 0, c.w, c.h);
+          node.alpha = g.getImageData(0, 0, c.w, c.h).data;
+        } catch (_) { node.alpha = null; }
+      };
+      if (img.complete && img.naturalWidth) read(); else img.addEventListener('load', read);
       iconLayer.appendChild(node);
       return node;   // 云本身不接点击（不然天上拉不了选框），点空白处时再看点没点在云上，见 cloudAt
     });
+  }
+  function onCloud(n, wx, wy) {
+    const b = n.box, lx = Math.floor(wx - b.x), ly = Math.floor(wy - b.y);
+    if (lx < 0 || ly < 0 || lx >= b.w || ly >= b.h) return false;
+    if (n.alpha) return n.alpha[(ly * b.w + lx) * 4 + 3] > 90;
+    return ((lx - b.w / 2) / (b.w / 2)) ** 2 + ((ly - b.h / 2) / (b.h / 2)) ** 2 <= 0.6;   // 图还没读出来：按椭圆算
   }
   function placeClouds() {
     const w = root.offsetWidth, h = root.offsetHeight;
@@ -156,7 +153,7 @@
     const w = root.offsetWidth, h = root.offsetHeight;
     const s = Math.max(w / 1600, h / 900);
     const wx = (p.x - (w - 1600 * s) / 2) / s, wy = (p.y - (h - 900 * s) / 2) / s;
-    const hit = clouds.find(n => n.parts.some(e => ((wx - e[0]) / e[2]) ** 2 + ((wy - e[1]) / e[3]) ** 2 <= 0.7));
+    const hit = clouds.find(n => onCloud(n, wx, wy));
     if (hit) tapCloud(hit);
   }
   function tapCloud(node) {
@@ -188,9 +185,9 @@
   let sign, signTaps = 0, signLast = 0, signBusy = false;
 
   function initSign() {
-    const half = side => el('div', { class: 'ws-half ws-' + side, html: SIGN_SVG });
+    const piece = cls => el('div', { class: 'ws-piece ' + cls });
     OS.save.remove('signCut');   // 旧版本存过“木牌断了”，现在开机就修好，不用了
-    sign = el('div', { class: 'wpsign' }, [half('l'), half('r')]);
+    sign = el('div', { class: 'wpsign' }, [piece('ws-whole'), piece('ws-l'), piece('ws-r')]);
     iconLayer.appendChild(sign);
     sign.addEventListener('click', tapSign);
   }
@@ -281,7 +278,7 @@
     if (!sheep || sheep.classList.contains('gone')) return;
     clearTimeout(sheepTimer);
     sheepTaps = 0;
-    sheep.classList.remove('wobble', 'inflate');
+    sheep.classList.remove('wobble', 'inflate', 'puffed');
     sheep.classList.add('flee');
     OS.bootFix.add('sheep', SHEEP_FIX);
     OS.sound.play('baa', 9);
@@ -289,11 +286,14 @@
   }
 
   /* ---------- 壁纸上的羊：点一下晃一下，连点 9 下像气球一样炸掉 ---------- */
-  const SHEEP_POP_TAPS = 9, SHEEP_GAP_MS = 1200;
+  const SHEEP_POP_TAPS = 9, SHEEP_PUFF_TAPS = 5, SHEEP_GAP_MS = 1200;
+  // 只停一下的动作（有点鼓、愣住、吃饱了、蹲下拉粪），收尾时一起清掉
+  const POSES = ['puffed', 'stunned', 'full', 'squat'];
   let sheep, sheepTaps = 0, sheepLast = 0, sheepTimer = 0, sheepScale = 0.4;
 
   function initSheep() {
-    sheep = el('div', { class: 'sheep', html: SHEEP_SVG });
+    // 换动作 = 给 .sheep 加不同的 class，CSS 换 sheep.webp 里的格子（os.css「壁纸上的羊」）
+    sheep = el('div', { class: 'sheep' }, [el('i', { class: 'sheep-img' })]);
     iconLayer.appendChild(sheep);   // 放在图标前面，图标会盖在羊上面
     sheep.addEventListener('click', tapSheep);
   }
@@ -318,22 +318,23 @@
     OS.sound.play('baa', sheepTaps);
     // 每点一下就鼓一点点，像在吹气球
     sheep.style.setProperty('--s', 1 + sheepTaps * 0.045);
+    sheep.classList.toggle('puffed', sheepTaps >= SHEEP_PUFF_TAPS);   // 点到第 5 下：换成"有点鼓"那一格
     sheep.classList.remove('wobble');
     void sheep.offsetWidth;
     sheep.classList.add('wobble');
     // 停手一会儿，羊慢慢瘪回去，要重新数
-    sheepTimer = setTimeout(() => { sheepTaps = 0; sheep.style.setProperty('--s', 1); }, SHEEP_GAP_MS);
+    sheepTimer = setTimeout(() => { sheepTaps = 0; sheep.style.setProperty('--s', 1); sheep.classList.remove('puffed'); }, SHEEP_GAP_MS);
   }
   function popSheep() {
     sheepTaps = 0;
     OS.save.set('sheepPops', OS.save.get('sheepPops', 0) + 1);
     OS.bootFix.add('sheep', SHEEP_FIX);
-    sheep.classList.remove('wobble');
-    sheep.classList.add('inflate');
+    sheep.classList.remove('wobble', 'puffed');
+    sheep.classList.add('inflate');   // "鼓成球"那一格，再胀一下就炸
     sheep.style.setProperty('--s', 1.5);
     setTimeout(() => {
       const x = parseFloat(sheep.style.left), y = parseFloat(sheep.style.top);
-      const cx = x + sheep.offsetWidth * 0.45, cy = y + sheep.offsetHeight * 0.4;
+      const cx = x + sheep.offsetWidth * 0.52, cy = y + sheep.offsetHeight * 0.55;
       sheep.classList.remove('inflate');
       sheep.classList.add('gone');
       sheep.style.setProperty('--s', 1);
@@ -344,7 +345,7 @@
         text: '你把羊点炸了。\n但这个彩蛋其实要 2011 年才被发明。'
       }), 700);
       setTimeout(() => D.iconSay('folder2', '老公，下面羊死了'), 2700);
-    }, 130);
+    }, 280);
   }
   // 炸开：一圈白色冲击波 + 一团团羊毛和头、腿飞出去再落下
   function burst(cx, cy, k, kind) {
@@ -358,11 +359,13 @@
       for (let i = 0; i < 18; i++) bits.push({ cls: 'paperbit', w: (4 + Math.random() * 5) * k, h: (3 + Math.random() * 4) * k });
       for (let i = 0; i < 5; i++) bits.push({ cls: 'binbit', w: (4 + Math.random() * 4) * k, h: (3 + Math.random() * 3) * k });
     } else {
-      for (let i = 0; i < 18; i++) bits.push({ cls: 'wool', size: (4 + Math.random() * 6) * k });
-      bits.push({ cls: 'dark head', w: 8 * k, h: 7 * k }, { cls: 'dark leg', w: 2 * k, h: 6 * k }, { cls: 'dark leg', w: 2 * k, h: 6 * k });
+      // sheep-bits.webp：0–2 三种羊毛团、3 羊头、4 羊腿
+      for (let i = 0; i < 18; i++) bits.push({ cls: 'sb', cell: i % 3, size: (7 + Math.random() * 7) * k });
+      bits.push({ cls: 'sb', cell: 3, size: 13 * k }, { cls: 'sb', cell: 4, size: 10 * k }, { cls: 'sb', cell: 4, size: 10 * k });
     }
     bits.forEach(b => {
       const n = el('div', { class: 'bit ' + b.cls });
+      if (b.cell != null) n.style.backgroundPosition = (b.cell * 100 / 7) + '% 0';
       n.style.width = (b.w || b.size) + 'px';
       n.style.height = (b.h || b.size) + 'px';
       n.style.left = (cx - (b.w || b.size) / 2) + 'px';
@@ -413,7 +416,7 @@
     if (meal) { meal.cancel(); meal = null; }
     Object.keys(icons).filter(k => icons[k].app.temp).forEach(k => D.removeFile(k, true));
     poops.splice(0).forEach(n => n.remove());
-    if (sheep) { sheep.classList.remove('gone', 'wobble', 'inflate', 'flee', 'busy', 'walking', 'chewing', 'angry'); sheep.style.setProperty('--s', 1); sheep.style.setProperty('--flip', 1); delete sheep.dataset.x; delete sheep.dataset.y; }
+    if (sheep) { sheep.classList.remove('gone', 'wobble', 'inflate', 'flee', 'busy', 'walking', 'chewing', 'angry', ...POSES); sheep.style.setProperty('--s', 1); sheep.style.setProperty('--flip', 1); delete sheep.dataset.x; delete sheep.dataset.y; }
     if (sign) { sign.classList.remove('cut', 'wobble'); signTaps = 0; signBusy = false; document.querySelectorAll('.censor-hero, .ws-slash').forEach(n => n.remove()); }
     sheepTaps = 0;
     document.querySelectorAll('.say-bubble').forEach(n => n.remove());
@@ -432,10 +435,52 @@
   let fileSeq = 0, feeding = false, meal = null;
   const feedQueue = [], poops = [];
   D.sheepHere = () => !!sheep && !sheep.classList.contains('gone');
+
+  /* ---------- 给任务管理器用：sheep.exe ---------- */
+  let sheepAte = 0, sheepSpeed = 1;   // 这次开机吃了几个文件；走路快慢（优先级：实时 2.5 ／ 标准 1 ／ 低 0.4）
+  D.sheepInfo = () => ({ here: D.sheepHere(), busy: !!sheep && /\b(walking|chewing|busy)\b/.test(sheep.className), ate: sheepAte });
+  // 结束 sheep.exe：羊原地消失（重启才有新羊）
+  D.killSheep = function () {
+    if (!D.sheepHere()) return;
+    clearTimeout(sheepTimer);
+    sheepTaps = 0;
+    sheep.classList.remove('wobble', 'inflate', 'flee', ...POSES);
+    sheep.classList.add('gone');
+    OS.bootFix.add('sheep', SHEEP_FIX);
+  };
+  D.setSheepSpeed = function (k) {
+    sheepSpeed = k || 1;
+    if (sheep) { sheep.style.setProperty('--spd', sheepSpeed); sheep.classList.remove('wobble'); void sheep.offsetWidth; sheep.classList.add('wobble'); }
+  };
+  OS.on('desktop:reset', () => { sheepAte = 0; D.setSheepSpeed(1); D.setShell(true); });
+
+  /* ---------- 给任务管理器用：explorer.exe 被结束 → 桌面图标、任务栏、开始菜单全没了 ---------- */
+  let shellOn = true;
+  D.shellOn = () => shellOn;
+  D.setShell = function (on) {
+    shellOn = !!on;
+    if (iconLayer) iconLayer.classList.toggle('no-shell', !shellOn);
+    const bar = document.getElementById('taskbar');
+    if (bar) bar.style.display = shellOn ? '' : 'none';
+    if (!shellOn) { OS.taskbar.toggleMenu(false); setSelection([]); }
+  };
+
+  D.sheepHtml = SHEEP_HTML;   // 写字板 ▸ 插入 ▸ 对象 ▸ 羊
+  D.sheepPic = { img: IMG.sheep, w: 160, h: 120 };   // 画图 ▸ 智能补全：sheep.webp 第一格（站着）
+  // 我的电脑 ▸ 草坡和羊.bmp：把现在的桌面画下来（羊、木牌在不在跟桌面一样）
+  D.drawScene = function (g, w, h) {
+    const kx = w / 1600, ky = h / 900;
+    const put = (im, sx, sw, sh, x, y, bw, bh) => { if (im.complete && im.naturalWidth) g.drawImage(im, sx, 0, sw, sh, x * kx, y * ky, bw * kx, bh * ky); };
+    if (IMG.wall.complete && IMG.wall.naturalWidth) g.drawImage(IMG.wall, 0, 0, w, h);
+    else { g.fillStyle = '#5d9be8'; g.fillRect(0, 0, w, h); }
+    clouds.forEach(n => put(n.img, 0, n.box.w, n.box.h, n.box.x, n.box.y, n.box.w, n.box.h));
+    if (sign && !sign.classList.contains('cut')) put(IMG.sign, 0, 312, 244, SIGN_AT.x + SIGN_BOX.x, SIGN_AT.y + SIGN_BOX.y, SIGN_BOX.w, SIGN_BOX.h);
+    if (D.sheepHere()) put(IMG.sheep, 0, 160, 120, SHEEP_AT.x + SHEEP_BOX.x, SHEEP_AT.y + SHEEP_BOX.y, SHEEP_BOX.w, SHEEP_BOX.h);
+  };
   // o: { name, icon, open, menu(id), poop }
   D.addFile = function (o) {
     const id = 'file-' + (++fileSeq);
-    const app = OS.apps.register({ id, name: o.name, icon: o.icon || 'txt', desktop: true, singleton: false, temp: true, poop: o.poop || 0, open: o.open, menu: o.menu ? () => o.menu(id) : null });
+    const app = OS.apps.register({ id, name: o.name, icon: o.icon || 'txt', desktop: true, singleton: false, temp: true, poop: o.poop || 0, sheepInside: !!o.sheepInside, open: o.open, menu: o.menu ? () => o.menu(id) : null });
     addIcon(app);
     const ic = icons[id];
     const f = firstFree(ic);
@@ -449,12 +494,13 @@
   };
   // 桌面上（不算回收站里的）有 txt：羊在就排队去吃；羊不在就记一笔，下次开机新来的羊吃
   function feed(id) {
-    if (D.sheepHere() && current !== id && !feedQueue.some(j => j.id === id)) { feedQueue.push({ id }); if (!feeding) nextMeal(); }
+    if (D.sheepHere() && !icons[id].app.spared && current !== id && !feedQueue.some(j => j.id === id)) { feedQueue.push({ id }); if (!feeding) nextMeal(); }
     syncLeft();
   }
   function syncLeft() {
     const left = Object.keys(icons).some(k => icons[k].app.temp && !icons[k].binned);
-    if (left && !D.sheepHere()) OS.bootFix.add('txtLeft', LEFT_FIX); else OS.bootFix.remove('txtLeft');
+    const spared = Object.keys(icons).some(k => icons[k].app.spared && !icons[k].binned);
+    if ((left && !D.sheepHere()) || spared) OS.bootFix.add('txtLeft', LEFT_FIX); else OS.bootFix.remove('txtLeft');
   }
   // keepFix：重启时清桌面用，别把开机自检要说的那行（新来的羊吃文档）顺手删了
   D.removeFile = function (id, keepFix) {
@@ -493,7 +539,7 @@
     const fx = p0.x, fy = p0.y;
     sheep.style.setProperty('--flip', x > fx ? -1 : 1);   // 羊头朝左画的，往右走就翻过来
     const dist = Math.hypot(x - fx, y - fy);
-    let dur = Math.max(300, dist * (fast ? 5 : 9));
+    let dur = Math.max(300 / sheepSpeed, dist * (fast ? 5 : 9) / sheepSpeed);
     if (dur > STEP_MS) { const k = STEP_MS / dur; x = fx + (x - fx) * k; y = fy + (y - fy) * k; dur = STEP_MS; }
     if (meal) meal.cancel();
     meal = sheep.animate([{ left: fx + 'px', top: fy + 'px' }, { left: x + 'px', top: y + 'px' }],
@@ -540,25 +586,41 @@
         if (!D.sheepHere()) return stopMeals();
         continue;
       }
+      // 写字板的文章里插了羊：见到同类，愣一下，扭头走了（这个文件就留在桌面上）
+      if (!w.inBin && icons[job.id] && icons[job.id].app.sheepInside) {
+        icons[job.id].app.spared = true;
+        sheep.classList.remove('wobble'); void sheep.offsetWidth; sheep.classList.add('wobble', 'stunned');   // 愣住，头顶一个问号
+        OS.sound.play('baa', 1);
+        await pause(1200);
+        sheep.classList.remove('stunned');
+        syncLeft();
+        return nextMeal();
+      }
       const moved = await chew(job.id, w, s);
       if (!D.sheepHere()) return stopMeals();
       if (moved) continue;
       const poop = icons[job.id] ? icons[job.id].app.poop : 0;
       D.removeFile(job.id);
+      sheepAte++;
       // 消化一下；在回收站里翻着吃的，回收站骂一句
       if (w.inBin) setTimeout(() => D.iconSay('recycle', BIN_SAY, 2500), 300);
+      sheep.classList.remove('angry');
+      sheep.classList.add('full');   // 吃饱了，眯眼打个嗝
       await pause(500);
       sheep.classList.remove('wobble'); void sheep.offsetWidth; sheep.classList.add('wobble');
       OS.sound.play('baa', w.inBin ? 6 : 2);
       await pause(700);
+      sheep.classList.remove('full');
       if (!D.sheepHere()) return stopMeals();
-      sheep.classList.remove('angry');
       if (poop) {
-        // 在屁股后面拉一小堆
+        // 蹲下，在屁股后面拉一小堆
+        sheep.classList.add('squat');
+        await pause(250);
         const flip = parseFloat(sheep.style.getPropertyValue('--flip')) || 1;
         const sw = sheep.offsetWidth, sh = sheep.offsetHeight;
-        dropPoop(flip > 0 ? s.x + sw * 0.82 : s.x - sw * 0.1, s.y + sh * 0.62, poop);
-        await pause(500);
+        if (D.sheepHere()) dropPoop(flip > 0 ? s.x + sw * 0.95 : s.x + sw * 0.05, s.y + sh * 0.97, poop);
+        await pause(550);
+        sheep.classList.remove('squat');
       }
       return nextMeal();
     }
@@ -589,7 +651,7 @@
     return false;
   }
   function goHome() {
-    sheep.classList.remove('busy', 'chewing', 'angry');
+    sheep.classList.remove('busy', 'chewing', 'angry', ...POSES);
     if (sheep.dataset.x == null) return;
     const hx = parseFloat(sheep.style.left), hy = parseFloat(sheep.style.top);
     (async () => {
@@ -607,7 +669,7 @@
     feeding = false;
     current = null;
     feedQueue.length = 0;
-    sheep.classList.remove('busy', 'chewing', 'walking', 'angry');
+    sheep.classList.remove('busy', 'chewing', 'walking', 'angry', ...POSES);
     Object.keys(icons).forEach(k => {
       const ic = icons[k];
       if (!ic.app.temp) return;
@@ -629,20 +691,16 @@
       setTimeout(() => n.remove(), 650);
     }
   }
-  // 羊粪：一小堆棕色小球，越大一堆颗数越多
-  const POOP_N = [0, 3, 5, 8];
+  // 羊粪：sheep-bits.webp 5–7 格，小 ／ 中 ／ 大一堆（大的冒臭气）。(x, y) = 这堆粪落地的中点
+  const POOP_SIZE = [0, 13, 16, 20];
   function dropPoop(x, y, level) {
-    const n = POOP_N[Math.min(3, level)] || 3;
-    let dots = '';
-    for (let i = 0; i < n; i++) {
-      const row = i < 4 ? 0 : i < 7 ? 1 : 2, inRow = i < 4 ? i : i < 7 ? i - 4 : 0;
-      const cx = 6 + inRow * 7 + row * 3.5, cy = 16 - row * 5;
-      dots += '<circle cx="' + cx + '" cy="' + cy + '" r="3.2" fill="#5a3a1a"/><circle cx="' + (cx - 1) + '" cy="' + (cy - 1.2) + '" r="1" fill="#8a6038"/>';
-    }
-    const node = el('div', { class: 'poop', html: '<svg viewBox="0 0 34 20" xmlns="http://www.w3.org/2000/svg">' + dots + '</svg>' });
-    const k = Math.max(0.6, (sheep.offsetWidth || 26) / 26);
-    node.style.left = x + 'px'; node.style.top = y + 'px';
-    node.style.width = (17 * k) + 'px'; node.style.height = (10 * k) + 'px';
+    level = Math.max(1, Math.min(3, level || 1));
+    const node = el('div', { class: 'poop' });
+    node.style.backgroundPosition = ((4 + level) * 100 / 7) + '% 0';
+    const k = Math.max(0.6, (sheep.offsetWidth || 34) / 34);
+    const size = POOP_SIZE[level] * k;
+    node.style.left = (x - size / 2) + 'px'; node.style.top = (y - size * 62 / 64) + 'px';   // 粪在格子里靠下
+    node.style.width = node.style.height = size + 'px';
     node.addEventListener('pointerdown', e => e.stopPropagation());
     node.addEventListener('click', e => { e.stopPropagation(); OS.sound.play('squish'); node.classList.remove('squish'); void node.offsetWidth; node.classList.add('squish'); });
     iconLayer.appendChild(node);
@@ -899,7 +957,7 @@
   let lastTap = null;
   function handleTap(ic) {
     const now = Date.now();
-    if (lastTap && lastTap.ic === ic && now - lastTap.t < DOUBLE_TAP_MS) {
+    if (lastTap && lastTap.ic === ic && now - lastTap.t < OS.dblMs()) {
       lastTap = null;
       OS.sound.play('click');
       OS.apps.open(ic.app.id);

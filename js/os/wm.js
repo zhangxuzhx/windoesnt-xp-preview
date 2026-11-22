@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const el = OS.el;
-  const wm = OS.wm = { wins: [], active: null };
+  const wm = OS.wm = { wins: [], active: null, suffix: '' };
   let layer = null, z = 100, seq = 0, cascade = 0;
 
   const GLYPH = {
@@ -41,7 +41,8 @@
     if (o.help) btns.appendChild(win.btnHelp = el('button', { class: 'wb wb-help', html: GLYPH.help }));
     if (o.closable) btns.appendChild(win.btnClose = el('button', { class: 'wb wb-close', html: GLYPH.close }));
 
-    win.titleText = el('span', { class: 'win-text', text: o.title });
+    win.rawTitle = o.title;
+    win.titleText = el('span', { class: 'win-text', text: o.title + wm.suffix });
     win.titleEl = el('div', { class: 'win-title' }, [o.icon ? OS.iconEl(o.icon, 'win-ticon') : null, win.titleText, btns]);
     win.body = el('div', { class: 'win-body' });
     win.el = el('div', { class: 'win opening' + (o.className ? ' ' + o.className : '') }, [win.titleEl, win.body]);
@@ -99,7 +100,7 @@
     if (win.btnHelp) win.btnHelp.addEventListener('click', e => { e.stopPropagation(); OS.sound.play('click'); o.help(win); });
 
     win.close = v => wm.close(win, v);
-    win.setTitle = t => { win.titleText.textContent = t; OS.emit('win:title', win); };
+    win.setTitle = t => { win.rawTitle = t; win.titleText.textContent = t + wm.suffix; OS.emit('win:title', win); };
 
     wm.wins.push(win);
     wm.focus(win);
@@ -190,6 +191,9 @@
     wm.wins.forEach(w => w.el.classList.toggle('inactive', w !== wm.active));
     OS.emit('win:focus', wm.active);
   }
+
+  // 所有窗口标题后面统一加一截（中毒时“ - 已破解”）；空字符串就是去掉
+  wm.setSuffix = function (sfx) { wm.suffix = sfx || ''; wm.wins.forEach(w => w.setTitle(w.rawTitle)); };
 
   wm.focus = function (win) {
     if (!win) return;
@@ -299,6 +303,15 @@
   };
 
   // 窗口内容变高之后，往上挪一挪，别让底部跑到任务栏下面
+  // 窗口换宽度（计算器 标准型 ↔ 科学型）：变宽了右边出界就往左挪，底下出界就往上挪
+  wm.setWidth = function (win, w) {
+    if (!win || win.isClosed) return;
+    const W = OS.stage.work;
+    win.w = Math.min(w, W.w - 4);
+    if (win.x + win.w > W.x + W.w) win.x = Math.max(W.x, W.x + W.w - win.w);
+    place(win);
+    wm.keepInside(win);
+  };
   wm.keepInside = function (win) {
     if (!win || win.maximized || win.isClosed || win.minimized) return;
     const W = OS.stage.work;

@@ -78,7 +78,7 @@
       r.addEventListener('click', () => {
         select(r);
         const now = Date.now();
-        if (lastTap && lastTap.f === f && now - lastTap.t < 450) { lastTap = null; askUnzip(f); }
+        if (lastTap && lastTap.f === f && now - lastTap.t < OS.dblMs()) { lastTap = null; askUnzip(f); }
         else lastTap = { f, t: now };
       });
       OS.ui.onContext(r, () => { select(r); lastTap = null; return rowMenu(f); });
@@ -377,7 +377,8 @@
     ]);
     OS.wm.open({ title: f.name + ' - 图片和传真查看器', icon: 'paint', width: 300, content, maximizable: false });
   }
-  OS.richViewer = name => viewer({ name, size: '3 KB' });   // 我的图片 ▸ 想得美.jpg
+  OS.richViewer = name => viewer({ name, size: '3 KB' });
+  OS.richPic = () => blurryPic();   // 写字板 ▸ 插入 ▸ 对象 ▸ 我的图片 ▸ 想得美.jpg   // 我的图片 ▸ 想得美.jpg
   // txt：用记事本打开（notepad.js）
   function notepad(f) {
     OS.notepad.open({ name: f.name, text: f.text, where: { type: 'rar' } });

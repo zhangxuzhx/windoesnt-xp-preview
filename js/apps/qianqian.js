@@ -1,5 +1,5 @@
 /* 千千不听（桌面 + 开始 ▸ 所有程序 ▸ 千千不听）：那几年人人电脑里都有的音乐播放器，名字反着叫；同时是全游戏的背景音乐
-   - 歌是 Suno 出的 5 首（assets/music/，点播放才下载），外加一首“新建 MP3.mp3”（还没写，放不了）。
+   - 歌是 Suno 出的 5 首（assets/music/，点播放才下载）。
    - 主面板（歌名、时间、频谱、进度条、按钮、音量）+ 均衡器 + 播放列表 + 歌词秀；后三块能收起。
    - 换肤（经典银 / 非主流粉 / 黑色酷炫）、桌面歌词、迷你模式、开机自动播放（默认不勾）。
    - 联动：放歌时抠抠个性签名变“♪ 正在听”，好友来一句；音量太大放 DJ，新建文件夹(2) 的住户敲门、物业投诉记录 +1。
@@ -18,7 +18,6 @@
     notFound: '未找到歌词：连谁唱的都不知道，我上哪给你找。',
     serverTry: '正在连接歌词服务器……',
     serverFail: '歌词服务器在楼下，网线被老鼠咬了。',
-    empty: '这首歌还没写。',
     uninstall: '卸载失败：千千不听不听你的。',
     about: NAME + '　版本 5.1\n(C) ' + OS.YEAR + ' 无聊科技\n你说什么？听不见。',
     knock: '楼上的，小点声！',
@@ -59,8 +58,7 @@
         [53.4, '烟花再美也会散', '煙蘤侢媄吔浍散'], [57.5, '寂寞的人不说晚安', '寂寞哋亽鈈說晚安'],
         [67.3, '你却不说我爱你', '伱卻鈈說莪噯伱'], [71.5, '我把你拉进黑名单', '莪紦伱拉進嫼洺單'], [79, '又偷偷把你放出来', '叒偸偸紦伱放絀唻'],
         [84.2, '烟花再美也会散', '煙蘤侢媄吔浍散'], [88.3, '我把你拉进黑名单', '莪紦伱拉進嫼洺單'], [92, '♪ ♪ ♪']] },
-    { file: 'm05', name: '无聊科技 - 桌面背景音乐.mp3', title: '桌面背景音乐', dur: 56, lrc: 'pure', bgm: true },
-    { file: null, name: '新建 MP3.mp3', title: '新建 MP3', dur: 0 }
+    { file: 'm05', name: '无聊科技 - 桌面背景音乐.mp3', title: '桌面背景音乐', dur: 56, lrc: 'pure', bgm: true }
   ];
   const BGM = TRACKS.findIndex(t => t.bgm);
 
@@ -82,10 +80,19 @@
   const commented = new Set();
 
   /* ================= 声音 ================= */
+  // 任务管理器里改优先级：低 = 又慢又低像没电了，实时 = 又快又尖（换歌也保持）
+  let rate = 1;
+  function applyRate() {
+    if (!audio) return;
+    audio.preservesPitch = audio.mozPreservesPitch = audio.webkitPreservesPitch = false;
+    audio.defaultPlaybackRate = rate;
+    audio.playbackRate = rate;
+  }
   function ensureAudio() {
     if (audio) return;
     audio = new Audio();
     audio.preload = 'auto';
+    applyRate();
     audio.addEventListener('ended', onEnded);
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -116,16 +123,15 @@
   }
   function applyVol() {
     if (!audio) return;
-    const v = OS.sound.muted ? 0 : vol / 100;
+    const v = OS.sound.muted ? 0 : vol / 100 * OS.sound.level;
     if (gainNode) { gainNode.gain.value = v; audio.volume = 1; } else audio.volume = v;
   }
   function applyEq() { filters.forEach((b, i) => { b.gain.value = eq[i]; }); }
   OS.on('sound:muted', applyVol);   // 右下角喇叭静音，千千不听也没声
+  OS.on('sound:level', applyVol);   // 控制面板调了总音量
 
-  const playable = i => !!TRACKS[i].file;
   function playTrack(i) {
     const t = TRACKS[i];
-    if (!t.file) { cur = i; render(); OS.ui.dialog({ title: NAME, icon: 'info', text: L.empty }); return; }
     ensureAudio();
     if (cur !== i || !audio.getAttribute('src')) {
       cur = i;
@@ -147,22 +153,14 @@
     playing = false; onStop(); render();
   }
   function toggle() { if (playing) pause(); else playTrack(cur); }
-  // 下一首 / 上一首：跳过放不了的“新建 MP3”
+  // 下一首 / 上一首（随机播放：换一首不一样的）
   function step(dir) {
-    if (mode === 2) {
-      const pool = TRACKS.map((_, i) => i).filter(i => playable(i) && i !== cur);
-      return pool.length ? OS.pick(pool) : cur;
-    }
-    let i = cur;
-    for (let k = 0; k < TRACKS.length; k++) { i = (i + dir + TRACKS.length) % TRACKS.length; if (playable(i)) return i; }
-    return cur;
+    if (mode === 2) return OS.pick(TRACKS.map((_, i) => i).filter(i => i !== cur));
+    return (cur + dir + TRACKS.length) % TRACKS.length;
   }
   function onEnded() {
     if (mode === 1) { audio.currentTime = 0; audio.play(); return; }
-    if (mode === 3) {
-      const last = TRACKS.map((_, i) => i).filter(playable).pop();
-      if (cur === last) { stop(); return; }
-    }
+    if (mode === 3 && cur === TRACKS.length - 1) { stop(); return; }
     playTrack(step(1));
   }
   function onStart() {
@@ -201,7 +199,6 @@
   // 现在歌词秀该显示什么：{ rows: [上一句, 这一句, 下一句], p } 或 { msg }
   function lrcView(t) {
     const tr = TRACKS[cur], lrc = tr.lrc;
-    if (!tr.file) return { msg: '' };
     if (lrc === 'pure') return { msg: L.pure };
     if (lrc === 'search') return { msg: Date.now() - startedAt < 3000 || !playing && t < 0.5 ? L.searching : L.notFound };
     const a = lrcAt(t);
@@ -217,6 +214,7 @@
       title: NAME, icon: 'music', width: 300, content: ui.box, appId: app.id, maximizable: false, className: 'qq-win',
       onClose: () => {
         stop();
+        rate = 1; applyRate();   // 进程结束了，优先级跟着没了
         clearInterval(timer); timer = 0;
         if (tray) { tray.remove(); tray = null; }
         if (deskEl) { deskEl.remove(); deskEl = null; }
@@ -271,7 +269,7 @@
       small('均衡', () => { showEq = !showEq; render(); refit(); }),
       small('列表', () => { showList = !showList; render(); refit(); }),
       small('歌词', () => { showLrc = !showLrc; render(); refit(); }),
-      small('换肤', b => { const rc = b.getBoundingClientRect(), p = OS.stage.toLocal(rc.left, rc.bottom); OS.ui.contextMenu(skinItems(), p.x, p.y); }),
+      small('换肤', b => { const rc = OS.stage.rectOf(b), p = { x: rc.left, y: rc.bottom }; OS.ui.contextMenu(skinItems(), p.x, p.y); }),
       small('桌面歌词', () => { setDesk(!desk); }),
       small('迷你', () => setMini(true))
     ]);
@@ -300,7 +298,7 @@
     let lastTap = -1, lastT = 0;
     r.rows = TRACKS.map((t, i) => {
       const row = el('div', { class: 'qq-li' }, [el('span', { class: 'qq-li-n', text: (i + 1) + '.' }), el('span', { class: 'qq-li-name', text: t.name.replace(/\.mp3$/, '') }), el('span', { class: 'qq-li-t', text: clock(t.dur) })]);
-      row.addEventListener('click', () => { const now = Date.now(); if (lastTap === i && now - lastT < 450) { lastTap = -1; playTrack(i); } else { lastTap = i; lastT = now; } });
+      row.addEventListener('click', () => { const now = Date.now(); if (lastTap === i && now - lastT < OS.dblMs()) { lastTap = -1; playTrack(i); } else { lastTap = i; lastT = now; } });
       OS.ui.onContext(row, () => [
         { label: '播放', bold: true, action: () => playTrack(i) },
         { label: '文件属性', action: say('文件属性', 'info', L.props(t)) },
@@ -325,8 +323,8 @@
       e.stopPropagation();
       e.preventDefault();
       const at = ev => {
-        const r = node.getBoundingClientRect();
-        const px = OS.clamp((ev.clientX - r.left) / r.width, 0, 1), py = OS.clamp((ev.clientY - r.top) / r.height, 0, 1);
+        const r = OS.stage.rectOf(node), q = OS.stage.toLocal(ev.clientX, ev.clientY);
+        const px = OS.clamp((q.x - r.left) / r.width, 0, 1), py = OS.clamp((q.y - r.top) / r.height, 0, 1);
         fn(px, py);
       };
       at(e);
@@ -510,7 +508,7 @@
     if (!ui) return;
     const t = TRACKS[cur];
     const name = (cur + 1) + '. ' + t.name.replace(/\.mp3$/, '');
-    if (ui.marq.textContent !== name) ui.marq.textContent = name;
+    if (ui.marq.dataset.n !== name) { ui.marq.dataset.n = name; ui.marq.textContent = name; }
     ui.miniName.textContent = t.title;
     ui.mode.textContent = MODES[mode] + (preset !== '默认' ? '　' + preset : '');
     ui.play.classList.toggle('on', playing);
@@ -541,6 +539,17 @@
   OS.qianqian = {
     uninstall: say('卸载 千千不听', 'warn', L.uninstall),
     // 我的文档 ▸ 我的音乐 里双击：打开千千不听放那一首
-    play: i => { open(); showMain(); playTrack(i); }
+    play: i => { if (!TRACKS[i]) return; open(); showMain(); playTrack(i); },
+    // 任务管理器：千千不听.exe 在不在、在不在放歌、结束它、改优先级、现在鼓点多响（0~1，CPU 跟着跳）
+    running: () => !!(win && !win.isClosed),
+    playing: () => playing,
+    kill: () => { if (win && !win.isClosed) win.close(); },
+    setRate: r => { rate = r || 1; applyRate(); },
+    level: () => {
+      if (!playing || !analyser || !freq) return 0;
+      analyser.getByteFrequencyData(freq);
+      let s = 0; for (let i = 0; i < 24; i++) s += freq[i];
+      return s / 24 / 255;
+    }
   };
 })();

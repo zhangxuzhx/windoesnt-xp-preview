@@ -47,11 +47,43 @@
     notepad: '正在把记事本里多出来的 1023 句话删掉',
     qianqian: '正在把震歪的桌面图标一个个扶正',
     mycomputer: '正在给很重要.dll 补办身份证',
-    mydocs: '正在把套娃文件夹一层层拆掉'
+    mydocs: '正在把套娃文件夹一层层拆掉',
+    wordpad: '正在把撑破的屏幕粘回去',
+    control: '正在把千年虫从时钟里抓出来',
+    abcsee: '正在把注册机里的病毒请出去',
+    abcvirus: '正在把电脑从破解小组手里要回来',
+    logo: '正在把木板钉回去',
+    paint: '正在用抹布擦显示器',
+    taskmgr: '正在把被结束的进程请回来',
+    calc: '正在把宇宙的洞补上'
   };
   OS.on('bsod', o => { if (BSOD_FIX[o.id]) OS.bootFix.add('bsod-' + o.id, BSOD_FIX[o.id]); });
 
   B.init = function (layer) { screens = layer; };
+
+  /* ---------- 手机竖着拿：开机时在画面外面贴一张便利贴，告诉玩家控制面板能调横屏 ----------
+     每次打开网页都贴（游戏里重启不算）；已经调成横屏的、手机本来就横着拿的、电脑上，都不贴；进了桌面自己揭掉 */
+  const NOTE = '为了大多数用户的习惯，手机端默认为竖屏，想要获得更好的游戏体验，可以在游戏开始菜单控制面板里调整为横屏。';
+  let pageOpened = false, note = null;
+  const wantNote = () => { const st = OS.stage; return st.touch && st.orient === 'portrait' && st.rot === 0 && st.rh > st.rw && st.oy >= 80; };
+  function placeNote() {
+    if (!note) return;
+    if (!wantNote()) { peelNote(); return; }
+    const st = OS.stage;
+    const w = Math.min(st.vw - 32, 340);
+    note.style.width = w + 'px';
+    note.style.left = ((st.vw - w) / 2) + 'px';
+    note.style.top = Math.max(8, (st.oy - note.offsetHeight) / 2) + 'px';
+  }
+  function peelNote() {
+    if (!note) return;
+    const n = note;
+    note = null;
+    n.classList.add('peel');
+    setTimeout(() => n.remove(), 800);
+  }
+  OS.on('stage:resize', placeNote);
+  OS.on('desktop:ready', peelNote);
 
   function show(node) {
     screens.innerHTML = '';
@@ -62,14 +94,49 @@
     screens.classList.remove('show');
     screens.innerHTML = '';
   }
-  function logoMark(size) {
+  // boarded = 登录界面那个：标志拆成三层，木板能敲掉
+  function logoMark(size, boarded) {
     return el('div', { class: 'logo-mark' + (size ? ' ' + size : '') }, [
-      OS.iconEl('logo', 'lm-ico'),
+      boarded ? boardedLogo() : OS.iconEl('logo', 'lm-ico'),
       el('div', { class: 'lm-words' }, [
         el('div', { class: 'logo-word', html: 'Windoesn\'t<sup>XP</sup>' }),
         el('div', { class: 'logo-sub', text: '无聊版' })
       ])
     ]);
+  }
+  /* ---------- 登录界面：一直敲标志上的木板，木板一块块掉下来；两块都掉了，露出后面的窗户 → 立马蓝屏 ---------- */
+  const LOGO_BSOD = { id: 'logo', name: 'TRADEMARK_SELF_DEFENSE', text: '为了防止您侵权被告，系统已经蓝屏自保。' };
+  const BOARD_HITS = 4;   // 每块木板敲几下掉
+  function boardedLogo() {
+    const top = OS.iconEl('logo-board2', 'lm-layer lm-board'), under = OS.iconEl('logo-board1', 'lm-layer lm-board');
+    const stack = el('div', { class: 'lm-ico lm-stack' }, [OS.iconEl('logo-window', 'lm-layer'), under, top]);
+    const boards = [top, under];   // 上面那块先掉
+    let hits = 0, fallen = 0, done = false;
+    stack.addEventListener('click', e => {
+      e.stopPropagation();
+      if (done || B.state !== 'login') return;
+      const b = boards[fallen];
+      hits++;
+      OS.sound.play('thud');
+      b.classList.remove('wiggle');
+      void b.offsetWidth;
+      b.classList.add('wiggle');
+      b.style.setProperty('--loose', hits);   // 越敲越松
+      if (hits < BOARD_HITS) return;
+      hits = 0;
+      fallen++;
+      b.classList.add('fall');
+      setTimeout(() => OS.sound.play('slap'), 350);
+      if (fallen < boards.length) return;
+      // 两块都掉了：露出后面的窗户，立马蓝屏
+      done = true;
+      setTimeout(() => {
+        if (B.state !== 'login') return;
+        screens.classList.remove('show');   // 蓝屏在登录画面下面一层，先把登录画面收起来
+        OS.ui.bsod(LOGO_BSOD);
+      }, 650);
+    });
+    return stack;
   }
   function resetDesktop() {
     OS.wm.closeAll();
@@ -92,6 +159,14 @@
     const count = OS.save.get('bootCount', 0);
     OS.save.set('bootCount', count + 1);
     const fast = !!o.fast || count > 0;
+    if (!pageOpened) {
+      pageOpened = true;
+      if (wantNote()) {
+        note = el('div', { class: 'boot-note' }, [el('div', { class: 'bn-tape' }), el('div', { class: 'bn-text', text: NOTE })]);
+        document.getElementById('frame').appendChild(note);
+        placeNote();
+      }
+    }
 
     let skip = false;
     const skipper = () => { skip = true; };
@@ -131,7 +206,7 @@
     ]);
     logo.addEventListener('pointerdown', skipper);
     show(logo);
-    const until = Date.now() + (fast ? 1500 : 3000);
+    const until = Date.now() + (fast ? 1500 : 3000) + (note ? 3000 : 0);   // 贴着便利贴的那次多停 3 秒，让人看完
     while (Date.now() < until && !skip) {
       await OS.wait(100);
       if (my !== runId) return;
@@ -146,7 +221,7 @@
     B.state = 'login';
     resetDesktop();
     const users = [
-      { name: '你', ava: 'duck', go: true },
+      { name: '你', ava: OS.save.get('avatar', 'duck'), go: true },
       { name: '管理员', stat: '已跑路', ava: 'runner', msg: '管理员已跑路。\n最后一次登录：在他跑路之前。' },
       { name: 'Guest', stat: '已停用', ava: 'lock', msg: '访客账户已停用，\n因为没有人来看你。' }
     ];
@@ -177,7 +252,7 @@
     show(el('div', { class: 'scr scr-login' }, [
       el('div', { class: 'lg-top' }),
       el('div', { class: 'lg-mid' }, [
-        el('div', { class: 'lg-left' }, [logoMark('small'), el('div', { class: 'lg-hint', text: '要开始，请点击你的用户名。\n如果不想开始，请不要点击。' })]),
+        el('div', { class: 'lg-left' }, [logoMark('small', true), el('div', { class: 'lg-hint', text: '要开始，请点击你的用户名。\n如果不想开始，请不要点击。' })]),
         el('div', { class: 'lg-divider' }),
         right
       ]),
@@ -218,8 +293,8 @@
     OS.taskbar.toggleMenu(false);
     const wrap = el('div', { class: 'offwrap layer' });
     const close = () => { wrap.remove(); OS.stage.el.classList.remove('gray-out'); };
-    const opt = (cls, icon, label, fn) => {
-      const b = el('button', { class: 'od-opt' }, [el('span', { class: 'ob ' + cls, html: OS.icon(icon) }), el('span', { text: label })]);
+    const opt = (icon, label, fn) => {
+      const b = el('button', { class: 'od-opt' }, [el('span', { class: 'ob', html: OS.icon(icon) }), el('span', { text: label })]);
       b.addEventListener('click', () => { OS.sound.play('click'); close(); fn(); });
       return b;
     };
@@ -228,9 +303,9 @@
     wrap.appendChild(el('div', { class: 'offdlg' }, [
       el('div', { class: 'od-head' }, [el('span', { text: '关闭计算机' }), OS.iconEl('logo', 'od-logo')]),
       el('div', { class: 'od-body' }, [
-        opt('yellow', 'moonGlyph', '待机', B.standby),
-        opt('red', 'powerGlyph', '关闭', B.turnOff),
-        opt('green', 'restartGlyph', '重新启动', B.restart)
+        opt('standby', '待机', B.standby),
+        opt('power', '关闭', B.turnOff),
+        opt('restart', '重新启动', B.restart)
       ]),
       el('div', { class: 'od-foot' }, [cancel])
     ]));
@@ -290,11 +365,12 @@
     B.login();
   };
 
-  B.standby = function () {
+  // o：{ text 黑屏上那句, onWake 醒来以后 }（任务管理器 ▸ 关机 ▸ 休眠）
+  B.standby = function (o) {
     const my = ++runId;
     B.state = 'standby';
     OS.ticker.stop();
-    const sb = el('div', { class: 'scr scr-standby' }, [el('div', { class: 'sb-text', text: '待机中……点一下唤醒' })]);
+    const sb = el('div', { class: 'scr scr-standby' }, [el('div', { class: 'sb-text', text: (o && o.text) || '待机中……点一下唤醒' })]);
     show(sb);
     setTimeout(() => {
       if (my !== runId) return;
@@ -305,6 +381,7 @@
         hide();
         OS.ticker.start();
         OS.sound.play('ding');
+        if (o && o.onWake) o.onWake();
       }, { once: true });
     }, 400);
   };

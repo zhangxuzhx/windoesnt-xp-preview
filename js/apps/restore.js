@@ -19,7 +19,7 @@
     { label: '中文向导', btn: '向导', joke: '向导已下班，你呢？' }
   ];
   const WARN_TITLE = '注意';
-  const WARN = '会清空这个游戏的全部存档（蓝屏图鉴、系统激活、战利品、回收站、桌面摆放……），回到第一次打开的样子，撤销不了。';
+  const WARN = '会清空这个游戏的全部存档（蓝屏图鉴、系统激活、战利品、回收站、桌面摆放……），回到第一次打开的样子，撤销不了。\n控制面板里调的屏幕方向、音量、双击速度会留着。';
   const ASK = '最后确认一次：\n真的要清空全部存档、从头开始吗？\n清空后找不回来。';
   const ASK_YES = '确定还原', ASK_NO = '算了';
   // 还原画面（仿那几年 GHOST 还原时的蓝色界面）
@@ -30,12 +30,8 @@
   const G_STATUS = f => 'Restoring... 游戏存档 ' + f;
   const G_DONE = '还原完成！即将重新启动……';
   const RESTORE_MS = 5600;
-  // 右边那只白线条的小精灵（自己画的，不是别家的吉祥物）：一团往上冒的烟变出来的
-  const SPRITE_SVG = '<svg viewBox="0 0 64 74" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
-    '<path d="M32 10 C46 10 52 22 50 33 C48 44 41 47 39 53 C37 59 45 62 41 67 C37 72 26 68 31 61 C34 56 24 53 20 47 C14 39 12 27 17 18 C20 12 25 10 32 10Z"/>' +
-    '<circle cx="26" cy="26" r="2.2" fill="#fff"/><circle cx="38" cy="26" r="2.2" fill="#fff"/><path d="M27 34 Q32 38 37 34"/>' +
-    '<path d="M18 36 C12 34 9 30 10 26 M46 36 C52 33 55 28 53 24"/>' +
-    '<path d="M50 4 L51.5 8.5 L56 10 L51.5 11.5 L50 16 L48.5 11.5 L44 10 L48.5 8.5Z" fill="#fff" stroke-width="1"/></svg>';
+  // 右边那只小精灵（Codex 画的，跟开始菜单里的图标是同一只）：一团往上冒的烟变出来的
+  const SPRITE_SVG = '<img src="assets/icons/genie-big.webp" alt="">';
 
   app.open = function () {
     let pick = 0;

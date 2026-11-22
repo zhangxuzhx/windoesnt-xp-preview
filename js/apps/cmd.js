@@ -110,6 +110,7 @@
     'IPCONFIG   查看你的 IP 地址。',
     'PING       看看对方还在不在。',
     'SHUTDOWN   关机。',
+    'TASKMGR    打开任务管理器。看看谁在偷偷干活。',
     'TRACERT    看看网线通到哪了。',
     '',
     '有关某个命令的详细信息，请键入 HELP 命令名。'
@@ -212,8 +213,8 @@
     function choose(nodes) {
       return new Promise(resolve => {
         let picked = false;
-        const r = cur.caret.getBoundingClientRect();
-        const p = OS.stage.toLocal(r.left, r.bottom);
+        const r = OS.stage.rectOf(cur.caret);
+        const p = { x: r.left, y: r.bottom };
         const items = nodes.map(n => ({ label: n.label || n.t, action: () => { picked = true; resolve(n); } }));
         OS.ui.contextMenu(items, p.x, p.y + 2, false, {
           onClose: () => setTimeout(() => { if (!picked) { menuClosedAt = Date.now(); resolve(null); } }, 0)
@@ -238,6 +239,7 @@
         { t: '-s -t 60', run: async () => { if (!OS.shutdown.start('self')) await out([SD_ALREADY]); else endInput(); } },
         { t: '-r', run: async () => { endInput(); await OS.wait(400); if (!win.isClosed) OS.boot.restart(); }, quiet: true }
       ].concat(OS.cmd.knows('shutdown -a') ? [{ t: '-a', run: async () => { if (!OS.shutdown.cancel()) await out([SD_NONE]); else endInput(); } }] : []) },
+      { t: 'taskmgr', run: async () => { endInput(); await OS.wait(200); OS.apps.open('taskmgr'); } },
       { t: 'format', next: [{ t: 'C:', run: formatC }, { t: 'D:', run: () => out(FMT['D:']) }, { t: 'A:', run: () => out(FMT['A:'], 300) }] },
       { t: 'exit', run: async () => { endInput(); win.close(); }, quiet: true }
     ];

@@ -1,0 +1,32 @@
+{
+  "icon": {
+    "file": "icon.webp",
+    "w": 96,
+    "h": 96,
+    "frames": 1
+  },
+  "tools": {
+    "file": "tools.webp",
+    "w": 32,
+    "h": 32,
+    "frames": 12
+  },
+  "frame": {
+    "file": "frame.webp",
+    "w": 600,
+    "h": 380,
+    "frames": 1
+  },
+  "stars": {
+    "file": "stars.webp",
+    "w": 32,
+    "h": 32,
+    "frames": 4
+  },
+  "sticker": {
+    "file": "sticker.webp",
+    "w": 220,
+    "h": 56,
+    "frames": 1
+  }
+}

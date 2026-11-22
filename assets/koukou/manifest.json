@@ -53,5 +53,11 @@
       "boss",
       "gamer"
     ]
+  },
+  "show-me": {
+    "file": "show-me.webp",
+    "w": 150,
+    "h": 220,
+    "frames": 1
   }
 }

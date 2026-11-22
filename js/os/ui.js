@@ -36,7 +36,7 @@
   };
 
   /* ---------- 右下角气泡 ----------
-     OS.ui.notify({ title, text, icon, timeout, replace, onClick }) */
+     OS.ui.notify({ title, text, icon, timeout, replace, onClick, actions: [[按钮字, 点了干嘛], …] }) */
   const queue = [];
   let showing = null;
   ui.notify = function (o) {
@@ -53,6 +53,11 @@
     const b = el('div', { class: 'balloon' }, [
       el('div', { class: 'bl-title' }, [o.icon ? OS.iconEl(o.icon, 'bl-ico') : null, el('span', { text: o.title })]),
       el('div', { class: 'bl-text', text: o.text }),
+      o.actions ? el('div', { class: 'bl-acts' }, o.actions.map(([t, fn]) => {
+        const a = el('button', { class: 'bl-act', text: t });
+        a.addEventListener('click', e => { e.stopPropagation(); OS.sound.play('click'); hide(); fn(); });
+        return a;
+      })) : null,
       closeBtn
     ]);
     if (o.wide) b.classList.add('wide');   // 字多的提示可以宽一点
@@ -161,8 +166,8 @@
         OS.sound.play('click');
         const items = build(name);
         if (!items || !items.length) return;
-        const r = mi.getBoundingClientRect();
-        const p = OS.stage.toLocal(r.left, r.bottom);
+        const r = OS.stage.rectOf(mi);
+        const p = { x: r.left, y: r.bottom };
         ui.contextMenu(items, p.x, p.y);
       });
       return mi;
@@ -239,8 +244,8 @@
           const openSub = () => {
             m.querySelectorAll('.ctx-item.open').forEach(n => n.classList.remove('open'));
             row.classList.add('open');
-            const a = row.getBoundingClientRect();
-            const p = OS.stage.toLocal(a.left, a.top), q = OS.stage.toLocal(a.right, a.bottom);
+            const a = OS.stage.rectOf(row);
+            const p = { x: a.left, y: a.top }, q = { x: a.right, y: a.bottom };
             const r = { x: p.x, y: p.y, w: q.x - p.x + 3 };
             showMenu(typeof it.sub === 'function' ? it.sub() : it.sub, 0, 0, level + 1, r,
               { className: opts.className, maxH: opts.cascadeBottom || opts.maxH, flyout: opts.flyout || opts.cascade, cascadeBottom: opts.cascadeBottom });

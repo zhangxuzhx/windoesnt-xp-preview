@@ -173,15 +173,15 @@
   };
 
   M.clock = function () {
-    return [{ label: '调整日期/时间', bold: true, action: say('日期和时间', 'warn', '无法调整：别试了，他/她已经离开了，已经无法回到过去了。') }, '-'].concat(M.taskbar());
+    return [{ label: '调整日期/时间', bold: true, action: () => OS.controlPanel.dateProps() }, '-'].concat(M.taskbar());
   };
 
   M.volume = function () {
     return [
-      { label: '打开音量控制', bold: true, action: say('音量控制', 'info', '这已经是最适合你的音量了。') },
+      { label: '打开音量控制', bold: true, action: () => OS.taskbar.volumePopup() },
       { label: '静音', checked: OS.sound.muted, action: () => { OS.sound.setMuted(!OS.sound.muted); OS.emit('sound:changed'); } },
       '-',
-      { label: '调整音频属性', action: say('音频属性', 'info', '音频属性：有声，或无声。') }
+      { label: '调整音频属性', action: () => OS.controlPanel.soundProps() }
     ];
   };
 

@@ -1,0 +1,26 @@
+{
+  "window": {
+    "file": "window.webp",
+    "w": 160,
+    "h": 160,
+    "frames": 1
+  },
+  "board-1": {
+    "file": "board-1.webp",
+    "w": 160,
+    "h": 160,
+    "frames": 1
+  },
+  "board-2": {
+    "file": "board-2.webp",
+    "w": 160,
+    "h": 160,
+    "frames": 1
+  },
+  "logo": {
+    "file": "logo.webp",
+    "w": 96,
+    "h": 96,
+    "frames": 1
+  }
+}

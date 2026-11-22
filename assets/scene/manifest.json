@@ -1,0 +1,114 @@
+{
+  "wallpaper": {
+    "file": "wallpaper.webp",
+    "w": 1600,
+    "h": 900,
+    "frames": 1,
+    "sheetWidth": 1600,
+    "sheetHeight": 900
+  },
+  "sheep": {
+    "file": "sheep.webp",
+    "w": 160,
+    "h": 120,
+    "frames": 15,
+    "sheetWidth": 2400,
+    "sheetHeight": 120,
+    "placement": {
+      "groundX": 1300,
+      "groundY": 700,
+      "anchorInFrame": [
+        80,
+        112
+      ],
+      "left": 1260.0,
+      "top": 644.0,
+      "displayWidth": 80,
+      "displayHeight": 60
+    }
+  },
+  "sheep-bits": {
+    "file": "sheep-bits.webp",
+    "w": 64,
+    "h": 64,
+    "frames": 8,
+    "sheetWidth": 512,
+    "sheetHeight": 64
+  },
+  "sign": {
+    "file": "sign.webp",
+    "w": 312,
+    "h": 244,
+    "frames": 3,
+    "sheetWidth": 936,
+    "sheetHeight": 244,
+    "placement": {
+      "groundX": 1110,
+      "groundY": 626,
+      "anchorInFrame": [
+        156,
+        238
+      ],
+      "left": 1032.0,
+      "top": 507.0,
+      "displayWidth": 156,
+      "displayHeight": 122
+    }
+  },
+  "cloud-1": {
+    "file": "cloud-1.webp",
+    "w": 500,
+    "h": 150,
+    "frames": 1,
+    "sheetWidth": 500,
+    "sheetHeight": 150,
+    "placement": {
+      "left": 70,
+      "top": 115,
+      "displayWidth": 500,
+      "displayHeight": 150
+    }
+  },
+  "cloud-2": {
+    "file": "cloud-2.webp",
+    "w": 560,
+    "h": 140,
+    "frames": 1,
+    "sheetWidth": 560,
+    "sheetHeight": 140,
+    "placement": {
+      "left": 790,
+      "top": 85,
+      "displayWidth": 560,
+      "displayHeight": 140
+    }
+  },
+  "cloud-3": {
+    "file": "cloud-3.webp",
+    "w": 360,
+    "h": 90,
+    "frames": 1,
+    "sheetWidth": 360,
+    "sheetHeight": 90,
+    "placement": {
+      "left": 580,
+      "top": 270,
+      "displayWidth": 360,
+      "displayHeight": 90
+    }
+  },
+  "cloud-4": {
+    "file": "cloud-4.webp",
+    "w": 300,
+    "h": 80,
+    "frames": 1,
+    "sheetWidth": 300,
+    "sheetHeight": 80,
+    "placement": {
+      "left": 1300,
+      "top": 305,
+      "displayWidth": 300,
+      "displayHeight": 80
+    }
+  }
+}

@@ -38,7 +38,7 @@
 
   // 跟真实时间挂钩的新闻
   function timeLines() {
-    const d = new Date(), h = d.getHours(), wd = d.getDay();
+    const d = OS.clock.now(), h = d.getHours(), wd = d.getDay();
     const hm = OS.pad2(h) + ':' + OS.pad2(d.getMinutes());
     const out = [];
     if (h < 5) out.push('现在是凌晨 ' + hm + '，如果你现在已经睡着了，说明你在梦游。', '深夜提醒：不管你熬不熬夜，太阳都会在同一时间升起。');
@@ -75,20 +75,26 @@
     root.style.right = b.right + 'px';
   }
 
+  let hijacked = null;   // 中毒了（ABCSee 注册机）：只放这一句，绿字
+  const skipped = new Set();   // 这次开机不再播的（任务管理器结束了暴富秘籍下载器）
+  OS.on('desktop:reset', () => skipped.clear());
   function nextLine() {
+    if (hijacked) return { text: hijacked, hacked: true };
     if (pending.length) return pending.shift();
     if (Math.random() < 0.3) {
       const tl = timeLines();
       if (tl.length) return { text: OS.pick(tl) };
     }
-    if (!bag.length) bag = OS.shuffle(LINES.slice());
-    const v = bag.pop();
+    if (!bag.length) bag = OS.shuffle(LINES.filter(v => !skipped.has(v)));
+    let v = bag.pop();
+    while (skipped.has(v) && bag.length) v = bag.pop();
     return { text: typeof v === 'function' ? v() : v };
   }
 
   function show(item) {
     text.textContent = item.text;
     text.classList.toggle('urgent', !!item.urgent);
+    text.classList.toggle('hacked', !!item.hacked);
     x = track.clientWidth + 8;
   }
 
@@ -114,4 +120,10 @@
     requestAnimationFrame(frame);
   };
   T.stop = function () { running = false; };
+  // 这次开机不再播某一条（写开头几个字就行）
+  T.skip = function (start) { LINES.forEach(v => { if (typeof v === 'string' && v.indexOf(start) === 0) skipped.add(v); }); };
+  T.hijack = function (line) {
+    hijacked = line || null;
+    if (running && text) show(nextLine());
+  };
 })();

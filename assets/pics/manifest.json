@@ -1,0 +1,26 @@
+{
+  "blue-hills": {
+    "file": "blue-hills.webp",
+    "w": 480,
+    "h": 320,
+    "frames": 1
+  },
+  "sunset": {
+    "file": "sunset.webp",
+    "w": 480,
+    "h": 320,
+    "frames": 1
+  },
+  "winter": {
+    "file": "winter.webp",
+    "w": 480,
+    "h": 320,
+    "frames": 1
+  },
+  "lilies": {
+    "file": "lilies.webp",
+    "w": 480,
+    "h": 320,
+    "frames": 1
+  }
+}

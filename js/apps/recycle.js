@@ -134,7 +134,7 @@
           e.stopPropagation();
           select(b, node);
           const now = Date.now();
-          if (lastTap === b.id && now - lastTapT < 450) { lastTap = null; itemProps(b)(); } else { lastTap = b.id; lastTapT = now; }
+          if (lastTap === b.id && now - lastTapT < OS.dblMs()) { lastTap = null; itemProps(b)(); } else { lastTap = b.id; lastTapT = now; }
         });
         OS.ui.onContext(node, () => { select(b, node); lastTap = null; return itemMenu(b); });
         view.appendChild(node);

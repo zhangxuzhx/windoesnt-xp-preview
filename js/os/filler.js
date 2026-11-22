@@ -5,7 +5,7 @@
   const el = OS.el;
   const F = OS.filler = {};
 
-  const ITEMS = ['floppy', 'cd', 'flipphone', 'brickphone', 'pager', 'cassette', 'mp3', 'eggpet',
+  const ITEMS = ['floppy', 'disc', 'flipphone', 'brickphone', 'pager', 'cassette', 'mp3', 'eggpet',
     'ballmouse', 'modem', 'gamepad', 'computer', 'folder', 'smiley', 'recycle', 'logo'];
 
   // 老网页上那种 88×31 的小徽章

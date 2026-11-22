@@ -19,7 +19,6 @@
     sysTasks: '系统任务', others: '其他位置',
     tasks: ['查看系统信息', '添加/删除程序', '更改一个设置'],
     places: ['网上邻居', '我的文档', '共享文档', '控制面板'],
-    panel: '控制面板正在装修。\n施工期间，请勿控制。',
     floppy: ['驱动器中没有软盘。\n请在驱动器 A: 中插入软盘。', '驱动器中没有软盘。\n请在驱动器 A: 中插入软盘。', '还是没有。\n软盘不会自己长出来。', '还是没有。\n软盘不会自己长出来。',
       '别咔了，软驱都快咔出火星了。', '别咔了，软驱都快咔出火星了。', '别咔了，软驱都快咔出火星了。', '软驱已罢工。\n它说它在 2003 年以后就没见过软盘了。'],
     floppyFormat: '没有软盘，格式化了个寂寞。',
@@ -62,6 +61,7 @@
   const PROGRAMS = () => [
     { name: '抠抠2003', icon: 'koukou', size: '23.6 MB', act: () => OS.koukou && OS.koukou.uninstall() },
     { name: '千千不听', icon: 'music', size: '8.80 MB', act: () => OS.qianqian && OS.qianqian.uninstall() },
+    { name: 'ABCSee 大眼看图 V3.1', icon: 'abcsee', size: '4.20 MB', act: () => OS.abcsee && OS.abcsee.uninstall() },
     { name: 'Excuse 2003', icon: 'sheet', size: '156 MB', act: say('添加或删除程序', 'warn', '删不掉：还有人欠你钱没还呢。') },
     { name: '解压专家 2003', icon: 'rar', size: '2.30 MB', act: say('添加或删除程序', 'warn', '删不掉：它还在给暴富秘籍解压。') },
     { name: "Windoesn't 自带小程序", icon: 'logo', size: '0.50 MB', act: say('添加或删除程序', 'warn', '删不掉：这些是系统的一部分，\n删了系统就只剩"不"了。') }
@@ -80,8 +80,8 @@
     { title: L.groups[2], nodes: [FS.get('A:'), FS.get('D:')] }
   ]);
   EX.setTasks(FS.ROOT, ctx => [
-    { title: L.sysTasks, links: [[L.tasks[0], OS.menus.systemProps], [L.tasks[1], addRemove], [L.tasks[2], say('控制面板', 'info', L.panel)]] },
-    { title: L.others, links: [[L.places[0], () => OS.apps.open('network')], [L.places[1], () => ctx.go(FS.MYDOCS)], [L.places[2], () => ctx.go(FS.SHARED)], [L.places[3], say('控制面板', 'info', L.panel)]] }
+    { title: L.sysTasks, links: [[L.tasks[0], OS.menus.systemProps], [L.tasks[1], addRemove], [L.tasks[2], () => OS.apps.open('control')]] },
+    { title: L.others, links: [[L.places[0], () => OS.apps.open('network')], [L.places[1], () => ctx.go(FS.MYDOCS)], [L.places[2], () => ctx.go(FS.SHARED)], [L.places[3], () => OS.apps.open('control')]] }
   ]);
 
   /* ================= A: 软盘 ================= */
@@ -104,7 +104,7 @@
 
   /* ================= C: 本地磁盘 ================= */
   FS.add('C:', {
-    kind: 'drive', icon: 'computer', label: '本地磁盘 (C:)', typeName: '本地磁盘', detail: () => '本地磁盘\n可用空间：14.0 GB\n总大小：37.2 GB',
+    kind: 'drive', icon: 'hdd', label: '本地磁盘 (C:)', typeName: '本地磁盘', detail: () => '本地磁盘\n可用空间：14.0 GB\n总大小：37.2 GB',
     status: () => '可用空间：14.0 GB　总大小：37.2 GB',
     noDelete: '删不掉：删了 C 盘，你就什么都没有了。', noRename: '重命名失败：C 盘就叫 C 盘。', noCut: '剪切失败：硬盘是拧在机箱里的。',
     menu: (n, ctx, base) => [base[0], '-', { label: '格式化…', action: say('格式化 本地磁盘 (C:)', 'error', '格式化失败：系统正坐在 C 盘上。\n想格式化，去命令提示符试试。') }, '-', base[base.length - 1]],
@@ -125,7 +125,7 @@
     ]);
     const ok = el('button', { class: 'xpbtn default', text: '确定' });
     content.appendChild(el('div', { class: 'dlg-btns' }, [ok]));
-    const w = OS.wm.open({ title: '本地磁盘 (C:) 属性', icon: 'computer', width: 300, content, modal: true, taskbar: false, minimizable: false, maximizable: false, className: 'is-dialog' });
+    const w = OS.wm.open({ title: '本地磁盘 (C:) 属性', icon: 'hdd', width: 300, content, modal: true, taskbar: false, minimizable: false, maximizable: false, className: 'is-dialog' });
     ok.addEventListener('click', () => { OS.sound.play('click'); w.close(); });
   }
   ['Documents and Settings', 'Program Files', 'WINDOWS'].forEach(n => FS.add(C + '\\' + n, { kind: 'folder', noDelete: '删不掉：这是系统的文件夹。' }));
@@ -148,7 +148,7 @@
     if (!root) return out;
     root.querySelectorAll('.dicon:not(.binned)').forEach(n => {
       const id = n.getAttribute('data-app'), a = OS.apps.byId[id];
-      if (!a || ['mycomputer', 'network', 'recycle', 'mydocs'].indexOf(id) >= 0) return;
+      if (!a || ['mycomputer', 'network', 'recycle', 'mydocs', 'folder2'].indexOf(id) >= 0) return;   // 新建文件夹(2) 是真文件夹，folder2.js 自己登记
       const isFile = /^file-/.test(id);
       out.push({ path: FS.DESKTOP + '\\' + a.name + (isFile ? '' : '.lnk'), name: a.name + (isFile ? '' : '.lnk'), label: a.name, kind: isFile ? 'txt' : 'lnk', icon: a.icon, folder: false,
         open: () => OS.apps.open(id), noDelete: '要删桌面上的东西，去桌面删。', noRename: '要改名，去桌面改。', noCopy: '复制失败：桌面上的东西舍不得离开桌面。' });
@@ -172,6 +172,7 @@
   prog('抠抠软件', [['抠抠2003.exe', 'koukou']], '抠抠2003 使用说明\n\n1. 双击铁公鸡登录。\n2. 好友找你，你就回。\n3. 好友不找你，你也可以找好友，但他不一定回。\n\n抠抠很抠，不送抠币。',
     [['聊天记录备份.dat', { hidden: true, cantOpen: '为了防止您侵犯您的个人隐私权，\n这个备份也被清空了。' }]]);
   prog('千千不听', [['千千不听.exe', 'qianqian']], '千千不听 使用说明\n\n点播放就放，点暂停就停。\n名字叫不听，其实很听话。');
+  prog('ABCSee', [['ABCSee.exe', 'abcsee']], 'ABCSee 大眼看图 V3.1 使用说明\n\n双击图片就能看。\n共享版，试用期 30 天，过了也能用。');
   prog('无聊科技', [['开机检测器 Pro.exe', 'bootcheck'], ['阳寿余额查询.exe', 'lifespan'], ['赛博把脉.exe', 'pulse'], ['弹窗杀手.exe', 'swatter'], ['电子蚊香.exe', 'coil'], ["Windoesn't 激活器.exe", 'activator'], ['一键还原小精灵.exe', 'restore']],
     "Windoesn't 自带小程序 说明\n\n这些小程序是系统送的。\n送的东西不要挑。\n\n无聊科技　出品");
   prog('Excuse 2003', [['Excuse.exe', 'debt']], 'Excuse 2003 使用说明\n\n专为要账设计。\n算出来的利息仅供吓唬，不具法律效力。');
@@ -209,6 +210,11 @@
   }
   // 以前的存档只记了蓝过哪几个，没记名字：照这张表补上（以后新加蓝屏，ui.js 会自己记）
   const KNOWN_BSOD = {
+    control: ['Y2K_BUG', '千年虫从 1999 年爬过来了。'],
+    abcsee: ['KEYGEN_DETECTED', '注册机里自带的病毒先把系统干掉了。'],
+    abcvirus: ['SYSTEM_TAKEN_OVER', '病毒住得太舒服，把你的电脑当成自己家了。'],
+    paint: ['PAINT_SPILLED', '油漆洒出来了，把显示器糊住了。'],
+    logo: ['TRADEMARK_SELF_DEFENSE', '为了防止您侵权被告，系统已经蓝屏自保。'],
     activator: ['BUTTON_BLOCKED_YOU', '该按钮已将你拉黑，并顺手拔了你家网线。'],
     bootcheck: ['DETECTOR_EXISTENTIAL_CRISIS', '检测器发现自己错了，无法接受，已自行关机。'],
     cmd: ['FORMAT_C_WHILE_SITTING_ON_C', '你在 C 盘上格式化 C 盘，相当于坐在树枝上锯这根树枝。'],
@@ -226,7 +232,8 @@
     recycle: ['RECYCLE_BIN_EXPLODED', '回收站被撑爆了。清洁工正在打扫，请重启后再试。'],
     rich: ['MONITOR_WORK_INJURY', '检测到显像管被连续拍打 5 次。大屁股显示器已申请工伤。'],
     swatter: ['POPUP_OVERFLOW', '你的不奔腾都要冒烟了，电脑烫得可以煎鸡蛋。'],
-    test: ['TEST_BLUE_SCREEN_OF_NOTHING', '这是测试蓝屏。']
+    test: ['TEST_BLUE_SCREEN_OF_NOTHING', '这是测试蓝屏。'],
+    wordpad: ['FONT_TOO_BIG', '一个字太大，把屏幕撑破了。']
   };
   // Minidump：收集到的蓝屏，一个一个 .dmp
   FS.provide(W + '\\Minidump', () => {
@@ -247,21 +254,8 @@
   for (let i = 1; i <= 8; i++) FS.add(W + '\\Temp\\~tmp000' + i + '.tmp', { kind: 'tmp', size: '0 KB', del: say('删除', 'info', L.tempClean), text: '' });
   // 壁纸：就是现在的桌面，羊在不在跟桌面一样
   FS.add(W + '\\Web\\Wallpaper\\草坡和羊.bmp', { kind: 'bmp', picSize: [240, 135], noDelete: '删不掉：桌面还在用它。', draw: drawWallpaper });
-  function drawWallpaper(g, w, h) {
-    const sky = g.createLinearGradient(0, 0, 0, h);
-    sky.addColorStop(0, '#2a63c9'); sky.addColorStop(.5, '#5d9be8'); sky.addColorStop(1, '#d9ecff');
-    g.fillStyle = sky; g.fillRect(0, 0, w, h);
-    g.fillStyle = 'rgba(255,255,255,.75)';
-    [[45, 33, 34, 9], [155, 24, 38, 8], [110, 52, 26, 6]].forEach(([x, y, rx, ry]) => { g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); g.fill(); });
-    g.fillStyle = '#4ea02a';
-    g.beginPath(); g.moveTo(0, h * .72); g.bezierCurveTo(w * .3, h * .55, w * .65, h * .6, w, h * .66); g.lineTo(w, h); g.lineTo(0, h); g.fill();
-    g.fillStyle = '#c8924f'; g.fillRect(w * .66, h * .55, 26, 9); g.fillStyle = '#7a4f25'; g.fillRect(w * .66 + 12, h * .55 + 9, 2, 12);
-    if (OS.desktop.sheepHere()) {
-      const sx = w * .8, sy = h * .78;
-      g.fillStyle = '#fff'; [[0, 0, 6], [6, -2, 6], [12, 0, 6], [6, 3, 6]].forEach(([x, y, r]) => { g.beginPath(); g.arc(sx + x, sy + y, r, 0, Math.PI * 2); g.fill(); });
-      g.fillStyle = '#333'; g.beginPath(); g.ellipse(sx - 5, sy + 1, 3.5, 3, 0, 0, Math.PI * 2); g.fill();
-    }
-  }
+  // 就是把现在的桌面画下来（Codex 画的壁纸、云、木牌、羊；desktop.js）
+  function drawWallpaper(g, w, h) { OS.desktop.drawScene(g, w, h); }
 
   /* ================= D: 幻觉游戏 V3.0 ================= */
   FS.add('D:', {
@@ -297,7 +291,7 @@
     if (discOut) { OS.ui.dialog({ title: g.name, icon: 'warn', text: L.needDisc }); return; }
     spin(3000, () => OS.apps.placeholder({ name: g.name, icon: 'game-' + g.id }));
   }
-  // 光盘的“自动运行”菜单（背景以后换成 Codex 画的图：assets/cd/autorun.webp）
+  // 光盘的“自动运行”菜单（背景是 Codex 画的 assets/cd/autorun.webp）
   function autorun() {
     const btns = L.hjBtns.map(t => el('button', { class: 'hj-btn', text: t }));
     const games = el('div', { class: 'hj-games' }, GAMES.map(g => {
@@ -381,6 +375,7 @@
   FS.add(FS.SHARED + '\\便利贴.txt', { text: L.stickyShared, roMsg: '保存失败：这是楼上熊孩子的，人家只给你看。', noDelete: '删不掉：熊孩子说了，别动他东西。' });
 
   /* ================= 添加/删除程序 ================= */
+  OS.addRemove = () => addRemove();
   function addRemove() {
     const list = el('div', { class: 'ar-list' }, PROGRAMS().map(p => {
       const btn = el('button', { class: 'xpbtn', text: '删除' });
@@ -394,4 +389,6 @@
   /* ================= 给别的地方用 ================= */
   OS.hj = { games: GAMES, run: runGame, installed };
   OS.mycomputer = { shared: () => EX.open(FS.SHARED) };
+  // 中毒时光驱自己弹出来又缩回去（abcsee.js）；托盘上放着可乐就不缩回去，也不弹框
+  OS.cdTray = { out: () => discOut, eject: () => eject(), close: () => { if (discOut && !cup) closeTray(); } };
 })();

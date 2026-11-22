@@ -33,7 +33,7 @@
   const ABOUT = 'Excuse 2003\n版本 2003.2.30\n专为要账设计。\n本产品授权给：被欠钱的你';
   const HEAD = '欠 款 明 细 单';
   // 日期都填打开那天（表格 D2、欠条上的还款期限和落款）：限今天还清
-  const today = () => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() }; };
+  const today = () => { const d = OS.clock.now(); return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() }; };
   const DATE = () => { const t = today(); return OS.YEAR + '/' + t.m + '/' + t.d; };
   const DATE_CN = () => { const t = today(); return OS.YEAR + ' 年 ' + t.m + ' 月 ' + t.d + ' 日'; };
   const COLS = ['A', 'B', 'C', 'D', 'E'];
@@ -257,8 +257,8 @@
       e.stopPropagation();
       OS.sound.play('click');
       select('B2');
-      const r = pickBox.getBoundingClientRect();
-      const p = OS.stage.toLocal(r.left, r.bottom);
+      const r = OS.stage.rectOf(pickBox);
+      const p = { x: r.left, y: r.bottom };
       const names = DEBTORS.concat(customNames);
       OS.ui.contextMenu(names.map(n => ({ label: n, checked: n === who, action: () => setWho(n, PAL.names[n] || PAL.custom) }))
         .concat(['-', { label: CUSTOM, action: askCustom }]), p.x, p.y);
@@ -397,10 +397,12 @@
       ]),
       el('div', { class: 'qt-last' }, [el('div', { class: 'qt-note', text: info.note || SLIP_NOTE }), postBtn])
     ]);
+    if (info.elOnly) return slip;   // ABCSee 里看欠条.jpg：只要这张纸
     return OS.wm.open({ title: info.viewName ? info.viewName + ' - 图片和传真查看器' : '欠条 - ' + (info.title || app.name), icon: info.viewName ? 'paint' : 'sheet', width: 340, content: slip, maximizable: false });
   }
   // 我的图片里存的欠条：再打开看看（mydocs.js）
   OS.showSlip = (info, name) => slipWindow(Object.assign({}, info, { post: false, viewName: name }));
+  OS.slipEl = info => slipWindow(Object.assign({}, info, { post: false, elOnly: true }));
   OS.slipDate = () => SLIP_DATE();
 
   // “自己输入…”：一个小输入框（这里可以打字，手机上会弹输入法）

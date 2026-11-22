@@ -3,7 +3,7 @@
   'use strict';
   let ctx = null, master = null, noiseBuf = null;
   const VOL = 0.6;
-  const S = OS.sound = { muted: !!OS.save.get('muted', false) };
+  const S = OS.sound = { muted: !!OS.save.get('muted', false), level: OS.save.get('soundLevel', 1) };   // level：控制面板 ▸ 声音 ▸ 设备音量（0~1）
 
   // 浏览器要求第一次点屏幕之后才能出声
   S.unlock = function () {
@@ -13,7 +13,7 @@
         if (!AC) return;
         ctx = new AC();
         master = ctx.createGain();
-        master.gain.value = S.muted ? 0 : VOL;
+        master.gain.value = S.muted ? 0 : VOL * S.level;
         master.connect(ctx.destination);
       }
       if (ctx.state === 'suspended') ctx.resume();
@@ -23,8 +23,14 @@
   S.setMuted = function (m) {
     S.muted = !!m;
     OS.save.set('muted', S.muted);
-    if (master) master.gain.value = S.muted ? 0 : VOL;
+    if (master) master.gain.value = S.muted ? 0 : VOL * S.level;
     OS.emit('sound:muted', S.muted);
+  };
+  S.setLevel = function (v, save) {
+    S.level = Math.max(0, Math.min(1, v));
+    if (save !== false) OS.save.set('soundLevel', S.level);
+    if (master) master.gain.value = S.muted ? 0 : VOL * S.level;
+    OS.emit('sound:level', S.level);
   };
 
   function osc(type, f, t0, dur, vol, f2) {
@@ -126,6 +132,13 @@
     },
     // 给拨号猫磕头的“咚”、拍显示器的“啪”
     thud(t) { osc('sine', 120, t, 0.2, 0.5, 55); noise(t, 0.06, 0.25, 600); },
+    // 画图 AI版：喷枪“嗤”、油漆桶倒下去“哗”
+    spray(t) { noise(t, 0.05, 0.06, 7000); },
+    splash(t) { noise(t, 0.18, 0.22, 1400); osc('sine', 260, t, 0.16, 0.08, 140); },
+    // 青蛙“呱”（ABCSee 幻灯片放到睡莲）
+    frog(t) { osc('sawtooth', 190, t, 0.11, 0.16, 120); osc('sawtooth', 210, t + 0.15, 0.13, 0.16, 110); },
+    // 一串音符：[[频率, 第几秒开始, 多长, 波形, 音量], …]（注册机的 8 位机音乐）
+    chip(t, notes) { (notes || []).forEach(([f, s, d, type, vol]) => osc(type || 'square', f, t + s, d, vol || 0.04)); },
     slap(t) { noise(t, 0.14, 0.8, 5000); osc('square', 180, t, 0.09, 0.2, 80); },
     // 蚊子“嗡——”：由远到近再远（arg = 持续几秒）
     buzz(t, dur) {
@@ -179,6 +192,43 @@
       if (fn) fn(ctx.currentTime + 0.01, arg);
     } catch (e) { /* ignore */ }
   };
+
+  /* ---------- 录好的声音（计算器的真人发音）：一个文件里排着很多小段，按名字念 ----------
+     S.voice(url, map) 先载入（map：{ 名字: [开始秒数, 长度] }）；S.say(url, ['1', 'add', '1']) 一段接一段念，
+     再说新的一句会打断上一句；静音、音量跟着全局走 */
+  const voices = {};
+  S.voice = function (url, map, lag) {
+    if (voices[url]) return voices[url].ready;
+    S.unlock();
+    const v = voices[url] = { map, lag: lag || 0, buf: null, srcs: [] };
+    v.ready = fetch(url).then(r => r.arrayBuffer()).then(ab => new Promise((res, rej) => {
+      if (!ctx) { rej(new Error('no audio')); return; }
+      ctx.decodeAudioData(ab, b => { v.buf = b; res(v); }, rej);
+    })).catch(() => { delete voices[url]; return null; });
+    return v.ready;
+  };
+  S.say = function (url, words, gap) {
+    const v = voices[url];
+    if (!v || !v.buf || !ctx) return 0;
+    v.srcs.forEach(s => { try { s.stop(); } catch (e) { /* ignore */ } });
+    v.srcs = [];
+    if (S.muted) return 0;
+    if (ctx.state === 'suspended') ctx.resume();
+    let t = ctx.currentTime + 0.02;
+    const t0 = t;
+    words.forEach(w => {
+      const c = v.map[w];
+      if (!c) return;
+      const src = ctx.createBufferSource();
+      src.buffer = v.buf;
+      src.connect(master);
+      src.start(t, Math.max(0, c[0] + v.lag), c[1]);
+      v.srcs.push(src);
+      t += c[1] + (gap == null ? 0.02 : gap);
+    });
+    return t - t0;
+  };
+  S.hush = function (url) { const v = voices[url]; if (v) { v.srcs.forEach(s => { try { s.stop(); } catch (e) { /* ignore */ } }); v.srcs = []; } };
 
   window.addEventListener('pointerdown', S.unlock, true);
 })();

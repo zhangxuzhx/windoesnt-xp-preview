@@ -144,6 +144,31 @@
       ],
       generic: ['八折也行', '加我好友送抠币', '点击领取：抠币大礼包'] }
   };
+  /* 中毒了（ABCSee 注册机，abcsee.js 的第三拨）：你发的每句话后面自动多一行广告，好友按各自的性格回。
+     [第一次看到, 之后每次] */
+  const VIRUS_TAIL = '免费看大片 www.dapian.zz';
+  const VIRUS_REACT = {
+    deskmate: ['这链接能抄作业不？不能就别发了。', '又来？有作业答案的链接再发我。'],
+    faxiao: ['你又乱下东西中毒了吧？我告诉你妈去。', '你妈说了，再中毒就把网线剪了。'],
+    roommate: ['大片？今晚宿舍一起看？……点开了，打不开。', '链接打不开，你还是帮我带份饭吧。'],
+    boss: ['看大片要钱不？要钱先把冰棍钱结了。', '在我这儿打广告，广告费另算。'],
+    nextdoor: ['？', '。'],
+    monitor: ['班长提醒：不要乱点陌生链接！你电脑中毒了，快去杀毒。', '再发我就报告老师了。'],
+    feiyang: ['哇，大片~ 你看过了吗？……人家害羞，不看这种的啦~', '你变了，你以前不发这种东西的……'],
+    yanhua: ['伱哋電腦，巳經鈈湜伱哋電腦孒……', '迣堺仩朂遙逺哋距離，湜伱點孒那個鏈接。'],
+    taxue: ['高手，这是外挂吗？带我一起！', '下了，杀毒软件报毒了。高手果然是高手。'],
+    guimi: ['同行啊？你这链接收不收费，我帮你代理，八折。', '咱俩互推吧，你推我抠币，我推你大片。']
+  };
+  const VIRUS_REACT_OTHER = ['你号被盗了吧？', '别发了，我不点。'];
+  const VIRUS_QUN = [['monitor', '群里禁止发广告！再发踢了。'], ['deskmate', '你号被盗了吧'], ['faxiao', '又中毒了，我去告诉你妈'], ['roommate', '点了，打不开']];
+  const virusSeen = {};
+  const virusTail = () => !!(OS.virus && OS.virus.tail());
+  const virusReact = id => {
+    const r = VIRUS_REACT[id] || VIRUS_REACT_OTHER;
+    const n = virusSeen[id] = (virusSeen[id] || 0) + 1;
+    return r[Math.min(n - 1, r.length - 1)];
+  };
+
   /* 删了好友：1–3 分钟后对方发好友申请要加回来。ask = 附加消息（每拒绝一次往下走一句，走到最后一句就一直重复）；
      back = 同意以后对方先说的一句 */
   const READD = {
@@ -195,7 +220,7 @@
   }
   S = fresh();
   const later = (fn, ms) => { S.timers.push(setTimeout(fn, ms)); };
-  const clock = () => { const d = new Date(); return OS.pad2(d.getHours()) + ':' + OS.pad2(d.getMinutes()) + ':' + OS.pad2(d.getSeconds()); };
+  const clock = () => { const d = OS.clock.now(); return OS.pad2(d.getHours()) + ':' + OS.pad2(d.getMinutes()) + ':' + OS.pad2(d.getSeconds()); };
   const alive = w => w && !w.isClosed;
   const nameOf = id => (F[id] ? F[id].name : id);
 
@@ -213,8 +238,10 @@
     return el('span', { class: 'kk-av' + (cls ? ' ' + cls : '') + (off ? ' off' : ''), style: { backgroundPosition: cell(AV_IDX[id] || 0, AV_N) } });
   }
   const emoEl = i => el('span', { class: 'kk-emo', style: { backgroundPosition: cell(i, EMO_N) } });
-  // 抠秀（聊天窗右边的形象）
+  // 抠秀（聊天窗右边的形象）：上面对方的，下面你自己的。
+  // 你 0 抠币、换不了装，所以你的一直是那几年没买抠秀的人那种灰色小人（Codex 画的 show-me.webp）
   function showEl(id) {
+    if (id === 'me') return el('div', { class: 'kk-show me' }, [el('span', { class: 'kk-show-img kk-show-me' })]);
     return el('div', { class: 'kk-show' }, [el('span', { class: 'kk-show-img', style: { backgroundPosition: cell(SHOW_IDX[id] || 0, SHOW_N) } })]);
   }
 
@@ -300,7 +327,7 @@
     numBox.addEventListener('click', e => {
       e.stopPropagation();
       OS.sound.play('click');
-      const r = numBox.getBoundingClientRect(), p = OS.stage.toLocal(r.left, r.bottom);
+      const r = OS.stage.rectOf(numBox), p = { x: r.left, y: r.bottom };
       OS.ui.contextMenu(NUMS.map(([n, err]) => ({ label: n, checked: n === MY_NUM, action: err ? say(SOFT, 'error', err) : () => {} })), p.x, p.y);
     });
     const tabs = el('div', { class: 'kk-ltabs' }, [['抠抠号码', null], ['手机号码', L.tabPhone], ['电子邮箱', L.tabMail]].map(([t, joke], i) => {
@@ -325,7 +352,11 @@
       body,
       el('div', { class: 'kk-lfoot' }, [link('申请密码保护', say('申请密码保护', 'info', L.protect)), el('span', { class: 'kk-sp' }), goBtn, btn('取消', () => win.close()), btn('注册向导', say('注册向导', 'info', L.register))])
     ]);
-    const win = OS.wm.open({ title: '抠抠用户登录', icon: 'koukou', width: 300, appId: app.id, content, maximizable: false, center: true, onClose: () => { S.login = null; } });
+    const win = OS.wm.open({ title: '抠抠用户登录', icon: 'koukou', width: 300, appId: app.id, content, maximizable: false, center: true, onClose: () => {
+      S.login = null;
+      // 没登录就把登录框关了（× 或 取消）：跟 QQ 一样整个退出，托盘里的灰头像也收走
+      if (!S.logged && S.tray) { S.tray.remove(); S.tray = null; }
+    } });
     S.login = win;
     let going = false;
     function go() {
@@ -352,7 +383,14 @@
     later(sysRequest, 25000);
     S.deleted.forEach(id => later(() => sysRequest(id), readdDelay()));   // 删掉的好友：上线后照样来加你
     if (invisible) caughtInvisible();
+    // 上次是在任务管理器里被结束掉的：同桌问一句
+    if (dropped) {
+      dropped = false;
+      later(() => { if (!S.blocked.has('deskmate') && !S.offline.has('deskmate') && !S.deleted.has('deskmate')) deliver('deskmate', DROPPED_ASK); }, 3500);
+    }
   }
+  let dropped = false;
+  const DROPPED_ASK = '你刚才怎么突然下线了？';
   // 隐身也没用：几秒后有人装了外挂看见你
   let invN = 0;
   function caughtInvisible() {
@@ -385,7 +423,7 @@
       fbtn('消息', () => (S.sysQueue.length ? openSys() : OS.ui.dialog({ title: '消息', icon: 'info', text: L.noMsg }))),
       fbtn('抠币', say('抠币', 'info', L.coin)),
       fbtn('菜单', b => {
-        const r = b.getBoundingClientRect(), p = OS.stage.toLocal(r.left, r.top);
+        const r = OS.stage.rectOf(b), p = { x: r.left, y: r.top };
         OS.ui.contextMenu([
           { label: '个人资料', action: () => OS.ui.dialog({ title: '个人资料', icon: 'info', text: L.profile.replace('{sig}', listening ? '♪ 正在听：' + listening : L.noSig) }) },
           { label: '系统设置', action: openSettings },
@@ -476,7 +514,7 @@
     const star = el('span', { class: 'kk-star', text: '★' });
     const me = avEl('me', 'kk-me' + (S.status === 'invisible' ? ' inv' : ''));
     const statusMenu = () => {
-      const r = st.getBoundingClientRect(), p = OS.stage.toLocal(r.left, r.bottom);
+      const r = OS.stage.rectOf(st), p = { x: r.left, y: r.bottom };
       OS.sound.play('click');
       OS.ui.contextMenu([
         { label: '我在线上', checked: S.status === 'online', action: () => setStatus('online') },
@@ -520,7 +558,7 @@
           list.querySelectorAll('.kk-fr.sel').forEach(n => n.classList.remove('sel'));
           row.classList.add('sel');
           const t = Date.now();
-          if (t - lastT < 450) { lastT = 0; isQun ? openQun() : openChat(id); } else lastT = t;
+          if (t - lastT < OS.dblMs()) { lastT = 0; isQun ? openQun() : openChat(id); } else lastT = t;
         });
         OS.ui.onContext(row, () => {
           S.sel = id;
@@ -561,7 +599,7 @@
     if (m.who === 'sys') return el('div', { class: 'kk-sys', text: m.text });
     const mine = m.who === 'me';
     const name = mine ? '你' : nameOf(m.who);
-    const body = m.file ? fileEl(m.file) : m.card ? cardEl(m.card) : m.emo != null ? emoEl(m.emo) : el('div', { class: 'kk-mtext', text: m.text });
+    const body = m.file ? fileEl(m.file) : m.card ? cardEl(m.card) : m.emo != null ? emoEl(m.emo) : el('div', { class: 'kk-mtext' + (m.ad ? ' kk-ad' : ''), text: m.text });
     return el('div', { class: 'kk-msg' + (mine ? ' me' : '') }, [el('div', { class: 'kk-mh', text: name + '  ' + m.time }), body]);
   }
   function cardEl(c) {
@@ -600,6 +638,8 @@
     const t = f.turns[S.turn[id]];
     const mine = t ? t.choices[i][0] : GENERIC_CHIPS[i];
     push(id, { who: 'me', text: mine });
+    const tailed = virusTail();
+    if (tailed) push(id, { who: 'me', text: VIRUS_TAIL, ad: true });
     S.wait[id] = false;
     refreshChips(id);
     // 记下每轮选了第几个；连着两轮都选同一个“特殊选项”，对方有专门的一句（比如火星文网友破功）
@@ -607,12 +647,17 @@
     if (t) picks.push(i);
     let reply = t ? t.choices[i][1] : OS.pick(f.generic || GENERIC_REPLY);
     if (t && f.twice && picks.length >= 2 && picks.slice(-2).every(p => p === f.twice.pick)) reply = f.twice.line;
-    later(() => {
+    const answer = () => {
       if (S.blocked.has(id)) return;
       deliver(id, reply);
       if (t && t.after === 'offline') { later(() => goOffline(id), 900); return; }
       if (t) { S.turn[id]++; later(() => friendSay(id), 1300); }
       else { S.wait[id] = true; refreshChips(id); }
+    };
+    later(() => {
+      if (S.blocked.has(id)) return;
+      if (tailed) { deliver(id, virusReact(id)); later(answer, 1400); return; }   // 先说你中毒了，再接着聊
+      answer();
     }, 900 + Math.random() * 500);
   }
   function goOffline(id) {
@@ -670,7 +715,7 @@
     body.appendChild(el('div', { class: 'kk-chead' }, [avEl(id, 'kk-cav'), el('div', {}, [el('div', { class: 'kk-cname', text: f.name + '（' + f.num + '）' }), el('div', { class: 'kk-csig', text: f.sig })])]));
     body.appendChild(el('div', { class: 'kk-cmain' }, [
       el('div', { class: 'kk-cleft' }, [logEl, tools.bar, chipsEl, el('div', { class: 'kk-cbtns' }, [histBtn, el('span', { class: 'kk-sp' }), closeBtn, sendBtn])]),
-      el('div', { class: 'kk-cright' }, [el('div', { class: 'kk-cap', text: '抠秀形象' }), showEl(id), dressBtn])
+      el('div', { class: 'kk-cright' }, [el('div', { class: 'kk-cap', text: '抠秀形象' }), showEl(id), el('div', { class: 'kk-cap', text: '我的抠秀' }), showEl('me'), dressBtn])
     ]));
     body.appendChild(tools.pick);
     const p = o.x != null ? o : spot();
@@ -757,7 +802,15 @@
     logEl.scrollTop = logEl.scrollHeight;
     QUN_CHIPS.forEach(t => {
       const ch = el('div', { class: 'kk-chip', text: t });
-      ch.addEventListener('click', () => { OS.sound.play('click'); if (S.muted) { sys('qun', MUTE_SEND); return; } push('qun', { who: 'me', text: t }); });
+      ch.addEventListener('click', () => {
+        OS.sound.play('click');
+        if (S.muted) { sys('qun', MUTE_SEND); return; }
+        push('qun', { who: 'me', text: t });
+        if (!virusTail()) return;
+        push('qun', { who: 'me', text: VIRUS_TAIL, ad: true });
+        const pool = VIRUS_QUN.filter(([who]) => members().includes(who));
+        if (pool.length) { const [who, line] = OS.pick(pool); later(() => deliver('qun', line, { from: who }), 1100); }
+      });
       chipsEl.appendChild(ch);
     });
     closeBtn.addEventListener('click', () => { OS.sound.play('click'); win.close(); });
@@ -989,6 +1042,9 @@
       return n;
     },
     receive: (id, text) => { if (!S.logged || !F[id] || S.blocked.has(id) || S.offline.has(id) || S.deleted.has(id)) return false; deliver(id, text); return true; },
+    // 任务管理器：抠抠2003.exe 在不在（登着、或者开着登录框）、结束它 = 直接掉线；下次登录同桌来问
+    running: () => !!(S.logged || alive(S.login)),
+    kill: () => { if (S.logged) dropped = true; quit(); },
     uninstall: say('卸载 抠抠2003', 'warn', L.uninstall)
   };
 })();

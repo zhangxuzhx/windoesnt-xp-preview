@@ -60,9 +60,32 @@
     },
     set(k, v) { try { localStorage.setItem(PREFIX + k, JSON.stringify(v)); } catch (e) { /* 存不了就算了 */ } },
     remove(k) { try { localStorage.removeItem(PREFIX + k); } catch (e) { /* ignore */ } },
+    // 一键还原清空存档：玩家自己的习惯留着（控制面板里的屏幕方向、音量、双击速度）
+    KEEP: ['orient', 'soundLevel', 'muted', 'volIcon', 'dblMs'],
     clearAll() {
-      try { Object.keys(localStorage).filter(k => k.indexOf(PREFIX) === 0).forEach(k => localStorage.removeItem(k)); }
+      try { Object.keys(localStorage).filter(k => k.indexOf(PREFIX) === 0 && OS.save.KEEP.indexOf(k.slice(PREFIX.length)) < 0).forEach(k => localStorage.removeItem(k)); }
       catch (e) { /* ignore */ }
+    }
+  };
+
+  /* ---------- 打印：记事本、写字板、ABCSee、控制面板的打印机都弹这一句（占位，以后可能换） ---------- */
+  OS.PRINT_TITLE = '打印机错误';
+  OS.PRINT_ERR = '打印出错：墨盒卡纸。\n请打开打印机前盖，取出卡纸后重试。';
+  OS.PRINT_DEAD = '打印机服务已经被你结束了。\n终于不卡纸了。';
+  OS.spoolerOff = false;   // 任务管理器里结束了 spoolsv.exe
+  OS.printErr = () => (OS.spoolerOff ? OS.PRINT_DEAD : OS.PRINT_ERR);
+  // 软件之间共用的“复制的字”（记事本 ↔ 计算器）：{ text, at }
+  OS.textClip = null;
+
+  /* ---------- 电脑里的时间：控制面板 ▸ 日期和时间 能调；记的是“跟真实时间差多少” ----------
+     右下角时间、日历、文件日期、记事本 F5 这些“现在几点”都用 OS.clock.now() */
+  OS.clock = {
+    offset: OS.save.get('clockOffset', 0),
+    now: () => new Date(Date.now() + OS.clock.offset),
+    set(ms) {
+      OS.clock.offset = ms || 0;
+      if (ms) OS.save.set('clockOffset', ms); else OS.save.remove('clockOffset');
+      OS.emit('clock:changed');
     }
   };
 

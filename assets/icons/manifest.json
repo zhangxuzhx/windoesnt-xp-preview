@@ -1,0 +1,62 @@
+{
+  "desktop": {
+    "file": "desktop.webp",
+    "w": 96,
+    "h": 96,
+    "frames": 14
+  },
+  "start": {
+    "file": "start.webp",
+    "w": 96,
+    "h": 96,
+    "frames": 12
+  },
+  "files": {
+    "file": "files.webp",
+    "w": 96,
+    "h": 96,
+    "frames": 10
+  },
+  "avatars": {
+    "file": "avatars.webp",
+    "w": 96,
+    "h": 96,
+    "frames": 7
+  },
+  "cry": {
+    "file": "cry.webp",
+    "w": 64,
+    "h": 64,
+    "frames": 1
+  },
+  "keygen": {
+    "file": "keygen.webp",
+    "w": 96,
+    "h": 96,
+    "frames": 1
+  },
+  "gadgets": {
+    "file": "gadgets.webp",
+    "w": 128,
+    "h": 128,
+    "frames": 12
+  },
+  "control": {
+    "file": "control.webp",
+    "w": 96,
+    "h": 96,
+    "frames": 8
+  },
+  "system": {
+    "file": "system.webp",
+    "w": 96,
+    "h": 96,
+    "frames": 13
+  },
+  "genie-big": {
+    "file": "genie-big.webp",
+    "w": 140,
+    "h": 160,
+    "frames": 1
+  }
+}

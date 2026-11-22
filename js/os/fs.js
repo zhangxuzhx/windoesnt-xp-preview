@@ -22,10 +22,10 @@
   const CAP_TEXT = '由于性能限制，不能创建80个以上的自定义文件，您可以先删除您创建的老文件再创建新文件，谢谢支持！';
   // 类型：图标、类型名
   const KINDS = {
-    folder: ['folder', '文件夹'], txt: ['txt', '文本文档'], doc: ['doc', 'Word 文档'], jpg: ['paint', 'JPEG 图像'], bmp: ['paint', '位图图像'],
-    mp3: ['music', 'MP3 音频文件'], exe: ['exe', '应用程序'], lnk: ['exe', '快捷方式'], dll: ['control', '应用程序扩展'], sys: ['control', '系统文件'],
+    folder: ['folder', '文件夹'], txt: ['txt', '文本文档'], doc: ['doc', 'Word 文档'], jpg: ['abcpic', 'ABCSee JPEG 图像'], bmp: ['abcpic', 'ABCSee BMP 图像'],
+    mp3: ['mp3file', 'MP3 音频文件'], exe: ['exe', '应用程序'], lnk: ['exe', '快捷方式'], dll: ['control', '应用程序扩展'], sys: ['control', '系统文件'],
     dmp: ['txt', '故障转储文件'], ttf: ['doc', '字体文件'], tmp: ['txt', '临时文件'], ini: ['control', '配置设置'], inf: ['txt', '安装信息'],
-    url: ['ie', 'Internet 快捷方式'], dat: ['txt', 'DAT 文件'], rmvb: ['video', 'RealMedia 文件'], drive: ['computer', '本地磁盘']
+    url: ['ie', 'Internet 快捷方式'], rtf: ['doc', 'RTF 文档'], dat: ['txt', 'DAT 文件'], rmvb: ['video', 'RealMedia 文件'], drive: ['computer', '本地磁盘']
   };
   FS.kindName = k => (KINDS[k] || ['', '文件'])[1];
   FS.kindIcon = k => (KINDS[k] || ['exe'])[0];
@@ -145,6 +145,8 @@
     const name = exists(FS.join(dir, node.name)) ? FS.freeName(dir, '复件 ' + node.name) : node.name;
     const data = { text: FS.text(node) };
     if (node.slip) data.slip = node.slip;
+    const doc = FS.docOf(node);
+    if (doc) data.doc = doc;
     if (node.copyOf || node.open) data.copyOf = node.copyOf || node.path;   // 复制出来的还能照原样打开（比如游戏、歌）
     user.push(Object.assign({ path: FS.join(dir, name), kind: node.kind, at: Date.now() }, data));
     saveUser();
@@ -168,9 +170,32 @@
     return FS.get(to);
   };
 
+  // 写字板的文章（一段一段带排版）：玩家改过就用改过的
+  FS.docOf = function (node) {
+    const u = user.find(x => x.path === node.path);
+    if (u && u.doc) return u.doc;
+    const docs = OS.save.get('fsDoc', {});
+    if (docs[node.path]) return docs[node.path];
+    return node.doc || null;
+  };
+  // 画图 AI版 存的画：只改玩家自己的
+  FS.setImg = function (path, img) {
+    const u = user.find(x => x.path === path);
+    if (u) { u.img = img; saveUser(); }
+  };
+  FS.setDoc = function (path, doc) {
+    doc = JSON.parse(JSON.stringify(doc));
+    const u = user.find(x => x.path === path);
+    if (u) { u.doc = doc; saveUser(); return; }
+    const docs = OS.save.get('fsDoc', {});
+    docs[path] = doc;
+    OS.save.set('fsDoc', docs);
+    OS.emit('fs:change');
+  };
+
   /* ---------- 日期：年份一律 200X ---------- */
   FS.dateText = function (t) {
-    const d = t ? new Date(t) : new Date();
+    const d = t ? new Date(t) : OS.clock.now();
     return OS.YEAR + '-' + OS.pad2(d.getMonth() + 1) + '-' + OS.pad2(d.getDate()) + ' ' + OS.pad2(d.getHours()) + ':' + OS.pad2(d.getMinutes());
   };
   // 文件路径按 GBK 算的长度（一个汉字两个字节）：XP 路径不能超过 260

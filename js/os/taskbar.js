@@ -36,23 +36,22 @@
     OS.ui.onContext(volIco, () => OS.menus.volume());
     OS.ui.onContext(shield, () => OS.menus.shield());
     OS.on('sound:changed', renderVol);
+    OS.on('sound:muted', renderVol);
+    OS.on('tray:changed', renderVol);
 
     shield.addEventListener('click', () => {
       OS.ui.notify({ title: '系统未激活', text: '你的系统可能是盗版的受害者。\n好消息是，正版也是盗的。', icon: 'warn', replace: true, timeout: 4500 });
     });
     renderVol();
-    volIco.addEventListener('click', () => {
-      OS.sound.setMuted(!OS.sound.muted);
-      renderVol();
-      if (!OS.sound.muted) OS.sound.play('ding');
-    });
+    volIco.addEventListener('click', e => { e.stopPropagation(); OS.sound.play('click'); TB.volumePopup(); });
     tick();
-    setInterval(tick, 5000);
+    setInterval(tick, 1000);
+    OS.on('clock:changed', tick);
     clock.addEventListener('click', () => {
-      const d = new Date();
+      const d = OS.clock.now();
       OS.ui.notify({
-        title: OS.YEAR + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 星期' + '日一二三四五六'[d.getDay()],
-        text: OS.pick(['离下一个假期：还差若干个今天。', '今天的日期：和昨天完全不同。', '每过 60 秒，你的生命就减少一分钟。']),
+        title: (d.getFullYear() === 1999 ? '1999' : OS.YEAR) + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 星期' + '日一二三四五六'[d.getDay()],
+        text: OS.pick(['离下一个假期：还差若干个今天。', '今天的日期：和昨天完全不同。', '每过 60 秒，你的生命就减少一分钟。', '你再怎么调整时间，他/她也不会再回来了，过去的就让它过去吧']),
         icon: 'info', replace: true, timeout: 4000
       });
     });
@@ -84,8 +83,9 @@
     if (menu.classList.contains('open')) positionMenu();
   }
 
-  function renderVol() { volIco.innerHTML = OS.icon(OS.sound.muted ? 'mute' : 'volume'); }
-  function tick() { const d = new Date(); clock.textContent = OS.pad2(d.getHours()) + ':' + OS.pad2(d.getMinutes()); }
+  function renderVol() { volIco.innerHTML = OS.icon(OS.sound.muted ? 'mute' : 'volume'); volIco.style.display = OS.save.get('volIcon', true) ? '' : 'none'; }
+  // 右下角时间：跟着控制面板 ▸ 日期和时间 调过的走（OS.clock）
+  function tick() { const d = OS.clock.now(); clock.textContent = OS.pad2(d.getHours()) + ':' + OS.pad2(d.getMinutes()); }
 
   function addTask(w) {
     if (!w.opts.taskbar) return;
@@ -127,7 +127,8 @@
 
   function buildMenu() {
     const m = el('div', { id: 'startmenu' });
-    const head = el('div', { class: 'sm-head' }, [OS.iconEl('duck', 'sm-avatar'), el('span', { text: '你' })]);
+    const head = el('div', { class: 'sm-head' }, [OS.iconEl(OS.save.get('avatar', 'duck'), 'sm-avatar'), el('span', { text: '你' })]);
+    OS.on('avatar:changed', a => { const old = head.querySelector('.sm-avatar'); if (old) old.replaceWith(OS.iconEl(a, 'sm-avatar')); });
 
     // 左边：照 XP 的开始菜单。最上面两个固定的（上网、电子邮件，两行字），一条线，下面是常用程序
     leftCol = el('div', { class: 'sm-left' });
@@ -163,7 +164,7 @@
       item('mydocs', '我的文档', closeThen(() => OS.apps.open('mydocs')), '', appMenu(OS.apps.byId.mydocs)),
       item('computer', '我的电脑', closeThen(() => OS.apps.open('mycomputer')), '', appMenu(OS.apps.byId.mycomputer)),
       el('div', { class: 'sm-sep' }),
-      item('control', '控制不了面板', say('控制不了面板', 'info', '无法打开。\n你连自己都控制不了，还想控制面板。'), '', place),
+      item('control', '控制面板', closeThen(() => OS.apps.open('control')), '', appMenu(OS.apps.byId.control)),
       item('help', '帮不了和不支持', say('帮助和支持中心', 'help', '如需帮助，请自行解决。'), '', place),
       item('search', '找不到', say('搜索结果', 'info', '搜索完毕，共找到 0 项。\n你要找的东西，大概在你上次放它的地方。'), '', place),
       item('genie', '一键还原精灵', closeThen(() => OS.apps.open('restore')), '', appMenu(OS.apps.byId.restore))
@@ -216,15 +217,16 @@
       folder('实用小程序', [appItem('swatter'), appItem('coil'), appItem('bootcheck'), appItem('pulse'), appItem('lifespan'), appItem('activator')]),
       // 照那几年装聊天软件的样子：一个文件夹，里面是软件本体 + 卸载（卸不掉）
       folder('抠抠软件', [appItem('koukou'), { label: '卸载 抠抠2003', icon: 'exe', action: closeThen(() => OS.koukou && OS.koukou.uninstall()) }]),
-      folder('千千不听', [appItem('qianqian'), { label: '卸载 千千不听', icon: 'exe', action: closeThen(() => OS.qianqian && OS.qianqian.uninstall()) }])
+      folder('千千不听', [appItem('qianqian'), { label: '卸载 千千不听', icon: 'exe', action: closeThen(() => OS.qianqian && OS.qianqian.uninstall()) }]),
+      folder('ABCSee 大眼看图', [appItem('abcsee'), { label: 'ABCSee 帮助', icon: 'help', action: closeThen(() => OS.abcsee && OS.abcsee.help()) }, { label: '卸载 ABCSee', icon: 'exe', action: closeThen(() => OS.abcsee && OS.abcsee.uninstall()) }])
     ];
   }
 
   function openAll() {
     clearTimeout(hoverT);
     if (flyout || !menu.classList.contains('open')) return;
-    const r = allBtn.getBoundingClientRect(), lc = leftCol.getBoundingClientRect();
-    const a = OS.stage.toLocal(lc.right, r.top), b = OS.stage.toLocal(lc.right, r.bottom);
+    const r = OS.stage.rectOf(allBtn), lc = OS.stage.rectOf(leftCol);
+    const a = { x: lc.right, y: r.top }, b = { x: lc.right, y: r.bottom };
     allBtn.classList.add('open');
     flyout = OS.ui.cascadeMenu(allPrograms(), { x: a.x - 1, y: a.y, w: 0, h: b.y - a.y }, {
       className: 'flyout',
@@ -243,6 +245,51 @@
     if (cap && cap.corner === 'tl' && st.H - st.TASKBAR_H - menu.offsetHeight < cap.h) left = Math.max(left, cap.w);
     menu.style.left = left + 'px';
   }
+
+  /* ---------- 点右下角小喇叭：弹一个小音量框（XP 原样：一根竖着的滑块 + 静音），点别处收起 ---------- */
+  let volPop = null;
+  function closeVolPop() {
+    if (!volPop) return;
+    volPop.remove();
+    volPop = null;
+    document.removeEventListener('pointerdown', outside, true);
+  }
+  function outside(e) { if (volPop && !volPop.contains(e.target) && !volIco.contains(e.target)) closeVolPop(); }
+  TB.volumePopup = function () {
+    if (volPop) { closeVolPop(); return; }
+    const knob = el('div', { class: 'vp-knob' });
+    const track = el('div', { class: 'vp-track' }, [el('div', { class: 'vp-line' }), knob]);
+    const place = () => { knob.style.top = ((1 - OS.sound.level) * 100) + '%'; };
+    const setFrom = ev => {
+      const r = OS.stage.rectOf(track), p = OS.stage.toLocal(ev.clientX, ev.clientY);
+      OS.sound.setLevel(OS.clamp(1 - (p.y - r.top) / r.height, 0, 1));
+      place();
+    };
+    track.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      setFrom(e);
+      try { track.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+      const mv = ev => setFrom(ev);
+      const up = () => { track.removeEventListener('pointermove', mv); track.removeEventListener('pointerup', up); track.removeEventListener('pointercancel', up); OS.sound.play('ding'); };
+      track.addEventListener('pointermove', mv);
+      track.addEventListener('pointerup', up);
+      track.addEventListener('pointercancel', up);
+    });
+    const mute = el('input', { type: 'checkbox' });
+    mute.checked = OS.sound.muted;
+    mute.addEventListener('change', () => { OS.sound.setMuted(mute.checked); if (!mute.checked) OS.sound.play('ding'); });
+    volPop = el('div', { class: 'vol-pop' }, [el('div', { class: 'vp-h', text: '音量' }), track, el('label', { class: 'vp-mute' }, [mute, el('span', { text: '静音' })])]);
+    place();
+    const st = OS.stage, r = st.rectOf(volIco);
+    volPop.style.left = OS.clamp(r.left + r.width / 2 - 30, 2, st.W - 62) + 'px';
+    volPop.style.bottom = (st.H - r.top + 4) + 'px';
+    document.getElementById('overlay').appendChild(volPop);
+    setTimeout(() => document.addEventListener('pointerdown', outside, true), 0);
+  };
+  OS.on('desktop:reset', closeVolPop);
+
+  // 开始按钮的字（null = 变回“开始”）
+  TB.setStartLabel = t => { const sp = startBtn && startBtn.querySelector('span:last-child'); if (sp) sp.textContent = t || '开始'; };
 
   TB.toggleMenu = function (open) {
     if (!menu) return;

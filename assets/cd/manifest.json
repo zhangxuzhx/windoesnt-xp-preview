@@ -1,0 +1,56 @@
+{
+  "autorun": {
+    "file": "autorun.webp",
+    "w": 628,
+    "h": 400,
+    "frames": 1
+  },
+  "game-zhuma": {
+    "file": "game-zhuma.webp",
+    "w": 96,
+    "h": 96,
+    "frames": 1
+  },
+  "game-miner": {
+    "file": "game-miner.webp",
+    "w": 96,
+    "h": 96,
+    "frames": 1
+  },
+  "game-tank": {
+    "file": "game-tank.webp",
+    "w": 96,
+    "h": 96,
+    "frames": 1
+  },
+  "game-tea": {
+    "file": "game-tea.webp",
+    "w": 96,
+    "h": 96,
+    "frames": 1
+  },
+  "game-sticky": {
+    "file": "game-sticky.webp",
+    "w": 96,
+    "h": 96,
+    "frames": 1
+  },
+  "game-stone": {
+    "file": "game-stone.webp",
+    "w": 96,
+    "h": 96,
+    "frames": 1
+  },
+  "tray": {
+    "file": "tray.webp",
+    "w": 240,
+    "h": 70,
+    "frames": 2
+  },
+  "cup": {
+    "file": "cup.webp",
+    "w": 48,
+    "h": 64,
+    "frames": 1
+  }
+}

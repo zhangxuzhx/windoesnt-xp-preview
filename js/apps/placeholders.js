@@ -48,19 +48,26 @@
     // 千千不听（qianqian.js）：音乐播放器，也是全游戏的背景音乐；桌面一个，开始 ▸ 所有程序 ▸ 千千不听 里一个
     { id: 'qianqian', name: '千千不听', icon: 'music' },
     // 不在桌面上：计算器、画图在 开始 ▸ 所有程序 ▸ 附件 里；任务管理器从任务栏右键打开
+    // 计算器（calc.js）：开始 ▸ 所有程序 ▸ 附件，开始菜单左栏也有
     { id: 'calc', name: '计算器', icon: 'calc', desktop: false },
+    // 画图 AI版（paint.js）：开始 ▸ 所有程序 ▸ 附件，开始菜单左栏也有
     { id: 'paint', name: '画图 AI版', icon: 'paint', desktop: false },
-    { id: 'taskmgr', name: '任务管理器', icon: 'exe', desktop: false },
+    // 任务管理器（taskmgr.js）：任务栏空白处右键、命令提示符 taskmgr
+    { id: 'taskmgr', name: '任务管理器', icon: 'gauge', desktop: false },
     // 开始菜单左边那几个（照 XP 的开始菜单），暂时都是施工中
     { id: 'ie', name: 'Internot Explorer', icon: 'ie', desktop: false },
     { id: 'mail', name: 'Outluck Excess', icon: 'mail', desktop: false },
     { id: 'sweep', name: '扫雪', icon: 'sweep', desktop: false },
     // 命令提示符（cmd.js）：开始 ▸ 所有程序 ▸ 附件，开始菜单左栏也有
     { id: 'cmd', name: '命令提示符', icon: 'cmd', desktop: false },
+    // 控制面板（controlpanel.js）：开始菜单右栏；我的电脑左边也有链接。就是这个游戏的“设置”
+    { id: 'control', name: '控制面板', icon: 'control', desktop: false },
+    // ABCSee 大眼看图（abcsee.js）：开始 ▸ 所有程序 ▸ ABCSee 大眼看图；所有图片都用它开
+    { id: 'abcsee', name: 'ABCSee 大眼看图 V3.1', icon: 'abcsee', desktop: false },
     // 记事本（notepad.js）：开始 ▸ 所有程序 ▸ 附件；游戏里所有 .txt 都用它打开
     { id: 'notepad', name: '记事本', icon: 'diary', desktop: false, singleton: false },
-    // 写字板（notepad.js 里，记事本换个标题、多一排工具栏）：开始 ▸ 所有程序 ▸ 附件；.doc 都用它打开
-    { id: 'wordpad', name: '写字板', icon: 'doc', desktop: false, singleton: false },
+    // 写字板（wordpad.js）：开始 ▸ 所有程序 ▸ 附件；.doc、.rtf 都用它打开
+    { id: 'wordpad', name: '写字板', icon: 'wordpad', desktop: false, singleton: false },
     // 开始 ▸ 所有程序 ▸ 实用小程序 里的激活器（activator.js）
     { id: 'activator', name: "Windoesn't 激活器", icon: 'key', desktop: false },
     // 开始 ▸ 所有程序 ▸ 启动 里、开始菜单右栏最下面：把存档全部清空（restore.js）

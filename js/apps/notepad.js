@@ -2,8 +2,9 @@
    - 写字默认用选单：点白纸弹出几句那年头会写的话，选了一个字一个字“写”进去；最后一项“自己输入…”能真打字。
    - 保存只能存桌面 → 桌面冒出 txt 图标 → 壁纸上的羊走过去吃掉（desktop.js），吃大文件还拉羊粪，刷新扫掉。
      字太多（1000 字以上）保存时窗口 (未响应) → XP“结束程序”框，反正不给存。
-   - 联通乱码：文件里只有“联通”两个字，存完再打开是乱码（现在一存就被羊吃了，只有羊不在时才看得到）。
-   - 蓝屏彩蛋：全选 → 复制 → 粘贴，字数一路翻倍，翻到 1024 倍撑爆 → COPY_PASTE_OVERFLOW */
+   - 联通乱码：文件里只有“联通”两个字，存完再打开是乱码（存到桌面会被羊吃；另存为到我的文档就留得住，从那儿再打开看得到）。
+   - 字数上限 9999：左下角一直显示 X/9999；超过就撑爆 → 蓝屏 COPY_PASTE_OVERFLOW（全选 → 复制 → 粘贴一路翻倍最快）。
+     超了也不真把那么多字画出来，免得浏览器先卡死 */
 (function () {
   'use strict';
   const el = OS.el;
@@ -11,7 +12,7 @@
   const say = (title, icon, text) => () => OS.ui.dialog({ title, icon, text });
 
   /* ================= 文案 ================= */
-  const NAME = '记事本', WORDPAD = '写字板';
+  const NAME = '记事本';
   const UNTITLED = '无标题';
   const LINES = ['今天天气很好。', '我要好好学习。', '我再也不玩电脑了。', '作业写完了。骗你的。', '在吗', '联通'];
   const SELF_TYPE = '自己输入…';
@@ -19,7 +20,6 @@
     menus: ['文件(F)', '编辑(E)', '格式(O)', '查看(V)', '帮助(H)'],
     openFail: '打开失败：桌面上的文本文档都被羊吃了。',
     page: '纸张大小：作业本',
-    print: '打印机没纸了。\n纸都被拿去打欠条了。',
     undo: '撤销功能需要升级专业版：后悔药 2.0。',
     find: '找不到"作业"。\n你本来也没写。',
     statusGrey: '开着自动换行的时候不让看状态栏。\n这是真的，不信你去问 2003 年的记事本。',
@@ -43,7 +43,8 @@
   const FONTS = ['宋体', '黑体', '火星文'];
   const SAVE_HANG = 1000;          // 这么多字以上，保存就 (未响应)
   const POOP_AT = [100, 300, 600]; // 吃的文件够大才拉羊粪：100 / 300 / 600 字以上，一堆比一堆大
-  const PASTE_HANG = 64, PASTE_BSOD = 1024;
+  const PASTE_HANG = 64;           // 粘贴翻到 64 倍卡一下
+  const MAX_CHARS = 9999;          // 字数上限：左下角 X/9999，超过就蓝屏
   const BSOD = { id: 'notepad', name: 'COPY_PASTE_OVERFLOW', text: '我倒，你居然用记事本把你家不奔腾搞冒烟了！弓虽！' };
   // 联通乱码：只有“联通”两个字的文本文档，存完再打开就是这个（当年记事本真有这毛病）
   const GARBLED = { '联通': '��ͨ' };
@@ -55,42 +56,37 @@
     '一': '①', '爱': '噯', '心': '惢', '世': '卋', '界': '堺', '懂': '慬', '说': '説', '话': '話', '这': '這', '个': '個',
     '们': '們', '来': '唻', '去': '呿', '吃': '喫', '饭': '飯', '家': '傢', '妈': '媽', '回': '囬', '没': '莈', '就': '僦',
     '都': '嘟', '会': '浍', '还': '還', '和': '啝', '给': '給', '时': '溡', '到': '菿', '上': '仩', '下': '丅', '大': '汏',
-    '小': '尛', '多': '哆', '少': '尐', '后': '後', '自': '洎', '么': '庅', '为': '為', '什': '什', '想': '想'
+    '小': '尛', '多': '哆', '少': '尐', '后': '後', '自': '洎', '么': '庅', '为': '為', '什': '什', '想': '想',
+    '开': '閞', '关': '関', '闭': '閉', '设': '設', '统': '統', '网': '網', '络': '絡', '邻': '鄰', '编': '編', '辑': '輯',
+    '帮': '幫', '确': '確', '定': '萣', '文': '呅', '档': '檔', '图': '圖', '乐': '樂', '视': '視', '频': '頻', '声': '聲',
+    '语': '語', '区': '區', '选': '選', '项': '項', '务': '務', '栏': '欄', '单': '單', '软': '軟', '运': '運', '间': '間',
+    '期': '剘', '面': '靣', '收': '荍', '站': '跕', '音': '喑', '新': '噺', '建': '踺', '夹': '夾', '件': '件', '记': '記',
+    '事': '倳', '本': '夲', '点': '點', '击': '擊', '请': '請', '欢': '歡', '迎': '迊', '使': '使', '用': '鼡', '快': '赽'
   };
   const toMars = t => t.replace(/[一-龥]/g, ch => MARS[ch] || ch);
 
   /* ================= 打开 =================
      f: { name, text, where: { type: 'net', pc } | { type: 'rar' } | { type: 'desk' } | { type: 'fs', path } | { type: 'ro', msg },
-          link: { line, onClick }, wordpad: 用写字板打开（.doc）, redLast: 最后一行红字（老师批语） } */
+          link: { line, onClick } } */
   function open(f) {
     f = f || {};
     let name = f.name || UNTITLED, text = f.text || '', where = f.where || null;
-    let dirty = false, sel = false, wrap = true, status = false, font = '宋体', clip = '', copyBase = 0, hung64 = false, busy = false, typing = false;
+    let dirty = false, sel = false, wrap = true, status = false, font = '宋体', clip = '', clipAt = 0, copyBase = 0, hung64 = false, busy = false, typing = false;
 
     const page = el('div', { class: 'np-page' });
     const ta = el('textarea', { class: 'np-ta', spellcheck: 'false' });
-    const st = el('div', { class: 'np-status' });
+    const cnt = el('span', { class: 'np-count' });
+    const rc = el('span', { class: 'np-rc' });
+    const st = el('div', { class: 'np-status' }, [cnt, rc]);
     const bar = OS.ui.menuBar(L.menus, menuFor, 'np-mbar');
-    let fmt = { b: false, i: false, u: false };
-    const wpTools = f.wordpad ? wordpadTools() : null;
-    const box = el('div', { class: 'np' + (f.wordpad ? ' np-wp' : '') }, [bar, wpTools, page, ta, st]);
+    const box = el('div', { class: 'np' }, [bar, page, ta, st]);
     const win = OS.wm.open({
       title: title(), icon: 'diary', width: 330, height: 250, content: box, appId: app.id,
       beforeClose: () => { if (busy) { OS.sound.play('ding'); return false; } if (!dirty) return true; askSave(() => win.close()); return false; }
     });
     OS.ui.scrollable(page);
 
-    function title() { return name + ' - ' + (f.wordpad ? WORDPAD : NAME); }
-    // 写字板多一排工具栏：新建 打开 保存 打印 ｜ 字体 字号 ｜ 粗 斜 下划线（B I U 真能点）
-    function wordpadTools() {
-      const b = (text, fn, cls) => { const x = el('button', { class: 'np-wpb' + (cls ? ' ' + cls : ''), text }); x.addEventListener('click', e => { e.stopPropagation(); OS.sound.play('click'); fn(x); }); return x; };
-      const fmtBtn = k => b(k.toUpperCase(), x => { fmt[k] = !fmt[k]; x.classList.toggle('on', fmt[k]); page.classList.toggle('wp-' + k, fmt[k]); }, 'f-' + k);
-      return el('div', { class: 'np-wptools' }, [
-        b('新建', () => menuFor(L.menus[0])[0].action()), b('保存', () => save(false)), b('打印', () => menuFor(L.menus[0])[6].action()),
-        el('span', { class: 'np-wpsep' }), b('宋体 ▾', () => pickFont(), 'sel'), b('10 ▾', () => OS.ui.dialog({ title: WORDPAD, icon: 'info', text: '字号只有 10 号。\n想大一点就凑近点看。' }), 'sel'),
-        el('span', { class: 'np-wpsep' }), fmtBtn('b'), fmtBtn('i'), fmtBtn('u')
-      ]);
-    }
+    function title() { return name + ' - ' + NAME; }
     function setDirty() { dirty = true; }
     function render() {
       const shown = font === '火星文' ? toMars(text) : text;
@@ -109,14 +105,22 @@
           } else holder.appendChild(document.createTextNode(ln));
           if (i < arr.length - 1) holder.appendChild(document.createTextNode('\n'));
         });
-      } else if (f.redLast && font !== '火星文' && shown.indexOf('\n') >= 0) {
-        const k = shown.lastIndexOf('\n');
-        holder.appendChild(document.createTextNode(shown.slice(0, k + 1)));
-        holder.appendChild(el('span', { class: 'np-red', text: shown.slice(k + 1) }));
       } else holder.appendChild(document.createTextNode(shown));
       const rows = text.split('\n');
-      st.textContent = L.status(rows.length, rows[rows.length - 1].length + 1);
+      rc.textContent = L.status(rows.length, rows[rows.length - 1].length + 1);
       box.classList.toggle('status', status && !wrap);
+      showCount(text.length);
+    }
+    function showCount(n) {
+      cnt.textContent = n + '/' + MAX_CHARS;
+      cnt.classList.toggle('over', n > MAX_CHARS);
+    }
+    // 超过 9999 字：数字变红、窗口 (未响应) 一会儿，然后蓝屏（那么多字不往纸上画）
+    async function overflow(n) {
+      sel = false;
+      showCount(n);
+      await hang(1800);
+      OS.ui.bsod(BSOD);
     }
     render();
 
@@ -135,6 +139,7 @@
       busy = true;
       sel = false;
       const add = (text && !text.endsWith('\n') ? '\n' : '') + t;
+      if (text.length + add.length > MAX_CHARS) { overflow(text.length + add.length); return; }
       if (text.length > 3000) { text += add; render(); }
       else for (const ch of add) {
         if (win.isClosed) return;
@@ -158,6 +163,15 @@
       try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (_) { /* ignore */ }
       ta.scrollTop = ta.scrollHeight;
     }
+    ta.addEventListener('input', () => {
+      const n = ta.value.length;
+      showCount(n);
+      if (n <= MAX_CHARS) return;
+      typing = false;
+      ta.value = '';
+      box.classList.remove('typing');
+      overflow(n);
+    });
     ta.addEventListener('blur', () => {
       if (!typing) return;
       typing = false;
@@ -184,16 +198,16 @@
         { label: '另存为…', action: () => save(true) },
         '-',
         { label: '页面设置…', action: say('页面设置', 'info', L.page) },
-        { label: '打印…', action: () => { OS.sound.play('printer'); setTimeout(() => OS.ui.dialog({ title: '打印', icon: 'warn', text: L.print }), 700); } },
+        { label: '打印…', action: () => { OS.sound.play('printer'); setTimeout(() => OS.ui.dialog({ title: OS.PRINT_TITLE, icon: 'error', text: OS.printErr() }), 700); } },
         '-',
         { label: '退出', action: () => OS.wm.requestClose(win) }
       ];
       if (m === L.menus[1]) return [
         { label: '撤销', action: say(NAME, 'warn', L.undo) },
         '-',
-        { label: '剪切', disabled: !sel, action: () => { clip = text; text = ''; sel = false; setDirty(); render(); } },
-        { label: '复制', disabled: !sel, action: () => { clip = text; if (!copyBase) copyBase = Math.max(1, clip.length); } },
-        { label: '粘贴', disabled: !clip, action: paste },
+        { label: '剪切', disabled: !sel, action: () => { clip = text; clipAt = Date.now(); OS.textClip = { text: clip, at: clipAt }; text = ''; sel = false; setDirty(); render(); } },
+        { label: '复制', disabled: !sel, action: () => { clip = text; clipAt = Date.now(); OS.textClip = { text: clip, at: clipAt }; if (!copyBase) copyBase = Math.max(1, clip.length); } },
+        { label: '粘贴', disabled: !pasteText(), action: paste },
         { label: '删除', disabled: !sel, action: () => { text = ''; sel = false; setDirty(); render(); } },
         '-',
         { label: '查找…', action: say('查找', 'info', L.find) },
@@ -216,8 +230,10 @@
       ];
     }
     function insertTime() {
-      const d = new Date();
-      text += d.getHours() + ':' + OS.pad2(d.getMinutes()) + ' ' + OS.YEAR + '/' + (d.getMonth() + 1) + '/' + d.getDate();
+      const d = OS.clock.now();
+      const s = d.getHours() + ':' + OS.pad2(d.getMinutes()) + ' ' + OS.YEAR + '/' + (d.getMonth() + 1) + '/' + d.getDate();
+      if (text.length + s.length > MAX_CHARS) { overflow(text.length + s.length); return; }
+      text += s;
       sel = false;
       setDirty();
       render();
@@ -231,15 +247,19 @@
       });
     }
 
-    /* ---------- 粘贴：一律贴在最后面；字数翻到 64 倍卡一下，1024 倍撑爆 ---------- */
+    /* ---------- 粘贴：一律贴在最后面；字数翻到 64 倍卡一下，超过 9999 字撑爆 ---------- */
+    // 贴哪个：自己复制的，或者别的软件（计算器）后来复制的，哪个新贴哪个
+    function pasteText() { const g = OS.textClip; return g && g.at > clipAt ? g.text : clip; }
     async function paste() {
-      text += clip;
+      const src = pasteText();
+      if (!src) return;
+      if (text.length + src.length > MAX_CHARS) { overflow(text.length + src.length); return; }
+      text += src;
       sel = false;
       setDirty();
       render();
       page.scrollTop = page.scrollHeight;
       const ratio = copyBase ? text.length / copyBase : 0;
-      if (ratio >= PASTE_BSOD) { await hang(1800); OS.ui.bsod(BSOD); return; }
       if (ratio >= PASTE_HANG && !hung64) { hung64 = true; await hang(2000); unhang(); }
     }
     function hang(ms) {
@@ -272,8 +292,8 @@
       if (!asNew && where && where.type === 'ro') { await OS.ui.dialog({ title: NAME, icon: 'error', text: where.msg || L.roFail }); return false; }
       // 我的文档里的文件：直接存回去（不算新建，不占名额）
       if (!asNew && where && where.type === 'fs' && OS.fs.get(where.path)) { OS.fs.setText(where.path, text); dirty = false; return true; }
-      const ext = f.wordpad ? '.doc' : '.txt';
-      const pick = (!asNew && where && where.type === 'desk') ? { name, place: 'desk' } : await saveAs(new RegExp('\\' + ext + '$').test(name) ? name : name + ext, f.wordpad);
+      const ext = '.txt';
+      const pick = (!asNew && where && where.type === 'desk') ? { name, place: 'desk' } : await saveAs(new RegExp('\\' + ext + '$').test(name) ? name : name + ext);
       if (!pick || win.isClosed) return false;
       const fname = pick.name;
       if (pick.place === 'docs') {
@@ -281,7 +301,7 @@
         const same = OS.fs.get(OS.fs.join(OS.fs.MYDOCS, fname));
         let node;
         if (same && same.user) { OS.fs.setText(same.path, text); node = same; }
-        else node = OS.fs.createFile(OS.fs.MYDOCS, fname, f.wordpad ? 'doc' : 'txt', { text });
+        else node = OS.fs.createFile(OS.fs.MYDOCS, fname, 'txt', { text });
         if (!node) return false;
         name = node.name;
         where = { type: 'fs', path: node.path };
@@ -310,7 +330,7 @@
   }
 
   /* ================= 另存为：保存在 桌面 ／ 我的文档（点那一格选） ================= */
-  function saveAs(fname, isDoc) {
+  function saveAs(fname) {
     return new Promise(resolve => {
       let place = 'desk';
       const row = (k, v, cls) => el('div', { class: 'np-sa-row' }, [el('span', { class: 'np-sa-k', text: k }), el('div', { class: 'np-sa-v' + (cls ? ' ' + cls : '') }, v)]);
@@ -323,13 +343,13 @@
       where.querySelector('.np-sa-v').addEventListener('click', e => {
         e.stopPropagation();
         OS.sound.play('click');
-        const r = e.currentTarget.getBoundingClientRect(), pt = OS.stage.toLocal(r.left, r.bottom);
+        const r = OS.stage.rectOf(e.currentTarget), pt = { x: r.left, y: r.bottom };
         OS.ui.contextMenu([{ label: '桌面', icon: 'computer', checked: place === 'desk', action: () => setPlace('desk') }, { label: '我的文档', icon: 'mydocs', checked: place === 'docs', action: () => setPlace('docs') }], pt.x, pt.y);
       });
       const content = el('div', { class: 'np-sa' }, [
         where,
         row('文件名：', [el('span', { text: fname })]),
-        row('保存类型：', [el('span', { text: isDoc ? 'Word 文档(*.doc)' : '文本文档(*.txt)' }), el('i', { class: 'np-sa-arrow' })], 'drop'),
+        row('保存类型：', [el('span', { text: '文本文档(*.txt)' }), el('i', { class: 'np-sa-arrow' })], 'drop'),
         el('div', { class: 'dlg-btns' }, [ok, no])
       ]);
       let v = null;
@@ -344,7 +364,9 @@
   // 再打开桌面上的文件：联通乱码
   const reopen = raw => (GARBLED[raw] != null ? GARBLED[raw] : raw);
   // 返回 Promise<bool>。羊不在：桌面上加回收站里一共最多一个 txt；记事本保存同名的直接覆盖（overwrite），别的第二个就“新建失败”
-  async function toDesktop(fname, raw, overwrite) {
+  // o：写字板存的 rtf / doc 用自己的打开方式、图标；文章里插了羊的，羊不吃
+  async function toDesktop(fname, raw, overwrite, o) {
+    o = o || {};
     const replacing = overwrite && !OS.desktop.sheepHere() && OS.desktop.tempFiles().some(x => x.name === fname);
     if (!replacing && !OS.fs.room()) { await OS.fs.capFail(); return false; }
     if (!OS.desktop.sheepHere()) {
@@ -355,22 +377,23 @@
       else if (OS.desktop.tempFiles(true).length) { await OS.ui.dialog({ title: L.newFailTitle, icon: 'warn', text: L.binFail }); return false; }
     }
     OS.desktop.addFile({
-      name: fname, icon: 'txt', poop: poopLevel(raw.length),
-      open: () => open({ name: fname, text: reopen(raw), where: { type: 'desk' } }),
+      name: fname, icon: o.icon || 'txt', poop: poopLevel(raw.length), sheepInside: !!o.sheepInside,
+      open: o.open || (() => open({ name: fname, text: reopen(raw), where: { type: 'desk' } })),
       menu: fid => {
         const P = OS.menus.iconParts(OS.apps.byId[fid]);
         return [P.open, '-', P.cut, P.copy, '-', P.shortcut, P.del, P.rename, '-',
-          { label: '属性', action: say(fname + ' 属性', 'info', '类型：文本文档\n大小：' + raw.length * 2 + ' 字节\n位置：桌面，羊的嘴边') }];
+          { label: '属性', action: say(fname + ' 属性', 'info', '类型：' + (o.typeName || '文本文档') + '\n大小：' + raw.length * 2 + ' 字节\n位置：桌面，羊的嘴边') }];
       }
     });
     return true;
   }
 
   app.open = () => open();
-  OS.apps.byId.wordpad.open = () => open({ name: '文档', wordpad: true });   // 附件 ▸ 写字板：空白的“文档 - 写字板”
   OS.notepad = {
     open,
     garble: reopen,   // 联通乱码（我的文档里的文件再打开也用）
+    toMars,           // 火星文（写字板的火星文字体也用）
+    toDesktop,        // 存到桌面让羊吃（写字板也用）
     // 桌面右键 ▸ 新建 ▸ 文本文档：还没来得及打开就被羊吃了
     newOnDesktop: () => toDesktop('新建 文本文档.txt', '')
   };

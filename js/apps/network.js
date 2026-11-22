@@ -77,11 +77,14 @@
   ];
   // 转发长寿
   const LONGEVITY = '据专家研究，转发本文给 10 个人，\n可以延长寿命 10 年。\n不转发的人……（后面被撕掉了）';
-  const FORWARD_OK = '已自动转发给你的 10 个抠抠好友。';
-  const FORWARD_NOLOGIN = '转发失败：你没登录抠抠。\n（长寿失败）';
-  const FORWARD_NO = '你放弃了 10 年阳寿。\n（可以去「阳寿余额查询」看看还剩多少）';
   const FORWARD_PREVIEW = '据专家研究，转发本文给 10 个人，可以延长寿命 10 年……';
   const FORWARD_REPLIES = [['deskmate', '？？？'], ['faxiao', '你妈也发我了'], ['monitor', '这种东西别转了']];
+  const FORWARD_TIP = '转发给 10 个人才灵。';
+  // 隔夜水致癌.txt：也能转发
+  const OVERNIGHT = '隔夜水致癌，隔夜茶致癌，\n隔夜的电脑也致癌。\n（转发给 10 个人可以解毒）';
+  const OVERNIGHT_TIP = '转发给 10 个人可以解毒。';
+  const OVERNIGHT_PREVIEW = '隔夜水致癌，隔夜茶致癌，隔夜的电脑也致癌……';
+  const OVERNIGHT_REPLIES = [['roommate', '那我床底下那桶隔夜泡面……'], ['boss', '隔夜的冰棍不致癌，买不买？'], ['faxiao', '你妈说隔夜不睡觉的人也致癌']];
   // 监控：新建文件夹(2) 那户人家装的，拍的是你
   const CCTV_SAY = { title: '家', text: '老公快看，那个人又在翻别人电脑了！' };
   // IP 地址冲突 → 蓝屏
@@ -99,13 +102,14 @@
     ] },
     { id: 'aunt', name: '对门王阿姨', note: '王阿姨的电脑，有事打电话', share: '养生资料', files: [
       { name: '转发给10个人就能长寿.doc', icon: 'doc', open: longevity },
-      { name: '隔夜水致癌.txt', icon: 'txt', text: '隔夜水致癌，隔夜茶致癌，\n隔夜的电脑也致癌。\n（转发给 10 个人可以解毒）' }
+      { name: '隔夜水致癌.txt', icon: 'txt', open: overnight }
     ] },
     { id: 'student', name: '隔壁大学生', note: '求种子', share: '电影', files: [
       { name: '武侠大片（枪版）.rmvb', icon: 'video', text: MOVIE },
       { name: '英语听力（其实是电影）.rmvb', icon: 'video', text: MOVIE },
       { name: '高数网课（其实也是电影）.rmvb', icon: 'video', text: MOVIE },
-      { name: '千万别点.exe', icon: 'exe', open: dontClick }
+      { name: '千万别点.exe', icon: 'exe', open: dontClick },
+      { name: 'ABCSee3.1注册机.exe', icon: 'keygen', open: () => OS.abcsee && OS.abcsee.keygen() }
     ] },
     { id: 'boss', name: '楼下小卖部老板', note: '收银台旁边那台', share: '账本', files: [
       { name: '账本.xls', icon: 'sheet', open: ledger }
@@ -205,7 +209,7 @@
           if (busy) return;
           pick(node, it);
           const now = Date.now();
-          if (lastTap === node && now - lastTapT < 450) { lastTap = null; openItem(it); } else { lastTap = node; lastTapT = now; }
+          if (lastTap === node && now - lastTapT < OS.dblMs()) { lastTap = null; openItem(it); } else { lastTap = node; lastTapT = now; }
         });
         OS.ui.onContext(node, () => { if (busy) return null; pick(node, it); lastTap = null; return itemMenu(it); });
         viewEl.appendChild(node);
@@ -415,16 +419,33 @@
     OS.notepad.open({ name: POST_NAME, text: POST.join('\n'), where: { type: 'net', pc: '物业' },
       link: { line: CMD_LINE, onClick: () => OS.cmd.learn(CMD_LINE) } });
   }
-  // 转发给10个人就能长寿.doc：转发 = 发给你的抠抠好友（有人回）；不转发 = 少 10 年阳寿
+  // 转发：发给你的抠抠好友（有人回）
+  // 转发：不弹框，只有抠抠那边有动静（文件发出去、好友陆续回）；没登录抠抠 = 右下角提示先登录
+  function forward(name, icon, preview, replies) {
+    if (!OS.koukou || !OS.koukou.loggedIn()) { OS.ui.notify({ title: '转发', text: '转发失败：需要先登录抠抠。', icon: 'warn', replace: true }); return; }
+    OS.koukou.sendFile({ name, icon, text: preview });
+    replies.forEach(([id, t], i) => setTimeout(() => OS.koukou.receive(id, t), 1500 + i * 1800));
+  }
+  // 打开以后右下角弹气泡：［转发］［不转发］（不转发 = 气泡收起，什么也不弹：气泡本身就是冲着玩家说的）
+  function askForward(name, tip, onYes) {
+    setTimeout(() => OS.ui.notify({ title: name, text: tip, icon: 'info', replace: true, timeout: 15000, actions: [['转发', onYes], ['不转发', () => {}]] }), 700);
+  }
+  // 转发给10个人就能长寿.doc：写字板打开（王阿姨排的版：七彩大标题、红字）；转发 = 发给抠抠好友；不转发 = 气泡收起
+  const LONG_NAME = '转发给10个人就能长寿.doc';
   function longevity() {
-    OS.ui.dialog({ title: '转发给10个人就能长寿.doc', icon: 'info', text: LONGEVITY, buttons: ['转发', '不转发'] }).then(v => {
-      if (v === '转发') {
-        if (!OS.koukou || !OS.koukou.loggedIn()) { OS.ui.dialog({ title: '转发', icon: 'error', text: FORWARD_NOLOGIN }); return; }
-        OS.koukou.sendFile({ name: '转发给10个人就能长寿.doc', icon: 'doc', text: FORWARD_PREVIEW });
-        OS.ui.dialog({ title: '转发', icon: 'info', text: FORWARD_OK });
-        FORWARD_REPLIES.forEach(([id, t], i) => setTimeout(() => OS.koukou.receive(id, t), 1500 + i * 1800));
-      } else if (v === '不转发') OS.ui.dialog({ title: '不转发', icon: 'warn', text: FORWARD_NO });
-    });
+    const P = (text, o) => Object.assign({ text, font: '宋体', size: 12 }, o || {});
+    const lines = LONGEVITY.split('\n');
+    OS.wordpad.open({ name: LONG_NAME, where: { type: 'ro', msg: '保存失败：这是王阿姨的文件，你改不了。' },
+      doc: [P('转发给10个人就能长寿！！！', { align: 'center', b: true, size: 18, color: 'rainbow', font: '华文彩云' }), P(''),
+        P(lines[0], { color: '#ff0000', size: 14 }), P(lines[1], { color: '#ff0000', size: 14, b: true }), P(lines[2], { size: 12, color: '#808080' })] });
+    askForward(LONG_NAME, FORWARD_TIP,
+      () => forward(LONG_NAME, 'doc', FORWARD_PREVIEW, FORWARD_REPLIES));
+  }
+  // 隔夜水致癌.txt：记事本打开，也能转发
+  function overnight() {
+    OS.notepad.open({ name: '隔夜水致癌.txt', text: OVERNIGHT, where: { type: 'net', pc: '对门王阿姨' } });
+    askForward('隔夜水致癌.txt', OVERNIGHT_TIP,
+      () => forward('隔夜水致癌.txt', 'txt', OVERNIGHT_PREVIEW, OVERNIGHT_REPLIES));
   }
   OS.netShared = { longevity };   // 我的电脑 ▸ 共享文档 里也有王阿姨这篇
   // 只读的小表格（账本、投诉记录）：仿 Excuse 2003
@@ -482,7 +503,7 @@
     shot.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
     shot.classList.add('net-cctv-desk');
     const stamp = el('span', { class: 'net-cctv-time' });
-    const tick = () => { const d = new Date(); stamp.textContent = OS.YEAR + '-' + OS.pad2(d.getMonth() + 1) + '-' + OS.pad2(d.getDate()) + ' ' + OS.pad2(d.getHours()) + ':' + OS.pad2(d.getMinutes()) + ':' + OS.pad2(d.getSeconds()); };
+    const tick = () => { const d = OS.clock.now(); stamp.textContent = OS.YEAR + '-' + OS.pad2(d.getMonth() + 1) + '-' + OS.pad2(d.getDate()) + ' ' + OS.pad2(d.getHours()) + ':' + OS.pad2(d.getMinutes()) + ':' + OS.pad2(d.getSeconds()); };
     tick();
     const t = setInterval(tick, 1000);
     const screen = el('div', { class: 'net-cctv' }, [
