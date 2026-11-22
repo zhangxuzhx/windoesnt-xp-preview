@@ -21,7 +21,7 @@
     { a: '留言板', b: '快来灌水', c: 'bd-purple' },
     { a: '当前网速', b: '2.3 KB/s', c: 'bd-dark' },
     { a: 'LOADING', b: '▮▮▮▯▯▯▯', c: 'bd-dark blink' },
-    { a: 'Made in', b: '2003', c: 'bd-silver' }
+    { a: 'Made in', b: '200X', c: 'bd-silver' }
   ];
 
   let root, rim, lastKey = '';

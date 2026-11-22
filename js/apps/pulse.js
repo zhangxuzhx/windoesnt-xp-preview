@@ -16,7 +16,6 @@
   const HEAD = '老中医在线坐诊 · 挂号费：一个三连';
   const HOLD_MS = 5000;
   // 挂号：把脉前先问年龄，用屏幕上的数字键输入（不用调输入法）
-  const AGE_TITLE = '挂号 - ' + CLINIC;
   const AGE_Q = '老中医：把脉前先问一句，\n今年多大年龄了？';
   const AGE_KEYS = ['7', '8', '9', '4', '5', '6', '1', '2', '3', 'C', '0', '←'];
   const AGE_MAX_DIGITS = 3;
@@ -57,7 +56,7 @@
     '确诊：活人。',
     '确诊：重度无聊（否则你不会对着脉枕按五秒）。',
     '确诊：玉玉症（这个病要 2020 年以后才流行，你得早了）。',
-    '确诊：千禧年综合症，建议少上网吧多喝热水。',
+    '确诊：千禧年综合症，建议少上网多喝热水。',
     '确诊：穷。'
   ];
   const ADVICES = [
@@ -96,22 +95,24 @@
     // 针式打印机
     const paper = el('div', { class: 'pz-paper' });
     const smoke = el('div', { class: 'pz-smoke' });
-    const printer = el('div', { class: 'pz-printer' }, [paper, el('div', { class: 'pz-pbody' }, [el('div', { class: 'pz-slot' }), el('div', { class: 'pz-led' })]), smoke]);
+    const printer = el('div', { class: 'pz-printer' }, [paper, el('div', { class: 'pz-pbody' }), smoke]);   // 打印机是 assets/pulse 里 Codex 画的图
+    // 同一个窗口分两步：第一步挂号（问年龄），确定后换成第二步把脉
+    const askStep = el('div', { class: 'pz-step ag' });
+    const pulseStep = el('div', { class: 'pz-step hide' }, [el('div', { class: 'pz-main' }, [pad, screen]), status, printer]);
     const content = el('div', { class: 'pz' }, [
       el('div', { class: 'pz-head' }, [OS.iconEl('pulse', 'pz-logo'), el('div', {}, [el('div', { class: 'pz-name', text: CLINIC }), el('div', { class: 'pz-sub', text: HEAD })])]),
-      el('div', { class: 'pz-main' }, [pad, screen]),
-      status,
-      printer
+      askStep,
+      pulseStep
     ]);
+    let onKey = null;
     const win = OS.wm.open({
       title: app.name + ' - ' + CLINIC, icon: app.icon, width: 330, appId: app.id, content, maximizable: false,
-      onClose: () => { dead = true; timers.forEach(clearTimeout); cancelAnimationFrame(raf); if (askWin) askWin.close(); }
+      onClose: () => { dead = true; timers.forEach(clearTimeout); cancelAnimationFrame(raf); if (onKey) document.removeEventListener('keydown', onKey); }
     });
 
-    /* ---------- 挂号：先问年龄（计算器那样的数字键） ---------- */
-    let age = null, askWin = null;
-    function ask() {
-      if (askWin) { OS.wm.focus(askWin); return; }
+    /* ---------- 第一步 挂号：先问年龄（计算器那样的数字键） ---------- */
+    let age = null;
+    (function ask() {
       let val = '';
       const lcd = el('div', { class: 'ag-lcd' });
       const show = () => { lcd.textContent = (val || '__') + ' 岁'; lcd.classList.toggle('empty', !val); };
@@ -133,12 +134,17 @@
         if (!val) { OS.sound.play('error'); lcd.classList.remove('bad'); void lcd.offsetWidth; lcd.classList.add('bad'); return; }
         age = +val;
         OS.sound.play('ding');
-        askWin.close();
+        // 进第二步：把脉
+        document.removeEventListener('keydown', onKey);
+        onKey = null;
+        askStep.classList.add('hide');
+        pulseStep.classList.remove('hide');
+        OS.wm.keepInside(win);
       };
       ok.addEventListener('click', confirm);
       // 电脑上直接按键盘数字也行
-      const onKey = e => {
-        if (OS.wm.active !== askWin) return;
+      onKey = e => {
+        if (OS.wm.active !== win) return;
         if (/^\d$/.test(e.key)) press(e.key);
         else if (e.key === 'Backspace') press('←');
         else if (e.key === 'Delete') press('C');
@@ -148,14 +154,9 @@
       };
       document.addEventListener('keydown', onKey);
       show();
-      askWin = OS.wm.open({
-        title: AGE_TITLE, icon: app.icon, width: 196, modal: true, taskbar: false,
-        minimizable: false, maximizable: false, className: 'is-dialog',
-        content: el('div', { class: 'ag' }, [el('div', { class: 'ag-q', text: AGE_Q }), lcd, keys, el('div', { class: 'ag-btns' }, [ok])]),
-        onClose: () => { document.removeEventListener('keydown', onKey); askWin = null; }
-      });
-    }
-    ask();
+      [el('div', { class: 'ag-q', text: AGE_Q }), lcd, keys, el('div', { class: 'ag-btns' }, [ok])].forEach(n => askStep.appendChild(n));
+      OS.wm.keepInside(win);   // 内容填进去变高了，窗口别钻到任务栏下面
+    })();
 
     /* ---------- 心电图 ---------- */
     const ctx = cv.getContext('2d');
@@ -195,7 +196,6 @@
     pad.addEventListener('pointerdown', e => {
       if (phase !== 'idle' || (e.button != null && e.button !== 0)) return;
       e.preventDefault();
-      if (age == null) { ask(); return; }   // 挂号框被关掉了：按脉枕再问一遍
       try { pad.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
       const p0 = OS.stage.toLocal(e.clientX, e.clientY);
       holding = { id: e.pointerId, x: p0.x, y: p0.y, t0: Date.now(), timer: 0 };
@@ -254,6 +254,7 @@
       paper.style.height = '0px';
       const s = stats();
       jamAt = s.done === 0 || Math.random() < 0.3 ? 4 : -1;   // 第一次一定卡纸，之后 30% 卡
+      printer.classList.add('printing');
       printTick = setInterval(printStep, 260);
       timers.push(printTick);
     }
@@ -262,10 +263,10 @@
       printed++;
       OS.sound.play('printer');
       paper.style.height = Math.min(44, printed * 5) + 'px';
-      paper.appendChild(el('div', { class: 'pz-line' }));
       if (printed === jamAt) { jam(); return; }
       if (printed >= 9) {
         clearInterval(printTick);
+        printer.classList.remove('printing');
         phase = 'idle';
         status.textContent = ST_DONE;
         const s = stats(); s.done++; saveStats(s);
@@ -276,6 +277,7 @@
       clearInterval(printTick);
       phase = 'jam';
       jamSlaps = 0;
+      printer.classList.remove('printing');
       printer.classList.add('jam');
       status.textContent = ST_JAM;
       OS.sound.play('error');
@@ -300,6 +302,7 @@
       unjam();
       phase = 'print';
       clearInterval(printTick);   // 只留一个打印节拍，免得几个叠在一起停不下来
+      printer.classList.add('printing');
       printTick = setInterval(printStep, 260);
       timers.push(printTick);
     }
@@ -309,10 +312,12 @@
       phase = 'spew';
       status.textContent = ST_SPEW;
       printer.classList.add('spew');
+      paper.style.height = '0px';
       OS.ui.notify({ title: SPEW_TIP, icon: 'warn', replace: true, timeout: 4500 });
       let n = 0;
       const one = () => {
         OS.sound.play('printer');
+        flySheet();
         slip(age, true);
         if (++n < SPEW_N) { later(one, 380); return; }
         later(() => {
@@ -325,6 +330,14 @@
         }, 600);
       };
       later(one, 200);
+    }
+    // 发疯时从出纸口飞出去一张纸，边飞边翻
+    function flySheet() {
+      const f = el('div', { class: 'pz-fly' });
+      f.style.setProperty('--dx', Math.round(Math.random() * 140 - 70) + 'px');
+      f.style.setProperty('--rot', Math.round(Math.random() * 360 - 180) + 'deg');
+      printer.appendChild(f);
+      setTimeout(() => f.remove(), 950);
     }
     // 拍打印机：卡纸时拍两下就好；拍多了冒烟，拍到第 8 下着火（蓝屏）
     printer.addEventListener('click', () => {
@@ -349,11 +362,18 @@
 
   /* ---------- 诊断单 ---------- */
   let slipNo = 0;
+  // 印章：3 种盖法（清楚 / 一边淡 / 印泥快没了）随机挑一个，再随机歪一点
+  function stamp() {
+    const s = el('span', { class: 'dx-stamp', title: CLINIC });
+    s.style.backgroundPosition = (-64 * Math.floor(Math.random() * 3)) + 'px 0';
+    s.style.transform = 'rotate(' + Math.round(Math.random() * 35 - 25) + 'deg)';
+    return s;
+  }
   // age：挂号时填的岁数；scatter：打印机发疯时，诊断单在屏幕上随便乱摆
   function slip(age, scatter) {
     slipNo++;
     const d = new Date();
-    const date = d.getFullYear() + '-' + OS.pad2(d.getMonth() + 1) + '-' + OS.pad2(d.getDate());
+    const date = OS.YEAR + '-' + OS.pad2(d.getMonth() + 1) + '-' + OS.pad2(d.getDate());
     // 每条是“标签：内容”，拆成粗体标签 + 内容
     const line = s => { const i = s.indexOf('：'); return el('div', { class: 'dx-row' }, [el('span', { class: 'dx-k', text: s.slice(0, i + 1) }), el('span', { class: 'dx-v', text: s.slice(i + 1) })]); };
     // 玩过别的软件：一半概率出隐藏诊断，换掉脉象和诊断
@@ -372,7 +392,7 @@
       el('div', { class: 'dx-foot' }, [
         el('span', { text: '医师：' }),
         el('span', { class: 'dx-sign', html: '<svg viewBox="0 0 80 24"><path d="M2 16 C8 2 12 22 18 10 S26 4 30 14 S38 22 42 8 S52 18 56 12 S66 4 70 16 L78 10" fill="none" stroke="#1d2b6b" stroke-width="1.6"/></svg>' }),
-        el('span', { class: 'dx-stamp', text: CLINIC })
+        stamp()
       ]),
       el('div', { class: 'dx-btns' }, [
         btn('去药房抓药', say('药房', 'warn', DRUG)),

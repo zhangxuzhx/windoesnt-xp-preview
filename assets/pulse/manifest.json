@@ -1,0 +1,32 @@
+{
+  "printer": {
+    "file": "printer.webp",
+    "w": 304,
+    "h": 80,
+    "frames": 6
+  },
+  "paper": {
+    "file": "paper.webp",
+    "w": 216,
+    "h": 88,
+    "frames": 1
+  },
+  "smoke": {
+    "file": "smoke.webp",
+    "w": 48,
+    "h": 48,
+    "frames": 4
+  },
+  "fly": {
+    "file": "fly.webp",
+    "w": 64,
+    "h": 48,
+    "frames": 3
+  },
+  "stamp": {
+    "file": "stamp.png",
+    "w": 128,
+    "h": 128,
+    "frames": 3
+  }
+}

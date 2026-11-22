@@ -1,0 +1,50 @@
+{
+  "warrior": {
+    "file": "warrior.webp",
+    "w": 112,
+    "h": 128,
+    "frames": 3
+  },
+  "flames": {
+    "file": "flames.webp",
+    "w": 256,
+    "h": 40,
+    "frames": 3
+  },
+  "dragon": {
+    "file": "dragon.webp",
+    "w": 64,
+    "h": 192,
+    "frames": 2
+  },
+  "phone": {
+    "file": "phone.webp",
+    "w": 72,
+    "h": 104,
+    "frames": 2
+  },
+  "rocket": {
+    "file": "rocket.webp",
+    "w": 96,
+    "h": 72,
+    "frames": 2
+  },
+  "heart": {
+    "file": "heart.webp",
+    "w": 48,
+    "h": 44,
+    "frames": 2
+  },
+  "swatter": {
+    "file": "swatter.webp",
+    "w": 80,
+    "h": 80,
+    "frames": 1
+  },
+  "splat": {
+    "file": "splat.webp",
+    "w": 64,
+    "h": 64,
+    "frames": 3
+  }
+}

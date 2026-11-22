@@ -28,34 +28,49 @@
   };
 
   // 桌面图标（顺序 = 默认摆放顺序，从左上往下排）
+  // 最上面四个照 XP 的老顺序：我的文档、我的电脑、网上邻居、回收站
   [
+    { id: 'mydocs', name: '我的文档', icon: 'mydocs' },
     { id: 'mycomputer', name: '我的电脑', icon: 'computer' },
+    { id: 'network', name: '网上邻居', icon: 'network' },
     { id: 'recycle', name: '回收站', icon: 'recycle', acceptsDrop: true },
-    { id: 'bootcheck', name: '开机检测器 Pro', icon: 'detector', pinned: true },
-    { id: 'lifespan', name: '阳寿余额查询', icon: 'hourglass', pinned: true },
-    { id: 'rich', name: '2027暴富秘籍.rar', icon: 'rar', pinned: true },
-    { id: 'pulse', name: '赛博把脉', icon: 'pulse', pinned: true },
-    { id: 'debt', name: '塑料兄弟欠款单', icon: 'sheet', pinned: true },
-    { id: 'swatter', name: '弹窗苍蝇拍', icon: 'swatter', pinned: true },
+    { id: 'bootcheck', name: '开机检测器 Pro', icon: 'detector' },
+    { id: 'lifespan', name: '阳寿余额查询', icon: 'hourglass' },
+    // 暴富秘籍、欠条收在「新建文件夹(2)」最外面那层里（folder2.js），不在桌面上
+    { id: 'rich', name: '2027暴富秘籍.rar', icon: 'rar', desktop: false, inFolder: 'folder2' },
+    { id: 'pulse', name: '赛博把脉', icon: 'pulse' },
+    { id: 'debt', name: '欠条打印专家 2003.xls', icon: 'sheet', desktop: false, inFolder: 'folder2' },
+    { id: 'swatter', name: '弹窗杀手', icon: 'swatter' },
     { id: 'folder2', name: '新建文件夹(2)', icon: 'folder' },
-    { id: 'calc', name: '计算器', icon: 'calc' },
-    { id: 'paint', name: '画图 AI版', icon: 'paint' },
     { id: 'coil', name: '电子蚊香', icon: 'coil' },
-    // 不在桌面上，从任务栏右键「任务管理器」打开
-    { id: 'taskmgr', name: '任务管理器', icon: 'exe', desktop: false }
+    // 抠抠2003（koukou.js）：桌面上一个，开始 ▸ 所有程序 ▸ 抠抠软件 里一个
+    { id: 'koukou', name: '抠抠2003', icon: 'koukou' },
+    // 千千不听（qianqian.js）：音乐播放器，也是全游戏的背景音乐；桌面一个，开始 ▸ 所有程序 ▸ 千千不听 里一个
+    { id: 'qianqian', name: '千千不听', icon: 'music' },
+    // 不在桌面上：计算器、画图在 开始 ▸ 所有程序 ▸ 附件 里；任务管理器从任务栏右键打开
+    { id: 'calc', name: '计算器', icon: 'calc', desktop: false },
+    { id: 'paint', name: '画图 AI版', icon: 'paint', desktop: false },
+    { id: 'taskmgr', name: '任务管理器', icon: 'exe', desktop: false },
+    // 开始菜单左边那几个（照 XP 的开始菜单），暂时都是施工中
+    { id: 'ie', name: 'Internot Explorer', icon: 'ie', desktop: false },
+    { id: 'mail', name: 'Outluck Excess', icon: 'mail', desktop: false },
+    { id: 'sweep', name: '扫雪', icon: 'sweep', desktop: false },
+    // 命令提示符（cmd.js）：开始 ▸ 所有程序 ▸ 附件，开始菜单左栏也有
+    { id: 'cmd', name: '命令提示符', icon: 'cmd', desktop: false },
+    // 记事本（notepad.js）：开始 ▸ 所有程序 ▸ 附件；游戏里所有 .txt 都用它打开
+    { id: 'notepad', name: '记事本', icon: 'diary', desktop: false, singleton: false },
+    // 写字板（notepad.js 里，记事本换个标题、多一排工具栏）：开始 ▸ 所有程序 ▸ 附件；.doc 都用它打开
+    { id: 'wordpad', name: '写字板', icon: 'doc', desktop: false, singleton: false },
+    // 开始 ▸ 所有程序 ▸ 实用小程序 里的激活器（activator.js）
+    { id: 'activator', name: "Windoesn't 激活器", icon: 'key', desktop: false },
+    // 开始 ▸ 所有程序 ▸ 启动 里、开始菜单右栏最下面：把存档全部清空（restore.js）
+    { id: 'restore', name: '一键还原小精灵', icon: 'genie', desktop: false }
   ].forEach(a => OS.apps.register(a));
 
   // 开始菜单“所有程序”里那串灰色的（点了提示要升级专业版）
   OS.apps.proList = [
-    '一键脱单', '自动写作业', '前任删除器', '体重转移器（转给同事）', '老板情绪预报',
-    '后悔药 2.0', '熬夜回血包', '钱包扩容工具', '颈椎修复补丁', '反向闹钟',
-    '自动已读不回', '防沉迷（学习版）', '一键变瘦', '隐身模式（老板专用）'
+    '一键脱单', '自动写作业', '前任删除器', '体重转移器（转给同事）', '后悔药 2.0', '钱包扩容工具', '反向闹钟'
   ];
 
-  // 回收站还没做：先让它摇一摇，冒个气泡
-  OS.on('icon:drop', d => {
-    if (d.target.id === 'recycle') {
-      OS.ui.notify({ title: '回收站', text: '回收站尚未建成，请先把垃圾扔在心里。', icon: 'warn', replace: true, timeout: 3000 });
-    }
-  });
+  // 回收站收东西的逻辑在 recycle.js
 })();

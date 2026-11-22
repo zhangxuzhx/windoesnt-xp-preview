@@ -69,6 +69,9 @@
   /* ---------- 软件注册表 ----------
      每个小软件调用 OS.apps.register({ id, name, icon, open(app) }) 把自己挂上桌面。
      没写 open 的软件会打开“施工中”窗口。 */
+  // 游戏里的“今年”：时代模糊成 2003–2007 的某一年，显示日期时年份都写这个（月、日、钟点照用真的）
+  OS.YEAR = '200X';
+
   OS.apps = { list: [], byId: {} };
   OS.apps.register = function (app) {
     app = Object.assign({ desktop: true, pinned: false, singleton: true }, app);

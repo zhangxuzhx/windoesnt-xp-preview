@@ -1,0 +1,57 @@
+{
+  "logo": {
+    "file": "logo.webp",
+    "w": 96,
+    "h": 96,
+    "frames": 1
+  },
+  "tray": {
+    "file": "tray.webp",
+    "w": 32,
+    "h": 32,
+    "frames": 1
+  },
+  "avatars": {
+    "file": "avatars.webp",
+    "w": 80,
+    "h": 80,
+    "frames": 15,
+    "names": [
+      "me",
+      "deskmate",
+      "faxiao",
+      "roommate",
+      "boss",
+      "nextdoor",
+      "monitor",
+      "feiyang",
+      "yanhua",
+      "taxue",
+      "guimi",
+      "课代表",
+      "体委",
+      "后排睡觉的",
+      "qun"
+    ]
+  },
+  "emo": {
+    "file": "emo.webp",
+    "w": 40,
+    "h": 40,
+    "frames": 16
+  },
+  "show": {
+    "file": "show.webp",
+    "w": 150,
+    "h": 220,
+    "frames": 6,
+    "names": [
+      "boy",
+      "girl",
+      "emo-boy",
+      "emo-girl",
+      "boss",
+      "gamer"
+    ]
+  }
+}

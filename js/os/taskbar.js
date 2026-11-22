@@ -10,6 +10,8 @@
     startBtn = el('button', { id: 'start-btn' }, [OS.iconEl('logo', 'sb-logo'), el('span', { text: '开始' })]);
     tasks = el('div', { id: 'tasks' });
     const shield = el('span', { class: 'tray-btn', title: '未激活' }, [OS.iconEl('shieldWarn', 'tray-ico')]);
+    if (OS.save.get('activated', false)) shield.style.display = 'none';
+    OS.on('system:activated', () => { shield.style.display = 'none'; });
     volIco = el('span', { class: 'tray-btn' });
     clock = el('span', { id: 'clock', class: 'tray-btn' });
     bar = el('div', { id: 'taskbar' }, [startBtn, tasks, el('div', { id: 'tray' }, [shield, volIco, clock])]);
@@ -49,7 +51,7 @@
     clock.addEventListener('click', () => {
       const d = new Date();
       OS.ui.notify({
-        title: d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 星期' + '日一二三四五六'[d.getDay()],
+        title: OS.YEAR + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 星期' + '日一二三四五六'[d.getDay()],
         text: OS.pick(['离下一个假期：还差若干个今天。', '今天的日期：和昨天完全不同。', '每过 60 秒，你的生命就减少一分钟。']),
         icon: 'info', replace: true, timeout: 4000
       });
@@ -59,10 +61,20 @@
     OS.on('win:close', w => { const b = btnFor.get(w); if (b) { b.remove(); btnFor.delete(w); } });
     OS.on('win:focus', refresh);
     OS.on('win:minimize', refresh);
+    // 软件把主界面整个藏起来（比如千千不听的“隐藏主界面”）：任务栏按钮也不显示
+    OS.on('win:hide', w => { const b = btnFor.get(w); if (b) b.style.display = 'none'; });
+    OS.on('win:show', w => { const b = btnFor.get(w); if (b) b.style.display = ''; });
     OS.on('win:restore', refresh);
     OS.on('win:title', w => { const b = btnFor.get(w); if (b) b.querySelector('span:last-child').textContent = w.titleText.textContent; });
     OS.on('stage:resize', fit);
     fit();
+  };
+
+  // 小软件在右下角托盘里放个图标（放在最左边），返回值 .remove() 就拿掉
+  TB.trayAdd = function (node) {
+    const tray = document.getElementById('tray');
+    tray.insertBefore(node, tray.firstChild);
+    return node;
   };
 
   function fit() {
@@ -100,6 +112,16 @@
     return n;
   }
   const appMenu = app => run => OS.menus.startItem(app, run);
+  // 开始菜单左栏：[程序, 粗体那行, 下面灰色小字]；再下面是常用程序
+  const START_TOP = [['ie', 'Internot', 'Internot Explorer'], ['mail', '电子邮件', 'Outluck Excess']];
+  const START_OFTEN = ['sweep', 'cmd', 'paint', 'calc'];
+  function pinItem(id, title, sub) {
+    const a = OS.apps.byId[id], run = closeThen(() => OS.apps.open(id));
+    const n = el('div', { class: 'sm-item sm-pin' }, [OS.iconEl(a.icon, 'smi-ico'), el('div', { class: 'sm-pin-txt' }, [el('b', { text: title }), el('span', { text: sub })])]);
+    n.addEventListener('click', () => { OS.sound.play('click'); run(); });
+    OS.ui.onContext(n, () => OS.menus.startItem(a, run));
+    return n;
+  }
   function closeThen(fn) { return () => { TB.toggleMenu(false); fn(); }; }
   function say(title, icon, text) { return closeThen(() => OS.ui.dialog({ title, icon, text })); }
 
@@ -107,9 +129,11 @@
     const m = el('div', { id: 'startmenu' });
     const head = el('div', { class: 'sm-head' }, [OS.iconEl('duck', 'sm-avatar'), el('span', { text: '你' })]);
 
-    // 左边：常用软件
+    // 左边：照 XP 的开始菜单。最上面两个固定的（上网、电子邮件，两行字），一条线，下面是常用程序
     leftCol = el('div', { class: 'sm-left' });
-    OS.apps.list.filter(a => a.pinned).forEach(a => leftCol.appendChild(item(a.icon, a.name, closeThen(() => OS.apps.open(a.id)), '', appMenu(a))));
+    START_TOP.forEach(([id, title, sub]) => leftCol.appendChild(pinItem(id, title, sub)));
+    leftCol.appendChild(el('div', { class: 'sm-sep' }));
+    START_OFTEN.forEach(id => { const a = OS.apps.byId[id]; leftCol.appendChild(item(a.icon, a.name, closeThen(() => OS.apps.open(id)), '', appMenu(a))); });
     leftCol.appendChild(el('div', { class: 'sm-sep' }));
 
     // 所有程序：点一下（鼠标停一会儿也行）往右弹出一层层的菜单
@@ -136,13 +160,13 @@
     // 右边：系统位置
     const place = run => OS.menus.placeItem(run);
     const right = el('div', { class: 'sm-right' }, [
-      item('diary', '我的黑历史', say('我的黑历史', 'warn', '该文件夹已加密。\n密码提示：你初中时用的网名（带火星文的那个）。'), '', place),
+      item('mydocs', '我的文档', closeThen(() => OS.apps.open('mydocs')), '', appMenu(OS.apps.byId.mydocs)),
       item('computer', '我的电脑', closeThen(() => OS.apps.open('mycomputer')), '', appMenu(OS.apps.byId.mycomputer)),
       el('div', { class: 'sm-sep' }),
       item('control', '控制不了面板', say('控制不了面板', 'info', '无法打开。\n你连自己都控制不了，还想控制面板。'), '', place),
       item('help', '帮不了和不支持', say('帮助和支持中心', 'help', '如需帮助，请自行解决。'), '', place),
       item('search', '找不到', say('搜索结果', 'info', '搜索完毕，共找到 0 项。\n你要找的东西，大概在你上次放它的地方。'), '', place),
-      item('run', '跑路…', say('运行', 'error', '运行失败：管理员已经跑路了。'), '', place)
+      item('genie', '一键还原精灵', closeThen(() => OS.apps.open('restore')), '', appMenu(OS.apps.byId.restore))
     ]);
 
     const fbtn = (icon, label, fn) => {
@@ -175,21 +199,24 @@
       const run = closeThen(() => OS.apps.placeholder({ name: label, icon: 'folder' }));
       return { label, icon: 'folder', sub, fresh: sub.some(it => it && it.fresh), context: () => OS.menus.placeItem(run) };
     };
+    const activated = !!OS.save.get('activated', false);   // 用激活器激活过：专业版的程序变彩色，能打开（暂时是施工中）
     const pro = (OS.apps.proList || []).map(name => {
-      const run = say('需要升级', 'warn', '「' + name + '」需要升级到 Windoesn\'t XP 专业版。\n\n升级方式：闭上眼睛，想象自己已经升级了。');
-      return { label: name, icon: 'exe', grey: true, action: run, context: () => OS.menus.proItem(run) };
+      const run = activated
+        ? closeThen(() => OS.apps.placeholder({ name, icon: 'exe' }))
+        : say('需要升级', 'warn', '「' + name + '」需要升级到 Windoesn\'t XP 专业版。\n\n升级方式：闭上眼睛，想象自己已经升级了。');
+      return { label: name, icon: 'exe', grey: !activated, action: run, context: () => OS.menus.proItem(run) };
     });
+    // 其他程序以后再补
     return [
-      folder('附件', [appItem('paint'), appItem('calc')]),
-      folder('启动', [{ label: '(空)', disabled: true }]),
-      folder('游戏', [{ label: '(空)', disabled: true }]),   // 以后放 4 个仿 XP 的小游戏
+      folder('附件', [appItem('cmd'), appItem('notepad'), appItem('wordpad'), appItem('paint'), appItem('calc')]),
+      folder('启动', [appItem('restore')]),
+      // 游戏：以后放 4 个仿 XP 的小游戏；装了光盘里的幻觉游戏，多一个文件夹
+      folder('游戏', [appItem('sweep')].concat(OS.hj && OS.hj.installed() ? [folder('幻觉游戏', OS.hj.games.map(g => ({ label: g.name, icon: 'game-' + g.id, action: closeThen(() => OS.hj.run(g)) })))] : [])),
       folder("Windoesn't XP 专业版", pro),
-      appItem('swatter'),
-      appItem('coil'),
-      appItem('bootcheck'),
-      appItem('pulse'),
-      appItem('debt'),
-      appItem('lifespan')
+      folder('实用小程序', [appItem('swatter'), appItem('coil'), appItem('bootcheck'), appItem('pulse'), appItem('lifespan'), appItem('activator')]),
+      // 照那几年装聊天软件的样子：一个文件夹，里面是软件本体 + 卸载（卸不掉）
+      folder('抠抠软件', [appItem('koukou'), { label: '卸载 抠抠2003', icon: 'exe', action: closeThen(() => OS.koukou && OS.koukou.uninstall()) }]),
+      folder('千千不听', [appItem('qianqian'), { label: '卸载 千千不听', icon: 'exe', action: closeThen(() => OS.qianqian && OS.qianqian.uninstall()) }])
     ];
   }
 

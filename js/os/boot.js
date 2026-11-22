@@ -18,6 +18,39 @@
     { t: "正在启动 Windoesn't XP ……", hi: true }
   ];
 
+  /* ---------- 开机要修的东西 ----------
+     玩的时候弄坏了什么（羊炸了 / 吓跑了、木牌被砍断、蓝屏……）就记一笔；
+     下次开机，自检下面一行行“正在修”，同时桌面恢复原样（各软件听 desktop:reset 自己复位）。
+     以后再有这种大的改变，也照这个办：OS.bootFix.add('名字', '正在……')；自己恢复了就 remove。 */
+  OS.bootFix = {
+    add(key, line) { const m = OS.save.get('bootFixes', {}); m[key] = line; OS.save.set('bootFixes', m); },
+    remove(key) { const m = OS.save.get('bootFixes', {}); if (key in m) { delete m[key]; OS.save.set('bootFixes', m); } },
+    take() { const m = OS.save.get('bootFixes', {}); OS.save.remove('bootFixes'); return Object.keys(m).map(k => m[k]); }
+  };
+  const FIX_HEAD = n => '检测桌面 …… 发现 ' + n + ' 处异常，正在处理';
+  const FIX_DONE = ' 完成';
+  // 各种蓝屏之后，下次开机要修的
+  const BSOD_FIX = {
+    lifespan: '地府正在给系统补办阳寿',
+    bootcheck: '开机检测器正在接受心理疏导',
+    rich: '大屁股显示器工伤痊愈，正在重新上岗',
+    folder2: '物业正在安抚邻居情绪',
+    pulse: '正在给打印机灭火',
+    swatter: '正在给不奔腾泼凉水降温',
+    recycle: '清洁部门正在换上新垃圾桶',
+    coil: '正在开窗给电脑通风',
+    activator: '电信师傅正在给你家重新接网线',
+    debt: '正在帮你和欠款人重归于好',
+    koukou: '正在把抖散的窗口一个个拼回去',
+    network: '正在把另一个你赶出局域网',
+    cmd: '正在把格式化掉的 C 盘一个字节一个字节捡回来',
+    notepad: '正在把记事本里多出来的 1023 句话删掉',
+    qianqian: '正在把震歪的桌面图标一个个扶正',
+    mycomputer: '正在给很重要.dll 补办身份证',
+    mydocs: '正在把套娃文件夹一层层拆掉'
+  };
+  OS.on('bsod', o => { if (BSOD_FIX[o.id]) OS.bootFix.add('bsod-' + o.id, BSOD_FIX[o.id]); });
+
   B.init = function (layer) { screens = layer; };
 
   function show(node) {
@@ -66,13 +99,28 @@
     const bios = el('div', { class: 'scr scr-bios' });
     bios.addEventListener('pointerdown', skipper);
     show(bios);
-    for (const ln of BIOS) {
+    const fixes = OS.bootFix.take();
+    for (let i = 0; i < BIOS.length; i++) {
       if (my !== runId) return;
       if (skip) break;
+      // 上次弄坏了什么：在“正在启动”前面一行行修
+      if (i === BIOS.length - 1 && fixes.length) {
+        bios.appendChild(el('div', { text: FIX_HEAD(fixes.length) }));
+        for (const f of fixes) {
+          if (my !== runId) return;
+          const fl = el('div', { class: 'b-fix', text: '　' + f + ' ……' });
+          bios.appendChild(fl);
+          await OS.wait(fast ? 320 : 480);
+          fl.textContent += FIX_DONE;
+        }
+        bios.appendChild(el('div', { text: ' ' }));
+        await OS.wait(fast ? 200 : 300);
+      }
+      const ln = BIOS[i];
       bios.appendChild(el('div', { class: ln.hi ? 'b-hi' : '', text: ln.t || ' ' }));
       await OS.wait(fast ? 80 : 220);
     }
-    if (!skip) await OS.wait(fast ? 200 : 500);
+    if (!skip) await OS.wait(fast ? 700 : 1000);   // 自检完多停一会儿，让人看清楚上面写了啥
     if (my !== runId) return;
 
     skip = false;
@@ -195,7 +243,9 @@
     show(el('div', { class: 'scr scr-busy' }, [logoMark('small'), el('div', { class: 'busy-text', text })]));
   }
 
-  B.turnOff = async function () {
+  // o：{ msg, sub } 黑屏上的大字、小字（千万别点.exe 倒计时走完：叫你千万别点。）
+  B.turnOff = async function (o) {
+    o = o && o.msg ? o : {};
     const my = ++runId;
     B.state = 'off';
     OS.ticker.stop();
@@ -206,8 +256,8 @@
     if (my !== runId) return;
     resetDesktop();
     const off = el('div', { class: 'scr scr-off' }, [
-      el('div', { class: 'off-msg', text: '现在可以安全地关闭计算机了。' }),
-      el('div', { class: 'off-sub', text: '（其实关不掉。点一下屏幕重新开机）' })
+      el('div', { class: 'off-msg', text: o.msg || '现在可以安全地关闭计算机了。' }),
+      el('div', { class: 'off-sub', text: o.sub || '（其实关不掉。点一下屏幕重新开机）' })
     ]);
     show(off);
     setTimeout(() => {

@@ -55,6 +55,7 @@
       el('div', { class: 'bl-text', text: o.text }),
       closeBtn
     ]);
+    if (o.wide) b.classList.add('wide');   // 字多的提示可以宽一点
     b.style.right = (st.insets.r + 6) + 'px';
     b.style.bottom = (st.TASKBAR_H + 10) + 'px';
     document.getElementById('balloons').appendChild(b);
@@ -85,6 +86,8 @@
     const seen = OS.save.get('bsods', []);
     const isNew = seen.indexOf(o.id) < 0;
     if (isNew) { seen.push(o.id); OS.save.set('bsods', seen); }
+    const info = OS.save.get('bsodInfo', {});
+    info[o.id] = { name: o.name, text: o.text, at: Date.now() };
     OS.wm.closeAll();
     ui.clearNotify();
     ui.closeMenus();
@@ -94,6 +97,8 @@
     let h = 0;
     for (let i = 0; i < o.id.length; i++) h = (h * 31 + o.id.charCodeAt(i)) >>> 0;
     const code = ('00000000' + h.toString(16).toUpperCase()).slice(-8);
+    info[o.id].code = code;
+    OS.save.set('bsodInfo', info);
     const text =
       "检测到一个问题，Windoesn't XP 已停止运行，以防止对你的电脑造成更多损坏。\n\n" +
       o.name + '\n\n' +
@@ -132,9 +137,10 @@
   }
   ui.closeMenus = function () { while (openMenus.length) popMenu(); };
   // keep：不关掉已经开着的菜单，叠在上面（在“所有程序”里点右键时用）
-  ui.contextMenu = function (items, x, y, keep) {
+  // opts.onClose：菜单收起来时调一下（选了某项也算收起，在那一项的 action 之前调）
+  ui.contextMenu = function (items, x, y, keep, opts) {
     if (!keep) ui.closeMenus();
-    showMenu(items, x, y, openMenus.length, null, {});
+    showMenu(items, x, y, openMenus.length, null, opts || {});
   };
   // 贴着某个按钮的右边弹出、底边和按钮对齐（开始菜单的“所有程序”）
   // anchor: { x, y, w, h }；opts: { className, maxH, onClose }
@@ -143,6 +149,27 @@
     return showMenu(items, 0, 0, 0, anchor, Object.assign({ cascade: true }, opts));
   };
   ui.menuOpen = () => openMenus.length > 0;
+
+  // 窗口顶上那排菜单栏（文件 编辑 查看……）：每个都能点开，在它正下方弹出菜单。
+  // build(name) 返回这一栏的菜单项（返回空就不弹）；cls 是这个窗口自己的样式（字号、内边距）
+  ui.EX_MENUS = ['文件(F)', '编辑(E)', '查看(V)', '收藏(A)', '工具(T)', '帮助(H)'];   // 文件夹窗口那一排
+  ui.menuBar = function (names, build, cls) {
+    return el('div', { class: 'mbar' + (cls ? ' ' + cls : '') }, names.map(name => {
+      const mi = el('span', { class: 'mbar-i', text: name });
+      mi.addEventListener('click', e => {
+        e.stopPropagation();
+        OS.sound.play('click');
+        const items = build(name);
+        if (!items || !items.length) return;
+        const r = mi.getBoundingClientRect();
+        const p = OS.stage.toLocal(r.left, r.bottom);
+        ui.contextMenu(items, p.x, p.y);
+      });
+      return mi;
+    }));
+  };
+  // 文件夹窗口“帮助”菜单里的“关于”
+  ui.about = () => ui.dialog({ title: "关于 Windoesn't", icon: 'info', text: "Windoesn't XP\n版本 2003（盗版的盗版）\n(C) 2003 无聊科技\n本产品授权给：你" });
 
   // 菜单太长放不下：上下各加一个小箭头条，可以往上往下滚（XP 也有这种）
   // 鼠标停在箭头上会一直滚；手指点一下滚一行，按住不放一直滚；也能直接拖着滚
@@ -192,6 +219,8 @@
 
   function showMenu(items, x, y, level, parent, opts) {
     while (openMenus.length > level) popMenu();
+    // “所有程序”：第一层底边和按钮对齐；往右弹出的每一层，底边也不超过这条线
+    if (opts.cascade && level === 0 && parent) opts.cascadeBottom = parent.y + parent.h;
     const withIcons = items.some(it => it && it.icon);
     const m = el('div', { class: 'ctx' + (withIcons ? ' icons' : '') + (opts.className ? ' ' + opts.className : '') });
     items.forEach(it => {
@@ -214,7 +243,7 @@
             const p = OS.stage.toLocal(a.left, a.top), q = OS.stage.toLocal(a.right, a.bottom);
             const r = { x: p.x, y: p.y, w: q.x - p.x + 3 };
             showMenu(typeof it.sub === 'function' ? it.sub() : it.sub, 0, 0, level + 1, r,
-              { className: opts.className, maxH: opts.maxH, flyout: opts.flyout || opts.cascade });
+              { className: opts.className, maxH: opts.cascadeBottom || opts.maxH, flyout: opts.flyout || opts.cascade, cascadeBottom: opts.cascadeBottom });
           };
           row.addEventListener('click', e => { e.stopPropagation(); openSub(); });
           row.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') openSub(); });

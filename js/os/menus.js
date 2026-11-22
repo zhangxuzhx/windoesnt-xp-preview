@@ -40,7 +40,7 @@
           { label: '文件夹', action: say('新建文件夹', 'warn', '新建失败：「新建文件夹(2)」表示，它不想要邻居。') },
           { label: '快捷方式', action: NO_SHORTCUT },
           '-',
-          { label: '文本文档', action: say('新建文本文档', 'warn', '新建失败：你上次新建的文本文档，到现在已经写了多少字呢？') }
+          { label: '文本文档', action: () => OS.notepad.newOnDesktop() }   // 还没来得及打开就被羊吃了（notepad.js）
         ]
       },
       '-',
@@ -72,6 +72,16 @@
 
   // 普通图标菜单里的那几项，给有自己专属菜单的软件拿去拼（比如压缩包）
   M.iconParts = function (app) {
+    // 收在「新建文件夹(2)」里的（暴富秘籍、欠条）：不在桌面上，剪切、复制、删除不去动桌面图标
+    if (app.inFolder) return {
+      open: { label: '打开', bold: true, action: () => OS.apps.open(app.id) },
+      cut: { label: '剪切', action: say('剪切', 'warn', '剪切失败：它在新建文件夹(2) 里住惯了，不想搬家。') },
+      copy: { label: '复制', action: say('复制', 'warn', '复制失败：盗版的盗版，不能再复制了。') },
+      shortcut: { label: '创建快捷方式', action: NO_SHORTCUT },
+      del: { label: '删除', action: say('删除', 'error', '删不掉：新建文件夹(2) 的物业不让往外扔东西。') },
+      rename: { label: '重命名', action: NO_RENAME },
+      props: { label: '属性', action: props(app) }
+    };
     return {
       open: { label: '打开', bold: true, action: () => OS.apps.open(app.id) },
       cut: { label: '剪切', action: () => { OS.clipboard = { mode: 'cut', id: app.id }; OS.desktop.setCut(app.id); } },
@@ -130,8 +140,11 @@
     ];
   };
 
-  M.systemProps = say('系统属性', 'info',
-    "系统：Windoesn't XP 无聊版\n注册给：你\n处理器：不奔腾 III　0.5 GHz\n内存：640 KB（也许？）\n激活状态：未激活");
+  M.systemProps = () => OS.ui.dialog({
+    title: '系统属性', icon: 'info',
+    text: "系统：Windoesn't XP " + (OS.save.get('activated', false) ? '专业版' : '无聊版') + "\n注册给：你\n处理器：不奔腾 III　0.5 GHz\n内存：640 KB（也许？）\n激活状态：" +
+      (OS.save.get('activated', false) ? '已激活（真的）' : '未激活')
+  });
 
   /* ---------- 任务栏 ---------- */
   const TOOLBAR = say('工具栏', 'info', '添加失败。本系统不是工具，不需要工具栏。');
@@ -223,7 +236,7 @@
       o.minimizable ? { label: '最小化', disabled: w.minimized, action: () => OS.wm.minimize(w) } : null,
       o.maximizable ? { label: '最大化', disabled: w.maximized, action: () => { if (w.minimized) OS.wm.restore(w); OS.wm.toggleMax(w); } } : null,
       '-',
-      o.closable ? { label: '关闭', bold: true, action: () => OS.wm.close(w) } : null
+      o.closable ? { label: '关闭', bold: true, disabled: !!o.noClose, action: () => OS.wm.requestClose(w) } : null
     ];
   };
 })();

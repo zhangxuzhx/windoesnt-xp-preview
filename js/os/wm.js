@@ -9,7 +9,8 @@
     min: '<svg viewBox="0 0 11 11"><rect x="2" y="7.5" width="6" height="2" fill="#fff"/></svg>',
     max: '<svg viewBox="0 0 11 11"><rect x="1.5" y="1.5" width="8" height="8" fill="none" stroke="#fff" stroke-width="1.4"/><rect x="1.5" y="1.5" width="8" height="2.4" fill="#fff"/></svg>',
     restore: '<svg viewBox="0 0 11 11"><rect x="3.6" y="0.9" width="6.4" height="5.8" fill="none" stroke="#fff" stroke-width="1.2"/><rect x="1" y="4.2" width="6.4" height="5.8" fill="#2a64d6" stroke="#fff" stroke-width="1.2"/></svg>',
-    close: '<svg viewBox="0 0 11 11"><path d="M2 2 L9 9 M9 2 L2 9" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>'
+    close: '<svg viewBox="0 0 11 11"><path d="M2 2 L9 9 M9 2 L2 9" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>',
+    help: '<svg viewBox="0 0 11 11"><path d="M3.5 3.8 C3.5 1.3 7.5 1.3 7.5 3.8 C7.5 5.4 5.5 5.3 5.5 7" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><circle cx="5.5" cy="9.2" r="1" fill="#fff"/></svg>'
   };
 
   wm.init = function (container) {
@@ -19,7 +20,10 @@
 
   /* 打开一个窗口
      o: { title, icon, width, height, content(节点/文字/函数(body, win)), appId,
-          modal, center, minimizable, maximizable, closable, taskbar, className, onClose } */
+          modal, center, minimizable, maximizable, closable, taskbar, className, onClose,
+          topmost（总在普通窗口上面，比如系统关机倒计时）、noClose（× 是灰的，点了只“叮”一声），
+          beforeClose（点 × / 菜单里的关闭时先调它，返回 false 就不关；重启这类强制关窗不问）
+          help（给了就在 × 左边多一个“？”按钮，点了调它） } */
   wm.open = function (o) {
     o = Object.assign({
       title: '窗口', icon: null, width: 320, height: null,
@@ -34,6 +38,7 @@
     const btns = el('div', { class: 'win-btns' });
     if (o.minimizable) btns.appendChild(win.btnMin = el('button', { class: 'wb wb-min', html: GLYPH.min }));
     if (o.maximizable) btns.appendChild(win.btnMax = el('button', { class: 'wb wb-max', html: GLYPH.max }));
+    if (o.help) btns.appendChild(win.btnHelp = el('button', { class: 'wb wb-help', html: GLYPH.help }));
     if (o.closable) btns.appendChild(win.btnClose = el('button', { class: 'wb wb-close', html: GLYPH.close }));
 
     win.titleText = el('span', { class: 'win-text', text: o.title });
@@ -89,7 +94,9 @@
     });
     if (win.btnMin) win.btnMin.addEventListener('click', e => { e.stopPropagation(); OS.sound.play('click'); wm.minimize(win); });
     if (win.btnMax) win.btnMax.addEventListener('click', e => { e.stopPropagation(); OS.sound.play('click'); wm.toggleMax(win); });
-    if (win.btnClose) win.btnClose.addEventListener('click', e => { e.stopPropagation(); OS.sound.play('click'); wm.close(win); });
+    if (win.btnClose && o.noClose) win.btnClose.classList.add('wb-off');
+    if (win.btnClose) win.btnClose.addEventListener('click', e => { e.stopPropagation(); if (o.noClose) { OS.sound.play('ding'); return; } OS.sound.play('click'); wm.requestClose(win); });
+    if (win.btnHelp) win.btnHelp.addEventListener('click', e => { e.stopPropagation(); OS.sound.play('click'); o.help(win); });
 
     win.close = v => wm.close(win, v);
     win.setTitle = t => { win.titleText.textContent = t; OS.emit('win:title', win); };
@@ -188,10 +195,14 @@
     if (!win) return;
     if (win.minimized) { wm.restore(win); return; }
     raise(win);
+    // “总在最前”的窗口压在普通窗口上面
+    wm.wins.forEach(w => { if (w.opts.topmost && w !== win) raise(w); });
+    if (win.opts.topmost) raise(win);
     // 对话框永远压在最上面；好几个对话框叠着时，刚点的那个在最上面
     wm.wins.forEach(w => { if (w.opts.modal && w !== win) raise(w); });
     if (win.opts.modal) raise(win);
-    const top = topVisible();
+    let top = topVisible();
+    if (top && top.opts.topmost && top !== win) top = win;   // 点了普通窗口，它照样算“正在用的窗口”，只是被压在下面
     if (wm.active !== top) { wm.active = top; markActive(); }
   };
 
@@ -236,6 +247,11 @@
     win._resolve(value);
   };
 
+  // 玩家自己要关（×、菜单里的关闭）：软件可以先拦一下
+  wm.requestClose = function (win) {
+    if (win.opts.beforeClose && win.opts.beforeClose() === false) return;
+    wm.close(win);
+  };
   wm.closeAll = function () { wm.wins.slice().forEach(w => wm.close(w)); shownDesktop = null; };
 
   /* ---------- 任务栏右键：层叠、平铺、显示桌面 ---------- */

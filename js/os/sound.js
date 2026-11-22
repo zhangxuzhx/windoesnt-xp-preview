@@ -103,6 +103,16 @@
     },
     // 监护仪“嘀”、针式打印机“滋滋”
     beep(t) { osc('square', 1180, t, 0.07, 0.05); },
+    // 软驱找盘“咔啦咔啦”、光驱转起来“嗡——”、光驱托盘“咔哒”
+    floppy(t) { for (let i = 0; i < 6; i++) { osc('square', 90 + (i % 2) * 40, t + i * 0.09, 0.06, 0.12); noise(t + i * 0.09, 0.04, 0.2, 1800); } },
+    cdSpin(t) { osc('sawtooth', 120, t, 1.6, 0.04, 420); osc('sine', 240, t, 1.6, 0.05, 840); noise(t, 1.4, 0.05, 1200); },
+    eject(t) { noise(t, 0.08, 0.35, 2500); osc('square', 160, t, 0.08, 0.15, 90); noise(t + 0.25, 0.06, 0.25, 2000); },
+    // 羊嚼纸“咔嚓”、拉羊粪“噗”、点羊粪“噗叽”
+    munch(t) { noise(t, 0.05, 0.4, 2600); noise(t + 0.08, 0.05, 0.3, 2200); },
+    poop(t) { osc('sine', 170, t, 0.16, 0.35, 70); noise(t, 0.07, 0.2, 500); },
+    squish(t) { noise(t, 0.12, 0.3, 900); osc('sine', 320, t, 0.1, 0.12, 110); },
+    // 命令提示符里一个字一个字“打”出来的哒哒声
+    key(t) { noise(t, 0.025, 0.12, 3500); osc('square', 520 + Math.random() * 160, t, 0.02, 0.025); },
     printer(t) {
       for (let i = 0; i < 4; i++) osc('square', 260 + (i % 2) * 90, t + i * 0.05, 0.045, 0.05);
       noise(t, 0.2, 0.08, 2400);
@@ -117,7 +127,38 @@
     // 给拨号猫磕头的“咚”、拍显示器的“啪”
     thud(t) { osc('sine', 120, t, 0.2, 0.5, 55); noise(t, 0.06, 0.25, 600); },
     slap(t) { noise(t, 0.14, 0.8, 5000); osc('square', 180, t, 0.09, 0.2, 80); },
+    // 蚊子“嗡——”：由远到近再远（arg = 持续几秒）
+    buzz(t, dur) {
+      dur = dur || 1.8;
+      const o = ctx.createOscillator(), lfo = ctx.createOscillator(), lg = ctx.createGain(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      o.type = 'sawtooth'; o.frequency.value = 560;
+      lfo.frequency.value = 23; lg.gain.value = 18;
+      lfo.connect(lg); lg.connect(o.frequency);
+      f.type = 'bandpass'; f.frequency.value = 1400; f.Q.value = 1.2;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.06, t + dur * 0.45);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(f); f.connect(g); g.connect(master);
+      o.start(t); lfo.start(t);
+      o.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05);
+    },
+    // 蚊子被熏晕：“嗡~~”一路往下掉
+    dizzy(t) { osc('sawtooth', 640, t, 0.8, 0.035, 150); },
+    // 划火柴点蚊香、扇一扇的风声
+    match(t) { noise(t, 0.28, 0.25, 5000); osc('sine', 900, t, 0.16, 0.05, 300); },
+    fan(t) { noise(t, 0.22, 0.3, 900); },
+    // 一剑劈下去：“唰——锵”
+    slash(t) { noise(t, 0.14, 0.45, 9000); osc('triangle', 2600, t + 0.04, 0.25, 0.07, 700); osc('square', 1400, t + 0.06, 0.12, 0.03, 500); },
     // 56K 拨号：嘀嘀嘀按号码 → 嘟—— → 嘀嘟嘀嘟 → 嘶啦啦
+    // 抠抠：来消息“咚咚”（自己合成的，不用当年那个真的提示音）、登录成功铁公鸡打鸣、窗口抖动“哗啦啦”
+    kkMsg(t) { osc('sine', 523, t, 0.13, 0.28, 440); osc('sine', 523, t + 0.17, 0.13, 0.28, 440); },
+    kkCrow(t) {
+      osc('sawtooth', 520, t, 0.13, 0.06, 760);
+      osc('sawtooth', 760, t + 0.15, 0.13, 0.06, 980);
+      osc('sawtooth', 980, t + 0.3, 0.55, 0.06, 620);
+      osc('triangle', 1960, t + 0.3, 0.5, 0.05, 1240);
+    },
+    kkShake(t) { for (let i = 0; i < 6; i++) noise(t + i * 0.06, 0.05, 0.22, 900 + (i % 2) * 600); },
     dialup(t) {
       [[697, 1209], [770, 1336], [852, 1477], [941, 1336], [697, 1336], [770, 1209], [852, 1336]].forEach((d, i) => {
         osc('sine', d[0], t + i * 0.1, 0.07, 0.1);

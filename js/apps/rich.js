@@ -21,9 +21,9 @@
   const NEED_UNZIP = name => '要查看「' + name + '」，\n需要先解压。\n\n现在解压吗？';
   const EX_TITLE = '正在解压 - ' + RAR;
   const FROM_TO = '从「' + RAR + '」到「临时文件夹」';
-  // 往桌面解压的，一律失败
+  // 往外解压的，一律失败（压缩包现在住在「新建文件夹(2)」最外面那层）
   const FAIL_EXTRACT = say('解压文件', 'error', '解压失败：磁盘空间不足。\n需要 2.7 GB，你的硬盘只剩 3 KB。');
-  const FAIL_HERE = say('解压到当前文件夹', 'warn', '解压失败：当前文件夹是桌面。\n桌面上已经够乱了。');
+  const FAIL_HERE = say('解压到当前文件夹', 'warn', '解压失败：当前文件夹是「新建文件夹(2)」。\n这里已经住满了。');
   const FAIL_FOLDER = say('解压到 2027暴富秘籍\\', 'error', '解压失败：无法创建文件夹「2027暴富秘籍」。\n这个文件夹要等到 2027 年才能建。');
   const DONE = '解压完成。';
   const STUCK = 99.69, SLAP_TO = 98, KOWTOW = 0.01;   // 卡在 99.69%，要磕 31 个头
@@ -377,13 +377,10 @@
     ]);
     OS.wm.open({ title: f.name + ' - 图片和传真查看器', icon: 'paint', width: 300, content, maximizable: false });
   }
-  // txt：用记事本打开
+  OS.richViewer = name => viewer({ name, size: '3 KB' });   // 我的图片 ▸ 想得美.jpg
+  // txt：用记事本打开（notepad.js）
   function notepad(f) {
-    const content = el('div', { class: 'np' }, [
-      el('div', { class: 'np-menu', text: '文件(F)　编辑(E)　格式(O)　查看(V)　帮助(H)' }),
-      el('div', { class: 'np-text', text: f.text })
-    ]);
-    OS.wm.open({ title: f.name + ' - 记事本', icon: 'diary', width: 280, height: 170, content });
+    OS.notepad.open({ name: f.name, text: f.text, where: { type: 'rar' } });
   }
 
   /* ---------- 桌面上：压缩包专属右键菜单 ---------- */

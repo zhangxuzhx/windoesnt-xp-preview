@@ -25,6 +25,13 @@
       '<path d="M17 18 L18 40 M24 18 L24 40 M31 18 L30 40" stroke="#8fb0cf" stroke-width="1.6"/>' +
       '<rect x="9" y="9" width="30" height="5" rx="2" fill="#dbe9f7" stroke="#5b7a99" stroke-width="1.2"/><rect x="20" y="6" width="8" height="3" rx="1" fill="#dbe9f7" stroke="#5b7a99"/></svg>',
 
+    /* 回收站（有东西）：桶里冒出几张揉皱的纸 */
+    recycleFull: '<svg viewBox="0 0 48 48"><defs><linearGradient id="rf_U" x1="0" x2="1"><stop offset="0" stop-color="#c3daf0"/><stop offset=".5" stop-color="#f7fbff"/><stop offset="1" stop-color="#9dbcdc"/></linearGradient></defs>' +
+      '<path d="M13 15 L20 4 L27 12Z" fill="#fff" stroke="#888" stroke-width="1"/><path d="M22 13 L33 3 L36 14Z" fill="#fffbe0" stroke="#999" stroke-width="1"/><path d="M15 14 C17 8 25 9 26 14Z" fill="#e8eef5" stroke="#8a9aaa"/>' +
+      '<path d="M11 14 L37 14 L34 44 L14 44Z" fill="url(#rf_U)" stroke="#5b7a99" stroke-width="1.2"/>' +
+      '<path d="M17 18 L18 40 M24 18 L24 40 M31 18 L30 40" stroke="#8fb0cf" stroke-width="1.6"/>' +
+      '<rect x="9" y="12" width="30" height="4" rx="2" fill="#dbe9f7" stroke="#5b7a99" stroke-width="1.2"/></svg>',
+
     detector: '<svg viewBox="0 0 48 48"><defs><radialGradient id="dp_U" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#9dffa0"/><stop offset="1" stop-color="#1f9a2e"/></radialGradient></defs>' +
       '<circle cx="20" cy="20" r="15" fill="url(#dp_U)" stroke="#156b20" stroke-width="1.5"/>' +
       '<path d="M14.5 14.5 A8 8 0 1 0 25.5 14.5" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/><line x1="20" y1="10" x2="20" y2="20" stroke="#fff" stroke-width="3" stroke-linecap="round"/>' +
@@ -63,6 +70,73 @@
       '<path d="M4 10 H18 L22 14 H44 V40 H4Z" fill="#e2a72a" stroke="#a87414" stroke-width="1.2"/><rect x="8" y="12" width="30" height="20" fill="#fff" stroke="#bbb"/>' +
       '<path d="M3 18 H45 L42 41 H6Z" fill="url(#fd_U)" stroke="#a87414" stroke-width="1.2"/></svg>',
 
+    /* 网上邻居里别人共享的文件夹：黄文件夹 + 底下一只托着的手（那几年“共享”就是这个样子） */
+    share: '<svg viewBox="0 0 48 48"><defs><linearGradient id="sh_U" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ffe9a3"/><stop offset="1" stop-color="#f2b92e"/></linearGradient></defs>' +
+      '<path d="M8 6 H20 L24 10 H44 V32 H8Z" fill="#e2a72a" stroke="#a87414" stroke-width="1.2"/>' +
+      '<path d="M7 13 H45 L42 33 H10Z" fill="url(#sh_U)" stroke="#a87414" stroke-width="1.2"/>' +
+      '<path d="M3 36 C8 33 14 33 19 35 L27 35 C30 35 30 39 27 39 L20 39 L29 39 L39 34 C42 33 44 36 41 38 L30 45 L12 45 L3 43Z" fill="#ffd9b0" stroke="#9a6a3a" stroke-width="1.2" stroke-linejoin="round"/>' +
+      '<path d="M3 36 L3 45" stroke="#2d6fd6" stroke-width="4"/></svg>',
+
+    /* 纸：文本文件（.txt）、文档（.doc）、视频（.avi / .rmvb） */
+    txt: '<svg viewBox="0 0 48 48"><path d="M10 4 H32 L40 12 V44 H10Z" fill="#fff" stroke="#6b7a8f" stroke-width="1.4"/><path d="M32 4 V12 H40" fill="#e3e8ef" stroke="#6b7a8f" stroke-width="1.2"/>' +
+      '<path d="M15 18 H35 M15 23 H35 M15 28 H35 M15 33 H29 M15 38 H33" stroke="#9aa6b8" stroke-width="1.6"/></svg>',
+    doc: '<svg viewBox="0 0 48 48"><path d="M10 4 H32 L40 12 V44 H10Z" fill="#fff" stroke="#3b5ea8" stroke-width="1.4"/><path d="M32 4 V12 H40" fill="#dfe7f7" stroke="#3b5ea8" stroke-width="1.2"/>' +
+      '<rect x="14" y="15" width="22" height="6" fill="#2d5fc2"/><path d="M15 26 H35 M15 31 H35 M15 36 H28" stroke="#8fa6d6" stroke-width="1.8"/><circle cx="35" cy="37" r="5" fill="#f2c14e" stroke="#b07d10"/></svg>',
+    video: '<svg viewBox="0 0 48 48"><rect x="6" y="9" width="36" height="30" rx="2" fill="#2b2f3a" stroke="#111"/>' +
+      '<path d="M6 15 H42 M6 33 H42" stroke="#111" stroke-width="1"/><g fill="#d8dbe2"><rect x="9" y="11" width="3" height="2.5"/><rect x="16" y="11" width="3" height="2.5"/><rect x="23" y="11" width="3" height="2.5"/><rect x="30" y="11" width="3" height="2.5"/><rect x="37" y="11" width="3" height="2.5"/>' +
+      '<rect x="9" y="34.5" width="3" height="2.5"/><rect x="16" y="34.5" width="3" height="2.5"/><rect x="23" y="34.5" width="3" height="2.5"/><rect x="30" y="34.5" width="3" height="2.5"/><rect x="37" y="34.5" width="3" height="2.5"/></g>' +
+      '<path d="M20 18 L31 24 L20 30Z" fill="#4fc35a"/></svg>',
+
+    /* 我的文档：黄文件夹里斜插着一张写了字的纸 */
+    mydocs: '<svg viewBox="0 0 48 48"><defs><linearGradient id="md_U" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ffe9a3"/><stop offset="1" stop-color="#f2b92e"/></linearGradient></defs>' +
+      '<path d="M4 12 H17 L21 16 H40 V40 H4Z" fill="#e2a72a" stroke="#a87414" stroke-width="1.2"/>' +
+      '<g transform="rotate(12 30 18)"><path d="M17 3 H35 L41 9 V34 H17Z" fill="#fff" stroke="#5b7a99" stroke-width="1.2"/><path d="M35 3 V9 H41" fill="#dbe9f7" stroke="#5b7a99"/>' +
+      '<path d="M21 13 H36 M21 17 H37 M21 21 H33 M21 25 H37" stroke="#3d7be0" stroke-width="1.8"/></g>' +
+      '<path d="M3 21 H45 L42 43 H6Z" fill="url(#md_U)" stroke="#a87414" stroke-width="1.2"/></svg>',
+
+    /* 网上邻居：一个地球，前面两台用网线连着的电脑 */
+    network: '<svg viewBox="0 0 48 48"><defs><radialGradient id="nw_U" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#a6dcff"/><stop offset="1" stop-color="#1663c7"/></radialGradient></defs>' +
+      '<circle cx="29" cy="15" r="12.5" fill="url(#nw_U)" stroke="#0d4a96" stroke-width="1.2"/>' +
+      '<path d="M21 9 C24 8 25 12 29 12 C32 12 32 8 36 9 M20 18 C23 17 25 21 29 21 C32 21 34 18 39 19" fill="none" stroke="#5fb83a" stroke-width="2.6" stroke-linecap="round"/>' +
+      '<path d="M10 41 Q22 47 36 42" fill="none" stroke="#555" stroke-width="1.6"/>' +
+      '<rect x="2" y="23" width="17" height="13" rx="1.5" fill="#e8e4d6" stroke="#6d6a60"/><rect x="4.3" y="25.3" width="12.4" height="8.4" fill="#3d8be8"/>' +
+      '<rect x="8" y="36" width="5" height="3" fill="#cfcabb"/><rect x="5" y="39" width="11" height="2.6" rx="1" fill="#d9d5c7" stroke="#6d6a60" stroke-width=".8"/>' +
+      '<rect x="27" y="26" width="17" height="13" rx="1.5" fill="#e8e4d6" stroke="#6d6a60"/><rect x="29.3" y="28.3" width="12.4" height="8.4" fill="#3d8be8"/>' +
+      '<rect x="33" y="39" width="5" height="2.5" fill="#cfcabb"/><rect x="30" y="41.5" width="11" height="2.6" rx="1" fill="#d9d5c7" stroke="#6d6a60" stroke-width=".8"/></svg>',
+
+    /* 一键还原精灵：一块硬盘，上面一个绿色的“转回去”箭头，旁边闪一颗星 */
+    genie: '<svg viewBox="0 0 48 48"><rect x="5" y="24" width="38" height="18" rx="3" fill="#cfd4dc" stroke="#6b7280" stroke-width="1.2"/><rect x="5" y="24" width="38" height="5" rx="2" fill="#e8ebf0"/>' +
+      '<circle cx="36" cy="35" r="2" fill="#3c3"/><path d="M10 36 H26" stroke="#9aa1ab" stroke-width="2"/>' +
+      '<path d="M15 18 A10 10 0 1 1 25 22" fill="none" stroke="#1f9a2e" stroke-width="4.5" stroke-linecap="round"/><path d="M8 13 L15 20 L20 12Z" fill="#1f9a2e"/>' +
+      '<path d="M38 3 L39.6 7.4 L44 9 L39.6 10.6 L38 15 L36.4 10.6 L32 9 L36.4 7.4Z" fill="#ffd23f" stroke="#c99a00" stroke-width=".6"/></svg>',
+
+    /* 激活器：一把金钥匙 */
+    key: '<svg viewBox="0 0 48 48"><defs><linearGradient id="ky_U" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff0a0"/><stop offset="1" stop-color="#d49a10"/></linearGradient></defs>' +
+      '<circle cx="15" cy="17" r="11" fill="url(#ky_U)" stroke="#8a6200" stroke-width="1.5"/><circle cx="12" cy="14" r="3.6" fill="#fff" stroke="#8a6200" stroke-width="1.2"/>' +
+      '<path d="M22 24 L41 43 M33 35 L37 31 M37 39 L41 35" fill="none" stroke="#8a6200" stroke-width="6" stroke-linecap="round"/>' +
+      '<path d="M22 24 L41 43 M33 35 L37 31 M37 39 L41 35" fill="none" stroke="url(#ky_U)" stroke-width="3.6" stroke-linecap="round"/></svg>',
+
+    /* Internot Explorer：一个地球，外面一圈红色禁止符号（上不去网） */
+    ie: '<svg viewBox="0 0 48 48"><defs><radialGradient id="ie_U" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#9fd8ff"/><stop offset="1" stop-color="#1663c7"/></radialGradient></defs>' +
+      '<circle cx="24" cy="24" r="17" fill="url(#ie_U)" stroke="#0d4a96" stroke-width="1.2"/>' +
+      '<path d="M12 18 C16 16 18 21 23 20 C27 19 27 14 32 15 M11 28 C15 27 19 31 24 30 C29 29 31 26 37 27" fill="none" stroke="#5fb83a" stroke-width="3" stroke-linecap="round"/>' +
+      '<circle cx="24" cy="24" r="20.5" fill="none" stroke="#e02020" stroke-width="4"/><path d="M10 38 L38 10" stroke="#e02020" stroke-width="4" stroke-linecap="round"/></svg>',
+
+    /* Outluck Excess：一封信，头顶一朵打雷的乌云（运气不好） */
+    mail: '<svg viewBox="0 0 48 48"><rect x="4" y="18" width="34" height="24" rx="2" fill="#fff6d8" stroke="#a08a50" stroke-width="1.2"/><path d="M4 19 L21 32 L38 19" fill="none" stroke="#a08a50" stroke-width="1.4"/>' +
+      '<path d="M27 14 C25 8 32 5 35 9 C37 5 44 7 43 12 C46 13 45 18 41 18 H29 C25 18 24 15 27 14Z" fill="#6b7280" stroke="#3f4650"/>' +
+      '<path d="M36 18 L33 24 H37 L34 30" fill="none" stroke="#ffd000" stroke-width="2" stroke-linejoin="round"/></svg>',
+
+    /* 扫雪：一块浅蓝格子上一片雪花，旁边一把扫帚 */
+    sweep: '<svg viewBox="0 0 48 48"><rect x="5" y="5" width="38" height="38" rx="3" fill="#cfe3fb" stroke="#6f8fb8" stroke-width="1.2"/>' +
+      '<g stroke-linecap="round"><path d="M18 10 V30 M9.3 15 L26.7 25 M9.3 25 L26.7 15" stroke="#5c8fd6" stroke-width="4"/><path d="M18 10 V30 M9.3 15 L26.7 25 M9.3 25 L26.7 15" stroke="#fff" stroke-width="2"/></g>' +
+      '<path d="M42 8 L28 30" stroke="#9a6b2f" stroke-width="3" stroke-linecap="round"/>' +
+      '<path d="M24 29 L32 34 L27 43 L17 38Z" fill="#e8b84a" stroke="#9a6b2f" stroke-width="1.2"/><path d="M20 39 L25 31 M23 41 L28 33" stroke="#9a6b2f" stroke-width=".8"/></svg>',
+
+    /* 命令提示符：黑窗口里一行 C:\> */
+    cmd: '<svg viewBox="0 0 48 48"><rect x="4" y="7" width="40" height="34" rx="2" fill="#111" stroke="#666" stroke-width="1.2"/><rect x="4" y="7" width="40" height="7" fill="#2d6fd6"/>' +
+      '<text x="8" y="30" font-size="10" font-family="Courier New, monospace" font-weight="bold" fill="#c0c0c0">C:\\&gt;_</text></svg>',
+
     calc: '<svg viewBox="0 0 48 48"><rect x="9" y="3" width="30" height="42" rx="4" fill="#d9d6cb" stroke="#6b6a63" stroke-width="1.2"/><rect x="13" y="7" width="22" height="11" rx="1" fill="#c6dcb4" stroke="#6b6a63"/>' +
       '<path d="M17 10 L21 12 M31 10 L27 12" stroke="#333" stroke-width="1.5" stroke-linecap="round"/><path d="M21 16.2 Q24 14 27 16.2" stroke="#333" stroke-width="1.3" fill="none"/>' +
       '<g fill="#fff" stroke="#8a887f" stroke-width=".8"><rect x="13" y="22" width="6" height="5" rx="1"/><rect x="21" y="22" width="6" height="5" rx="1"/><rect x="13" y="29" width="6" height="5" rx="1"/><rect x="21" y="29" width="6" height="5" rx="1"/><rect x="13" y="36" width="6" height="5" rx="1"/><rect x="21" y="36" width="6" height="5" rx="1"/></g>' +
@@ -72,6 +146,23 @@
       '<circle cx="14" cy="21" r="3.2" fill="#e33"/><circle cx="19" cy="13" r="3.2" fill="#fc3"/><circle cx="28" cy="11" r="3.2" fill="#3b3"/><circle cx="36" cy="16" r="3.2" fill="#39f"/>' +
       '<g transform="rotate(40 34 34)"><rect x="32" y="15" width="4" height="22" rx="1.5" fill="#b5651d"/><rect x="31.5" y="35" width="5" height="4" fill="#bbb"/><path d="M31.5 39 Q34 47 36.5 39Z" fill="#222"/></g>' +
       '<rect x="2" y="33" width="17" height="12" rx="2.5" fill="#2d6fd6" stroke="#fff"/><path d="M5.5 42 L8 36 L10.5 42 M6.5 40 H9.5 M14 36 V42" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+
+    /* 抠抠2003：铁公鸡（一毛不拔 = 抠门），Codex 画的图 */
+    koukou: '<svg viewBox="0 0 48 48"><image href="assets/koukou/logo.webp" x="0" y="0" width="48" height="48"/></svg>',
+    /* 幻觉游戏 V3.0 里的 6 个游戏：先用代码画的临时图标，Codex 画好再换 */
+    'game-zhuma': '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="#3a2a12"/><circle cx="24" cy="24" r="9" fill="#c98a3a" stroke="#5a3a12" stroke-width="2"/>' + ['#e33','#3b6','#36e','#ec2','#e3e','#3cc'].map((c, i) => '<circle cx="' + (24 + 15 * Math.cos(i)) + '" cy="' + (24 + 15 * Math.sin(i)) + '" r="4.5" fill="' + c + '"/>').join('') + '</svg>',
+    'game-miner': '<svg viewBox="0 0 48 48"><rect x="4" y="30" width="40" height="14" rx="2" fill="#7a4f25"/><path d="M24 4 V24" stroke="#555" stroke-width="2"/><path d="M17 24 L24 30 L31 24" fill="none" stroke="#777" stroke-width="3"/><path d="M10 36 l5 -3 5 3 -2 4 h-6z" fill="#9aa4b2"/><path d="M30 34 l6 -2 4 4 -5 4 -5 -2z" fill="#c0c8d4"/></svg>',
+    'game-tank': '<svg viewBox="0 0 48 48"><rect x="4" y="8" width="40" height="34" rx="3" fill="#5ec8f0" stroke="#1c6f99" stroke-width="2"/><path d="M14 26 q6 -6 12 0 q-6 6 -12 0z M26 26 l6 -4 v8z" fill="#ff9a2e"/><circle cx="34" cy="14" r="2" fill="#fff"/><circle cx="38" cy="20" r="1.5" fill="#fff"/><path d="M4 36 h40" stroke="#e2c27a" stroke-width="6"/></svg>',
+    'game-tea': '<svg viewBox="0 0 48 48"><rect x="3" y="8" width="19" height="28" fill="#fff" stroke="#888"/><rect x="26" y="8" width="19" height="28" fill="#fff" stroke="#888"/><path d="M7 18 h11 v10 q0 4 -5.5 4 q-5.5 0 -5.5 -4z M30 18 h11 v10 q0 4 -5.5 4 q-5.5 0 -5.5 -4z" fill="#6ab04c"/><circle cx="36" cy="14" r="6" fill="none" stroke="#e22" stroke-width="2"/></svg>',
+    'game-sticky': '<svg viewBox="0 0 48 48"><rect x="5" y="9" width="16" height="16" rx="2" fill="#ffd84d" stroke="#b08a00"/><rect x="27" y="23" width="16" height="16" rx="2" fill="#ffd84d" stroke="#b08a00"/><path d="M13 25 V31 H35 V25" fill="none" stroke="#e33" stroke-width="2.5"/><circle cx="13" cy="17" r="4" fill="#e33"/><circle cx="35" cy="31" r="4" fill="#e33"/></svg>',
+    'game-stone': '<svg viewBox="0 0 48 48"><rect x="4" y="4" width="40" height="40" rx="3" fill="#2b1a40"/>' + [[12,12,'#e33'],[24,12,'#3b6'],[36,12,'#36e'],[12,24,'#ec2'],[24,24,'#e3e'],[36,24,'#e33'],[12,36,'#3cc'],[24,36,'#ec2'],[36,36,'#3b6']].map(([x, y, c]) => '<path d="M' + x + ' ' + (y - 5) + ' L' + (x + 5) + ' ' + y + ' L' + x + ' ' + (y + 5) + ' L' + (x - 5) + ' ' + y + 'Z" fill="' + c + '"/>').join('') + '</svg>',
+    /* 千千不听：一副耳机 + 中间一个音符 */
+    music: '<svg viewBox="0 0 48 48"><defs><linearGradient id="mu_U" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ff9ad5"/><stop offset="1" stop-color="#d0247f"/></linearGradient></defs>' +
+      '<path d="M9 27 C9 12 39 12 39 27" fill="none" stroke="#3b3f57" stroke-width="4" stroke-linecap="round"/>' +
+      '<rect x="4" y="25" width="9" height="15" rx="4" fill="#3b3f57"/><rect x="35" y="25" width="9" height="15" rx="4" fill="#3b3f57"/>' +
+      '<rect x="6" y="28" width="5" height="9" rx="2.5" fill="#8e95c4"/><rect x="37" y="28" width="5" height="9" rx="2.5" fill="#8e95c4"/>' +
+      '<path d="M27 17 V33" stroke="url(#mu_U)" stroke-width="3"/><path d="M27 17 L34 19 V23 L27 21Z" fill="url(#mu_U)"/>' +
+      '<ellipse cx="23.5" cy="34" rx="5" ry="3.8" fill="url(#mu_U)" stroke="#9b145c" stroke-width="1"/></svg>',
 
     coil: '<svg viewBox="0 0 48 48"><g transform="translate(2 4)" fill="none" stroke-linecap="round">' +
       '<path d="M24 24 A2 2 0 0 1 28 24 A4 4 0 0 1 20 24 A6 6 0 0 1 32 24 A8 8 0 0 1 16 24 A10 10 0 0 1 36 24 A12 12 0 0 1 12 24 A14 14 0 0 1 40 24 A16 16 0 0 1 8 24" stroke="#1f5e22" stroke-width="4.4"/>' +

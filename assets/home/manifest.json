@@ -1,44 +1,44 @@
 {
   "room-bg": {
-    "file": "room-bg.png",
-    "w": 136,
-    "h": 73,
+    "file": "room-bg.webp",
+    "w": 544,
+    "h": 292,
     "frames": 1
   },
   "tv": {
-    "file": "tv.png",
-    "w": 30,
-    "h": 26,
+    "file": "tv.webp",
+    "w": 120,
+    "h": 104,
     "frames": 3
   },
   "fan": {
-    "file": "fan.png",
-    "w": 14,
-    "h": 30,
+    "file": "fan.webp",
+    "w": 56,
+    "h": 120,
     "frames": 4
   },
   "table": {
-    "file": "table.png",
-    "w": 40,
-    "h": 12,
+    "file": "table.webp",
+    "w": 160,
+    "h": 48,
     "frames": 1
   },
   "man": {
-    "file": "man.png",
-    "w": 20,
-    "h": 26,
+    "file": "man.webp",
+    "w": 80,
+    "h": 104,
     "frames": 4
   },
   "man-run": {
-    "file": "man-run.png",
-    "w": 18,
-    "h": 24,
+    "file": "man-run.webp",
+    "w": 72,
+    "h": 96,
     "frames": 2
   },
   "woman": {
-    "file": "woman.png",
-    "w": 20,
-    "h": 26,
+    "file": "woman.webp",
+    "w": 80,
+    "h": 104,
     "frames": 3
   }
 }

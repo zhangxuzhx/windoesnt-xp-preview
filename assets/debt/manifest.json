@@ -1,0 +1,29 @@
+{
+  "pal": {
+    "file": "pal.webp",
+    "w": 96,
+    "h": 96,
+    "frames": 13,
+    "names": [
+      "idle",
+      "blink",
+      "lookL",
+      "lookR",
+      "talk1",
+      "talk2",
+      "bead1",
+      "bead2",
+      "wave1",
+      "wave2",
+      "sleep1",
+      "sleep2",
+      "dizzy"
+    ]
+  },
+  "thumb": {
+    "file": "thumb.webp",
+    "w": 64,
+    "h": 80,
+    "frames": 1
+  }
+}
