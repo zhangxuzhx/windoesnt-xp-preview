@@ -10,6 +10,10 @@
   const el = OS.el, FS = OS.fs;
   const app = OS.apps.byId.abcsee;
   const NAME = 'ABCSee 大眼看图 V3.1';
+  // 破解成功（瑞鑫杀过注册机里的小绿虫以后，拿注册机的码去注册）：不再弹试用期，标题变注册版，文件夹里图片能显示成小图；卸了再装回来又是共享版
+  const REG_KEY = 'abcReg';
+  const registered = () => !!OS.save.get(REG_KEY, false);
+  const title = () => NAME + (registered() ? ' 注册版' : '');
   const say = (title, icon, text) => () => OS.ui.dialog({ title, icon, text });
 
   /* ================= 文案 ================= */
@@ -18,7 +22,9 @@
     negative: '天数变负了也能用，I服了U！',
     reg: '注册…', goOn: '继续试用',
     helpTitle: 'ABCSee 帮助', help: '双击图片就能看。\n看完一张，点下一张。',
-    about: 'ABCSee 大眼看图 V3.1\n大眼看图，越看眼越大。\n共享版　(C) ' + OS.YEAR + ' 无聊科技',
+    about: () => 'ABCSee 大眼看图 V3.1\n大眼看图，越看眼越大。\n' + (registered() ? '注册版　用户：你' : '共享版') + '　(C) ' + OS.YEAR + ' 无聊科技',
+    regOkReal: '注册成功！\n感谢您购买 ABCSee 大眼看图。',
+    regAlready: '您已经是注册用户了。',
     open: '打开失败：图片都在我的图片里，去那儿双击。',
     paint: '画图 AI版 正在施工。',
     rename: '重命名失败：示例图片是系统送的，名字是出厂设置。',
@@ -128,11 +134,11 @@
     const main = el('div', { class: 'ab-main' });
     const status = el('div', { class: 'ab-status' });
     const content = el('div', { class: 'ab' }, [OS.ui.menuBar(MENUS, menuFor, 'ab-mbar'), tools, main, status]);
-    const win = OS.wm.open({ title: NAME, icon: 'abcsee', width: 456, height: 286, appId: app.id, content, center: true });
+    const win = OS.wm.open({ title: title(), icon: 'abcsee', width: 456, height: 286, appId: app.id, content, center: true });
     win.closed.then(() => { if (inst && inst.win === win) inst = null; });
     const curDir = () => (mode === 'view' && cur ? FS.parentOf(cur.list[cur.i].path) : dir);
     const folderName = d => { const n = FS.get(d); return n ? (n.label || n.name) : d; };
-    const setTitle = () => win.setTitle(NAME + ' - ' + (mode === 'view' && cur ? cur.pic.name : folderName(dir)));
+    const setTitle = () => win.setTitle(title() + ' - ' + (mode === 'view' && cur ? cur.pic.name : folderName(dir)));
     function toolbar(items) {
       tools.textContent = '';
       items.forEach(([t, fn]) => {
@@ -332,7 +338,7 @@
         { label: '适合窗口', disabled: !v, action: fitWin }
       ];
       if (m === MENUS[3]) return [{ label: '批量重命名…', action: say('批量重命名', 'warn', L.rename) }, { label: '幻灯片', action: startShow }];
-      return [{ label: '帮助主题', action: say(L.helpTitle, 'help', L.help) }, { label: '注册…', action: register }, '-', { label: '关于 ABCSee', action: say('关于 ABCSee', 'info', L.about) }];
+      return [{ label: '帮助主题', action: say(L.helpTitle, 'help', L.help) }, { label: '注册…', action: register }, '-', { label: '关于 ABCSee', action: () => OS.ui.dialog({ title: '关于 ABCSee', icon: 'info', text: L.about() }) }];
     }
 
     // 窗口大小变了（最大化 / 还原）：查看模式重新排一下
@@ -340,7 +346,7 @@
     if (window.ResizeObserver) new ResizeObserver(onResize).observe(main);
 
     if (startNode) view(startNode); else browse(FS.PICS);
-    return { win, view };
+    return { win, view, setTitle };
   }
 
   function print() {
@@ -436,6 +442,7 @@
 
   /* ================= 共享版：开一次弹一次，每开一次少一天 ================= */
   function nag() {
+    if (registered()) return;
     const days = OS.save.get('abcTrial', 30);
     OS.save.set('abcTrial', days - 1);
     OS.ui.dialog({ title: NAME, icon: 'abcsee', text: L.trial(days), buttons: [L.reg, L.goOn] }).then(v => {
@@ -446,6 +453,7 @@
 
   /* ================= 注册：选单里的码都注册不上；用注册机算出来的那个 → 注册成功 → 蓝屏 ================= */
   function register() {
+    if (registered()) { OS.ui.dialog({ title: L.regTitle, icon: 'info', text: L.regAlready }); return; }
     let pick = null;
     const box = el('div', { class: 'ab-code', text: L.regPick });
     box.addEventListener('click', e => {
@@ -464,6 +472,14 @@
     ok.addEventListener('click', () => {
       OS.sound.play('click');
       if (!pick) { OS.ui.dialog({ title: L.regTitle, icon: 'warn', text: L.regEmpty }); return; }
+      if (pick === L.KEY && !(OS.virus && OS.virus.on()) && OS.soft && OS.soft.virusBeaten('keygen')) {   // 瑞鑫把注册机里的小绿虫杀过了：真破解成功
+        w.close();
+        OS.save.set(REG_KEY, true);
+        OS.ui.dialog({ title: L.regTitle, icon: 'info', text: L.regOkReal });
+        if (inst && !inst.win.isClosed && inst.setTitle) inst.setTitle();
+        OS.emit('fs:change');
+        return;
+      }
       if (pick === L.KEY) {   // 先给你成功，再要你的命
         w.close();
         OS.ui.dialog({ title: L.regTitle, icon: 'info', text: L.regOk });
@@ -506,7 +522,9 @@
           clearInterval(typing);
           OS.save.set('abcKey', true);
           OS.ui.notify({ title: L.kgTitle, text: L.kgCopied, icon: 'info', replace: true });
-          infect();   // 注册机里自带的病毒，这一下就进来了
+          // 注册机里自带的病毒，这一下就进来了；瑞鑫开着监控就先拦一下，打赢了就没进来
+          if (OS.ruixin && OS.ruixin.guarding()) OS.ruixin.intercept('keygen', '网上邻居\\隔壁大学生\\电影').then(won => { if (!won) infect(); });
+          else infect();
         }
       }, 60);
     });
@@ -565,6 +583,7 @@
   function infect() {
     if (V.on) return;
     V.on = true;
+    if (OS.ruixin && OS.ruixin.met) OS.ruixin.met('keygen');
     OS.bootFix.add('bsod-abcsee', VL.fix);   // 跟蓝屏那条同一个，重启时只显示一行
     wave1();
     vLater(wave2, 60000);
@@ -574,6 +593,7 @@
   function cure() {
     if (!V.on) return;
     V.on = false; V.wave = 0;
+    OS.bootFix.remove('bsod-abcsee');   // 被瑞鑫杀掉了：下次开机不用修
     V.timers.forEach(t => { clearTimeout(t); clearInterval(t); });
     V.timers = [];
     if (V.tray) { V.tray.remove(); V.tray = null; }
@@ -645,12 +665,15 @@
     b.addEventListener('click', () => { OS.sound.play('click'); OS.ui.dialog({ title, icon: 'error', text: after }); });
     OS.sound.play('pop');
   }
-  OS.virus = { on: () => V.on, wave: () => V.wave, tail: () => V.on && V.wave >= 3, infect,
+  OS.virus = { on: () => V.on, wave: () => V.wave, tail: () => V.on && V.wave >= 3, infect, cure,   // cure：瑞鑫杀掉了 ／ 重启
     // 测试用：不等，直接来下一拨
     next: () => { if (!V.on) return; if (V.wave === 1) wave2(); else if (V.wave === 2) wave3(); } };
 
   /* ================= 给别的地方用 ================= */
   OS.abcsee = {
+    registered, unregister: () => OS.save.remove(REG_KEY),
+    // 文件夹"缩略图"里的小图（破解以后才有）
+    thumb: (nd, w, h) => thumbEl(picOf(nd), w, h),
     view: nd => openWin(nd),
     // 画一张图到别人的画布上（写字板插图、画图打开图）；这张图的宽高比；直接拿图片地址设墙纸（画图 ▸ 设为墙纸）
     drawNode: (nd, g, w, h) => picOf(nd).draw(g, w, h),

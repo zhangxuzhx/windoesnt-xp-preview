@@ -138,6 +138,7 @@
     ui.head = el('div', { class: 'fc-head' });
     ui.box = el('div', { class: 'fc-win' }, [bar, ui.table]);
     win = OS.wm.open({ title: NAME, icon: 'freecell', width: 462, content: ui.box, appId: app.id, maximizable: false, center: true,
+      help: () => OS.ui.dialog({ title: L.help, icon: 'help', text: L.helpText }),   // 标题栏的 ？：跟 帮助 ▸ 目录 一样
       onClose: () => { document.removeEventListener('keydown', onKey, true); clearTimeout(ui && ui.faceT); win = null; ui = null; G = null; } });
     document.addEventListener('keydown', onKey, true);
     ui.table.addEventListener('click', onClick);

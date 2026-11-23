@@ -375,5 +375,7 @@
   OS.hj = { games: GAMES, run: runGame, installed, install: () => install(), uninstall: () => { OS.save.set('hjInstalled', false); OS.emit('fs:change'); } };
   OS.mycomputer = { shared: () => EX.open(FS.SHARED) };
   // 中毒时光驱自己弹出来又缩回去（abcsee.js）；托盘上放着可乐就不缩回去，也不弹框
-  OS.cdTray = { out: () => discOut, eject: () => eject(), close: () => { if (discOut && !cup) closeTray(); } };
+  OS.cdTray = { out: () => discOut, eject: () => eject(), close: () => { if (discOut && !cup) closeTray(); },
+    // 环卫大爷（workers.js）：托盘上那杯可乐拿走喝了
+    hasCup: () => discOut && cup, takeCup: () => { if (cup) { cup = false; if (tray) tray.classList.remove('has-cup'); } } };
 })();

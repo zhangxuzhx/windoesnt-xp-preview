@@ -14,6 +14,12 @@
     '正在用 56K 猫下载此功能，猫刚才把安装包吐出来了。'
   ];
 
+  // 老存档：开机检测器 Pro 在桌面上那一格让给 Internot Explorer
+  (function () {
+    const pos = OS.save.get('iconPos', {});
+    if (pos.bootcheck && !pos.ie) { pos.ie = pos.bootcheck; delete pos.bootcheck; OS.save.set('iconPos', pos); }
+  })();
+
   OS.apps.placeholder = function (app) {
     const ok = el('button', { class: 'xpbtn default', text: '行吧' });
     const content = el('div', { class: 'ph' }, [
@@ -34,11 +40,17 @@
     { id: 'mycomputer', name: '我的电脑', icon: 'computer' },
     { id: 'network', name: '网上邻居', icon: 'network' },
     { id: 'recycle', name: '回收站', icon: 'recycle', acceptsDrop: true },
-    { id: 'bootcheck', name: '开机检测器 Pro', icon: 'detector' },
+    // Internot Explorer（ie.js）：2026-11-23 起放到桌面上，顶掉开机检测器 Pro 那一格（XP 桌面上本来就有 IE；浏览器里以后彩蛋多，要让人看得见）
+    //   开始菜单左栏"Internot"；收藏夹里的 .url；命令提示符 iexplore
+    { id: 'ie', name: 'Internot Explorer', icon: 'ie' },
+    // 开机检测器 Pro：桌面上那一格让给了 Internot Explorer，只留在 开始 ▸ 实用小程序 里
+    { id: 'bootcheck', name: '开机检测器 Pro', icon: 'detector', desktop: false },
     { id: 'lifespan', name: '阳寿余额查询', icon: 'hourglass' },
     // 暴富秘籍、欠条收在「新建文件夹(2)」最外面那层里（folder2.js），不在桌面上
     { id: 'rich', name: '2027暴富秘籍.rar', icon: 'rar', desktop: false, inFolder: 'folder2' },
-    { id: 'pulse', name: '赛博把脉', icon: 'pulse' },
+    { id: 'ruixin', name: '瑞鑫杀毒', icon: 'ruixin' },
+    // 赛博把脉：桌面上那一格让给了瑞鑫（2026-11-23），只留在 开始 ▸ 实用小程序 里
+    { id: 'pulse', name: '赛博把脉', icon: 'pulse', desktop: false },
     { id: 'debt', name: '欠条打印专家 2003.xls', icon: 'sheet', desktop: false, inFolder: 'folder2' },
     { id: 'swatter', name: '弹窗杀手', icon: 'swatter' },
     { id: 'folder2', name: '新建文件夹(2)', icon: 'folder' },
@@ -54,8 +66,6 @@
     { id: 'paint', name: '画图 AI版', icon: 'paint', desktop: false },
     // 任务管理器（taskmgr.js）：任务栏空白处右键、命令提示符 taskmgr
     { id: 'taskmgr', name: '任务管理器', icon: 'gauge', desktop: false },
-    // Internot Explorer（ie.js）：开始菜单左栏"Internot"；收藏夹里的 .url；命令提示符 iexplore
-    { id: 'ie', name: 'Internot Explorer', icon: 'ie', desktop: false },
     // Offense 2003 三件套（offense.js）：开始 ▸ 所有程序 ▸ Offense 2003。Wordy 在 wordpad.js，Excuse 在 debt.js，PowerPointless 在 pptless.js
     { id: 'wordy', name: 'Wordy 2003', icon: 'wordy', desktop: false },
     { id: 'excuse', name: 'Excuse 2003', icon: 'sheet', desktop: false },

@@ -20,6 +20,7 @@
   const ST_SCAN = '正在扫描弹窗…… ';
   const ST_NONE = '未发现弹窗。\n为方便您体验本产品，已为您生成弹窗。';
   const ST_VIRUS = '发现病毒 1 个：keygen_helper.exe\n本软件只杀弹窗，不杀病毒。';   // 中了 ABCSee 注册机的毒
+  const ST_HK = '发现病毒 1 个：haikui_update.exe\n本软件只杀弹窗，不杀病毒。建议使用专业杀毒软件。';   // 中了海葵
   const ST_FIGHT = '正在查杀……';
   const ST_LAST = '只剩最后一个了。';
   const ST_QUIT = '啊！你作弊！';
@@ -125,7 +126,6 @@
     glass = el('div', { id: 'smudges', class: 'layer' });   // 显示器玻璃上：拍痕和苍蝇拍都画在这一层
     root.appendChild(popLayer);
     root.appendChild(glass);
-    OS.on('desktop:refresh', wipe);
     OS.on('bsod', () => endGame('bsod'));
     OS.on('desktop:reset', () => { endGame('reset'); wipe(); unsquash(); });   // 重启：拍痕擦掉、扁了的图标恢复
   }
@@ -165,8 +165,9 @@
       status.textContent = ST_SCAN + pct + '%';
       if (pct < 100) { g.later(scan, 140); return; }
       g.later(() => {
-        status.textContent = OS.virus && OS.virus.on() ? ST_VIRUS : ST_NONE;
+        status.textContent = OS.haikui && OS.haikui.on() ? ST_HK : OS.virus && OS.virus.on() ? ST_VIRUS : ST_NONE;
         OS.sound.play('ding');
+        if (OS.ruixin && OS.ruixin.running()) OS.ruixin.civilWar();   // 瑞鑫开着：两个杀毒软件互相报毒
         g.later(() => {
           bar.classList.add('hide');
           nums.classList.remove('hide');
@@ -693,6 +694,11 @@
     glass.insertBefore(m, swatEl || null);
     OS.bootFix.add('smudge', FIX_SMUDGE);
   }
+  // 环卫大爷（workers.js）擦屏幕：手印在哪、一把擦掉（原来是刷新一下就擦掉）
+  OS.smudges = {
+    list: () => (glass ? [...glass.querySelectorAll('.smudge:not(.wipe)')].map(m => ({ x: parseFloat(m.style.left) + parseFloat(m.style.width) / 2, y: parseFloat(m.style.top) + parseFloat(m.style.height) / 2 })) : []),
+    wipe: () => wipe()
+  };
   function wipe() {
     OS.bootFix.remove('smudge');
     if (!glass) return;

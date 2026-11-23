@@ -57,11 +57,17 @@
   const LANE_WALL = 265, LANE_X = 274.5, PLUNGE_Y = 243;
   const FL = { len: 46, rest: 0.52, up: -0.5 };
   const PIV = [{ x: 88, y: 226 }, { x: 202, y: 226 }];
-  // 墙：外圈、发射道、坡道那条道的右栏杆、外侧通道隔板、内侧导板（尾巴搭在挡板根上）
+  // 外侧通道口上面的斜挡板：顺着外墙掉下来的球拨回内侧（不然一半的球都从外侧通道漏掉）
+  const ROOF = [[7, 150, 18, 162], [LANE_WALL, 150, 254, 162]];
+  ROOF.forEach(r => { r.roof = true; });   // 只挡往下掉的：回球器往上踢的球能穿过去
+  // 发射道口的单向门：发出去的球能出来，台子上的球进不去
+  const GATE = [LANE_WALL, 9, LANE_WALL, 30];
+  // 墙：外圈、发射道、坡道那条道的右栏杆、外侧通道隔板、内侧导板（尾巴搭在挡板根上）、外侧通道口的斜挡板
   const WALLS = [
     [7, 24, 7, 262], [283, 7, 283, 262], [24, 7, 262, 7], [7, 24, 24, 7], [262, 7, 283, 22],
     [LANE_WALL, 30, LANE_WALL, 262], [34, 30, 34, 116],
-    [20, 176, 20, 212], [20, 212, 88, 222], [252, 176, 252, 212], [252, 212, 202, 222]
+    [20, 176, 20, 212], [20, 212, 88, 222], [252, 176, 252, 212], [252, 212, 202, 222],
+    ROOF[0], ROOF[1]
   ];
   const CHROME = WALLS.slice(3);   // 画成镀铬的（外墙在底图上）
   // 三角弹板：[顶, 底, 尖]；顶到尖那条斜边会把球弹开
@@ -187,8 +193,12 @@
     ui = {};
     ui.cv = el('canvas', { class: 'pb-cv' });
     ui.panel = el('div', { class: 'pb-panel' });
-    ui.box = el('div', { class: 'pb-win' }, [OS.ui.menuBar(L.menus, menuFor, 'pb-mbar'), el('div', { class: 'pb-body' }, [ui.cv, ui.panel])]);
-    win = OS.wm.open({ title: NAME, icon: 'pinball', width: 462, content: ui.box, appId: app.id, maximizable: false, center: true,
+    ui.fit = el('div', { class: 'pb-fit' }, [ui.cv, ui.panel]);
+    ui.body = el('div', { class: 'pb-body' }, [ui.fit]);
+    ui.mbar = OS.ui.menuBar(L.menus, menuFor, 'pb-mbar');
+    ui.box = el('div', { class: 'pb-win' }, [ui.mbar, ui.body]);
+    win = OS.wm.open({ title: NAME, icon: 'pinball', width: 462, content: ui.box, appId: app.id, center: true,
+      help: () => OS.ui.dialog({ title: L.help, icon: 'help', text: L.helpText }),   // 标题栏的 ？：跟 帮助 ▸ 目录 一样
       onClose: () => {
         cancelAnimationFrame(ui.raf);
         document.removeEventListener('keydown', onKey, true);
@@ -209,9 +219,12 @@
     window.addEventListener('devicemotion', onShake);
     ui.box.addEventListener('pointerdown', onDown);
     newGame();
+    ui.fit.style.width = ui.fit.offsetWidth + 'px';   // 记下原来的大小，最大化时照这个比例放大
+    if (OS.stage.touch) OS.wm.toggleMax(win);
     let last = performance.now(), acc = 0;
     const loop = now => {
       if (!ui) return;
+      fit();
       acc = Math.min(acc + (now - last), 100);
       last = now;
       const run = G && !G.paused && OS.wm.active === win && !win.minimized && !G.dead;
@@ -267,6 +280,20 @@
     G.serveSaver = withSaver;
   }
   function say(t) { if (!G) return; G.info = t; paintPanel(); }
+
+  /* ---------- 最大化：台子和面板一起按比例放大，居中，四周黑边 ---------- */
+  function fit() {
+    const key = win.maximized ? win.el.clientWidth + 'x' + win.el.clientHeight : 'n';
+    if (ui.fitKey === key) return;
+    ui.fitKey = key;
+    if (!win.maximized) { ui.body.style.height = ''; ui.fit.style.transform = ''; ui.fitScale = 1; return; }
+    const nw = ui.fit.offsetWidth, nh = ui.fit.offsetHeight;
+    const w = ui.body.clientWidth, h = Math.max(60, win.el.clientHeight - win.titleEl.offsetHeight - ui.mbar.offsetHeight);
+    const s = Math.min(w / nw, h / nh);
+    ui.body.style.height = h + 'px';
+    ui.fit.style.transform = 'translate(' + ((w - nw * s) / 2) + 'px,' + ((h - nh * s) / 2) + 'px) scale(' + s + ')';
+    ui.fitScale = s;
+  }
 
   /* ---------- 物理 ---------- */
   const SUB = 4;
@@ -346,7 +373,8 @@
     if (!ammo && inLane && b.y >= PLUNGE_Y && b.vy > 0) { b.held = true; b.vx = 0; b.vy = 0; b.y = PLUNGE_Y; return; }   // 劲不够没出去：落回弹簧上
     const py = b.y;
     b.x += b.vx / SUB; b.y += b.vy / SUB;
-    WALLS.forEach(w => segHit(b, w[0], w[1], w[2], w[3], b.r, 0.55, ammo));
+    WALLS.forEach(w => { if (!w.roof || b.vy > 0) segHit(b, w[0], w[1], w[2], w[3], b.r, 0.55, ammo); });
+    if (b.vx > 0 && b.x < LANE_WALL) segHit(b, GATE[0], GATE[1], GATE[2], GATE[3], b.r, 0.55, ammo);   // 单向门：只挡往右进发射道的
     // 三角弹板：斜边把球弹开
     SLINGS.forEach((t, i) => {
       if (segHit(b, t[0][0], t[0][1], t[2][0], t[2][1], b.r, 0.5, ammo, 3.6)) { G.flash['sling' + i] = 0.12; addScore(10); snd('pbKick'); }
@@ -649,7 +677,7 @@
   /* ---------- 画 ---------- */
   function draw() {
     if (!ui || !G) return;
-    const cv = ui.cv, k = Math.min(3, (window.devicePixelRatio || 1) * (OS.stage.scale || 1));
+    const cv = ui.cv, k = Math.min(4, (window.devicePixelRatio || 1) * (OS.stage.scale || 1) * (ui.fitScale || 1));
     if (cv.width !== Math.round(W * k)) { cv.width = Math.round(W * k); cv.height = Math.round(H * k); }
     const c = cv.getContext('2d'), p = P(), f = G.frame;
     c.setTransform(k, 0, 0, k, 0, 0);
@@ -666,6 +694,9 @@
       c.strokeStyle = '#eef3f8'; c.lineWidth = 1; c.beginPath(); c.moveTo(w[0] - 0.4, w[1] - 0.4); c.lineTo(w[2] - 0.4, w[3] - 0.4); c.stroke();
     });
     c.strokeStyle = 'rgba(200,210,225,.5)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(34, 28); c.lineTo(252, 28); c.stroke();
+    // 单向门：一片薄薄的小铁片
+    c.strokeStyle = 'rgba(230,236,245,.75)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(GATE[0], GATE[1] + 2); c.lineTo(GATE[2] - 1.5, GATE[3]); c.stroke();
+    c.fillStyle = '#8a929c'; c.beginPath(); c.arc(GATE[0], GATE[1] + 2, 1.3, 0, Math.PI * 2); c.fill();
     // 灯
     TOP_LAMPS.forEach((l, i) => lamp(c, l.x, l.y, 3, '#ffe14d', p.top[i] || (G.flash.chase > 0 && f % 8 < 4)));
     LANE_LAMPS.forEach((l, i) => lamp(c, l.x, l.y, 2.6, '#ffffff', p.lanes[i]));
@@ -704,13 +735,7 @@
     c.strokeStyle = '#8890a0'; c.lineWidth = 1;
     c.beginPath(); for (let i = 0; i < 6; i++) { const y = py + 3 + i * ((H - py - 3) / 6); c.moveTo(LANE_X - 5, y); c.lineTo(LANE_X + 5, y + 2); } c.stroke();
     // 胶囊
-    G.caps.forEach(cp => {
-      if (cp.t < 3 && f % 16 < 8) return;
-      const d = CAPS[cp.type], y = cp.y + (cp.bob || 0);
-      c.fillStyle = d.c; c.shadowColor = d.c; c.shadowBlur = 10;
-      roundRect(c, cp.x - 8, y - 5, 16, 10, 5); c.fill();
-      c.shadowBlur = 0; c.fillStyle = '#fff'; c.font = 'bold 7px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(d.t, cp.x, y + 0.5);
-    });
+    G.caps.forEach(cp => { if (cp.t >= 3 || f % 16 >= 8) drawCap(c, cp, f); });
     G.balls.forEach(b => { if (!b.inHole) drawBall(c, b, G.allfire > 0, G.fire); });
     G.ammo.forEach(a => { c.fillStyle = '#ff4040'; c.shadowColor = '#ff4040'; c.shadowBlur = 6; c.beginPath(); c.arc(a.x, a.y, a.r, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0; });
     G.fx.forEach(e => {
@@ -720,6 +745,48 @@
     c.restore();
     const big = G.tilted ? L.tilt : G.paused ? L.paused : G.dead && !G.balls.some(b => b.fling) ? L.over : '';
     if (big) { c.font = 'bold 30px Impact, Arial Black, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#ff4040'; c.shadowColor = '#ff0000'; c.shadowBlur = 12; c.fillText(big, W / 2 - 8, H / 2); c.shadowBlur = 0; }
+  }
+  // 强化：一枚圆片——外面一圈镀铬，里面彩色玻璃，玻璃里一个白色小图案；会游走的拖一条小尾巴
+  function drawCap(c, cp, f) {
+    const d = CAPS[cp.type], x = cp.x, y = cp.y + (cp.bob || 0), r = 7;
+    if (cp.roam) {
+      const sp = Math.hypot(cp.vx, cp.vy) || 1;
+      for (let i = 1; i <= 3; i++) { c.fillStyle = 'rgba(255,255,255,' + (0.18 / i) + ')'; c.beginPath(); c.arc(x - cp.vx / sp * i * 4, y - cp.vy / sp * i * 4, r - i * 1.4, 0, Math.PI * 2); c.fill(); }
+    }
+    c.shadowColor = d.c; c.shadowBlur = 7 + Math.sin(f / 6) * 3;
+    const ring = c.createLinearGradient(x - r, y - r, x + r, y + r);
+    ring.addColorStop(0, '#ffffff'); ring.addColorStop(0.45, '#b9c1ca'); ring.addColorStop(1, '#4c535c');
+    c.fillStyle = ring; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+    c.shadowBlur = 0;
+    const g = c.createRadialGradient(x - 1.8, y - 2.2, 0.4, x, y, r - 1.5);
+    g.addColorStop(0, '#ffffff'); g.addColorStop(0.3, shade(d.c, 0.35)); g.addColorStop(0.75, d.c); g.addColorStop(1, shade(d.c, -0.5));
+    c.fillStyle = g; c.beginPath(); c.arc(x, y, r - 1.5, 0, Math.PI * 2); c.fill();
+    c.save(); c.translate(x, y + 0.3);
+    c.fillStyle = '#fff'; c.strokeStyle = 'rgba(0,0,0,.55)'; c.lineWidth = 0.7; c.lineJoin = 'round';
+    capGlyph(c, cp.type);
+    c.restore();
+    c.fillStyle = 'rgba(255,255,255,.6)'; c.beginPath(); c.ellipse(x - 1.6, y - 3.4, 2.4, 1.1, -0.4, 0, Math.PI * 2); c.fill();
+  }
+  // 圆片里的小图案：武器（拖尾巴的弹药球）／ 火球、全体火球（火苗）／ 倍数（×）／ 护底（盾）／ 弹簧上膛（弹簧）
+  function capGlyph(c, type) {
+    const both = () => { c.stroke(); c.fill(); };
+    if (type === 'weapon') {
+      c.beginPath(); c.moveTo(-3.2, 2.6); c.lineTo(0.2, -0.4); c.lineTo(-0.6, 1.6); c.closePath(); both();
+      c.beginPath(); c.arc(1.2, -1.2, 1.9, 0, Math.PI * 2); both();
+    } else if (type === 'fire' || type === 'allfire') {
+      c.beginPath(); c.moveTo(0, -3.6); c.bezierCurveTo(2.8, -0.8, 2.8, 2.9, 0, 2.9); c.bezierCurveTo(-2.8, 2.9, -2.8, -0.2, -0.9, -1.4); c.bezierCurveTo(-0.6, -0.2, 0.4, 0, 0, -3.6); both();
+      if (type === 'allfire') { c.beginPath(); c.arc(2.6, -2.6, 0.9, 0, Math.PI * 2); c.arc(-2.7, -2.2, 0.7, 0, Math.PI * 2); c.fill(); }
+    } else if (type === 'mult') {
+      c.lineWidth = 2.6; c.strokeStyle = 'rgba(0,0,0,.55)'; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(-2.2, -2.2); c.lineTo(2.2, 2.2); c.moveTo(2.2, -2.2); c.lineTo(-2.2, 2.2); c.stroke();
+      c.lineWidth = 1.4; c.strokeStyle = '#fff'; c.stroke();
+    } else if (type === 'guard') {
+      c.beginPath(); c.moveTo(0, -3.3); c.lineTo(2.9, -2.2); c.quadraticCurveTo(2.7, 1.8, 0, 3.4); c.quadraticCurveTo(-2.7, 1.8, -2.9, -2.2); c.closePath(); both();
+    } else if (type === 'mag') {
+      c.lineCap = 'round'; c.lineWidth = 2.2; c.strokeStyle = 'rgba(0,0,0,.55)';
+      const zig = () => { c.beginPath(); c.moveTo(-2.4, -3); c.lineTo(2.4, -1.8); c.lineTo(-2.4, -0.4); c.lineTo(2.4, 1); c.lineTo(-2.4, 2.4); c.stroke(); };
+      zig(); c.lineWidth = 1; c.strokeStyle = '#fff'; zig();
+    }
   }
   function lamp(c, x, y, r, col, on) {
     const g = c.createRadialGradient(x - r * 0.3, y - r * 0.3, 0.2, x, y, r);

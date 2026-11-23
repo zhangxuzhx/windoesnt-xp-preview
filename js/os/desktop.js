@@ -79,18 +79,10 @@
     savePositions();
   };
 
-  // 刷新：图标闪一下（XP 玩家的肌肉记忆）
-  let refreshCount = 0;
+  // 刷新（2026-11-23 改，刷新-创意.md）：不闪图标了——桌面脏了来环卫大爷收拾，干净了来刷墙师傅刷绿漆（workers.js）
   D.refresh = function () {
-    iconLayer.classList.add('refreshing');
-    setTimeout(() => iconLayer.classList.remove('refreshing'), 120);
-    refreshCount++;
-    const total = OS.save.get('refreshTotal', 0) + 1;
-    OS.save.set('refreshTotal', total);
-    const say = { 10: '刷新了 10 次，新……新了吗？', 30: '桌面已经快被你刷掉漆了。', 100: '恭喜解锁成就「刷新大师」。\n该成就没有任何用处。' }[refreshCount];
-    if (say) OS.ui.notify({ title: '刷新', text: say, icon: 'info', replace: true, timeout: 4000 });
-    cleanPoops();   // 羊粪扫干净
-    OS.emit('desktop:refresh');   // 小软件可以听这个（比如弹窗杀手擦掉屏幕上的拍痕）
+    if (OS.workers) OS.workers.refresh(); else cleanPoops();
+    OS.emit('desktop:refresh');
   };
 
   let iconsShown = true;
@@ -110,7 +102,14 @@
   const CLOUD_TAPS = 6, CLOUD_GAP_MS = 1500;
   const CLOUD_TITLE = '温馨提示';
   const CLOUD_SAY = '你有很多事放不下？做人，要潇洒一点，\n爱一个人未必一定要跟她一辈子，\n我喜欢一朵花，未必一定要把它摘下来，\n我喜欢风，难道叫风停下来你让我闻一闻，\n我喜欢云难道叫云飘下来，来罩着我，\n有时候太照顾别人的感受，会失去自我的，\n轻轻的我走了，正如我轻轻的来，\n挥一挥衣袖，不带走一片云彩。';
-  let clouds = [], cloudTaps = 0, cloudLast = 0;
+  // 四朵云各说各的（顺序跟 CLOUDS 一样）；没写的就说上面那段
+  const CLOUD_SAYS = [
+    CLOUD_SAY,
+    '世界上最遥远的距离，不是生与死，\n而是我就飘在你的桌面壁纸上，你却只顾着双击我的电脑。\n宠辱不惊，闲看庭前花开花落；\n去留无意，漫随天外云卷云舒。\n其实云是没有方向的，风往哪里吹，它就往哪里走，\n就像列表里有些人的头像，灰着灰着，就再也没亮起来过。',
+    '鱼对水说：你看不到我的眼泪，因为我在水里。\n水说：我能感觉到你的眼泪，因为你在我心里。\n云对风说：你看不到我的悲伤，因为我在飘荡。\n风说：我能感觉到你的悲伤，因为你在我怀里。',
+    '蓝蓝的天上白云飘，\n绿绿的草地上养着两头小猪，\n一头小猪正抬头看着天上的白云发呆，\n另一头小猪正瞪着大眼睛盯屏幕看这段话呢！'
+  ];
+  let clouds = [], cloudTaps = 0, cloudLast = 0, cloudLastNode = null;
 
   function initClouds() {
     clouds = CLOUDS.map(c => {
@@ -162,11 +161,13 @@
     node.classList.remove('wobble'); void node.offsetWidth; node.classList.add('wobble');
     OS.sound.play('pop');
     const now = Date.now();
-    cloudTaps = now - cloudLast < CLOUD_GAP_MS ? cloudTaps + 1 : 1;
-    cloudLast = now;
+    // 连着点同一朵云才算；换一朵重新数
+    cloudTaps = now - cloudLast < CLOUD_GAP_MS && node === cloudLastNode ? cloudTaps + 1 : 1;
+    cloudLast = now; cloudLastNode = node;
     if (cloudTaps >= CLOUD_TAPS) {
       cloudTaps = 0;
-      OS.ui.notify({ title: CLOUD_TITLE, text: CLOUD_SAY, icon: 'info', replace: true, timeout: 16000, wide: true });
+      const text = CLOUD_SAYS[clouds.indexOf(node)] || CLOUD_SAY;
+      OS.ui.notify({ title: CLOUD_TITLE, text, icon: 'info', replace: true, timeout: Math.max(16000, text.length * 130), wide: true });
     }
   }
 
@@ -417,7 +418,7 @@
     Object.keys(icons).filter(k => icons[k].app.temp).forEach(k => D.removeFile(k, true));
     poops.splice(0).forEach(n => n.remove());
     if (sheep) { sheep.classList.remove('gone', 'wobble', 'inflate', 'flee', 'busy', 'walking', 'chewing', 'angry', ...POSES); sheep.style.setProperty('--s', 1); sheep.style.setProperty('--flip', 1); delete sheep.dataset.x; delete sheep.dataset.y; }
-    if (sign) { sign.classList.remove('cut', 'wobble'); signTaps = 0; signBusy = false; document.querySelectorAll('.censor-hero, .ws-slash').forEach(n => n.remove()); }
+    if (sign) { sign.classList.remove('cut', 'wobble', 'taken'); signTaps = 0; signBusy = false; document.querySelectorAll('.censor-hero, .ws-slash').forEach(n => n.remove()); }
     sheepTaps = 0;
     document.querySelectorAll('.say-bubble').forEach(n => n.remove());
     OS.emit('desktop:reset');
@@ -434,7 +435,14 @@
   const BIN_SAY = '翻什么翻！';   // 羊钻进回收站把扔进去的文本文档翻出来吃掉，回收站骂一句
   let fileSeq = 0, feeding = false, meal = null;
   const feedQueue = [], poops = [];
+  // 环卫大爷：砍断的木牌还在不在、木牌脚底在哪（舞台坐标）、扛走（重启才回来，开机自检那行跟砍断时同一个）
+  D.signCut = () => !!sign && sign.classList.contains('cut') && !sign.classList.contains('taken');
+  D.signFoot = () => { const w = root.offsetWidth, h = root.offsetHeight, s = Math.max(w / 1600, h / 900); return { x: (w - 1600 * s) / 2 + SIGN_AT.x * s, y: (h - 900 * s) / 2 + SIGN_AT.y * s }; };
+  D.takeSign = () => { if (sign) sign.classList.add('taken'); };
   D.sheepHere = () => !!sheep && !sheep.classList.contains('gone');
+  // 瑞鑫的豹哥追羊：羊现在在哪（舞台坐标）、把它吓跑（跟木牌被劈那次一样，重启才回来）
+  D.sheepRect = () => (D.sheepHere() ? { x: parseFloat(sheep.style.left), y: parseFloat(sheep.style.top), w: parseFloat(sheep.style.width), h: parseFloat(sheep.style.height) } : null);
+  D.scareSheep = () => scareSheep();
 
   /* ---------- 给任务管理器用：sheep.exe ---------- */
   let sheepAte = 0, sheepSpeed = 1;   // 这次开机吃了几个文件；走路快慢（优先级：实时 2.5 ／ 标准 1 ／ 低 0.4）
@@ -723,6 +731,16 @@
     OS.sound.play('poop');
     OS.bootFix.add('poop', POOP_FIX);
   }
+  // 环卫大爷（workers.js）：羊粪在哪、扫走一堆
+  D.poopList = () => poops.map(n => ({ node: n, x: parseFloat(n.style.left) + parseFloat(n.style.width) / 2, foot: parseFloat(n.style.top) + parseFloat(n.style.height) }));
+  D.removePoop = function (node) {
+    const i = poops.indexOf(node);
+    if (i < 0) return;
+    poops.splice(i, 1);
+    node.classList.add('swept');
+    setTimeout(() => node.remove(), 300);
+    if (!poops.length) OS.bootFix.remove('poop');
+  };
   function cleanPoops() {
     if (!poops.length) return;
     poops.splice(0).forEach(n => n.remove());

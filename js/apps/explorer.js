@@ -133,7 +133,10 @@
           el('span', { text: nd.typeName || FS.kindName(nd.kind) }),
           el('span', { text: nd.folder && !nd.date ? '' : FS.dateText(nd.date || nd.at || fixedDate) })
         ]);
-      } else node = el('div', { class: 'ex-item' + (nd.hidden ? ' fx-hidden' : '') }, [OS.iconEl(nd.icon, 'ex-iico'), el('div', { class: 'ex-ilabel', text: labelOf(nd) })]);
+      } else {
+        const thumb = viewMode === '缩略图' && (nd.kind === 'jpg' || nd.kind === 'bmp') && OS.abcsee && OS.abcsee.registered && OS.abcsee.registered();
+        node = el('div', { class: 'ex-item' + (nd.hidden ? ' fx-hidden' : '') + (thumb ? ' ex-thumbi' : '') }, [thumb ? el('div', { class: 'ex-thumb' }, [OS.abcsee.thumb(nd, 44, 33)]) : OS.iconEl(nd.icon, 'ex-iico'), el('div', { class: 'ex-ilabel', text: labelOf(nd) })]);
+      }
       node.addEventListener('click', e => {
         e.stopPropagation();
         if (busy) return;

@@ -144,14 +144,24 @@
     if (sheep.here) out.push({ key: 'sheep', name: 'sheep.exe', user: '你', mem: 3072 + sheep.ate * 1024, end: 'sheep' });
     if (OS.qianqian && OS.qianqian.running()) out.push({ key: 'qianqian', name: '千千不听.exe', user: '你', mem: 9216 + (OS.qianqian.playing() ? 6144 : 0), end: 'qianqian' });
     if (OS.koukou && OS.koukou.running()) out.push({ key: 'koukou', name: '抠抠2003.exe', user: '你', mem: 12844, end: 'koukou' });
-    if (OS.koukou && OS.koukou.patched && OS.koukou.patched() && !(OS.soft && OS.soft.virusBeaten('haikui')) && Date.now() > haikuiBack) out.push({ key: 'haikui', name: 'haikui_update.exe', user: '你', mem: 6, end: 'haikui' });
+    // 海葵：老存档里装着补丁、病毒睡着（CPU 00）；发作的时候一个变两个、两个变四个
+    if (OS.haikui && OS.haikui.dormant() && Date.now() > haikuiBack) out.push({ key: 'haikui', name: 'haikui_update.exe', user: '你', mem: 6, end: 'haikui' });
+    if (OS.haikui && OS.haikui.on()) {
+      const n = OS.haikui.copies(), shown = Math.min(n, 24);
+      for (let i = 0; i < shown; i++) out.push({ key: 'hk' + i, name: 'haikui_update' + (i ? '(' + (i + 1) + ')' : '') + '.exe', user: '你', mem: 666, end: 'hk', hk: true });
+    }
+    // 瑞鑫：开着就有主程序和豹哥
+    if (OS.ruixin && OS.ruixin.running()) {
+      out.push({ key: 'ruixin', name: 'RuiXin.exe', user: '你', mem: 18432, end: 'ruixin' });
+      if (OS.ruixin.petShown()) out.push({ key: 'baoge', name: 'BaoGe.exe', user: '你', mem: 2333, end: 'baoge' });
+    }
     if (OS.virus && OS.virus.on() && Date.now() > virusBack) {
       out.push({ key: 'virus', name: 'keygen_helper' + (virusN > 1 ? '(' + virusN + ')' : '') + '.exe', user: '你', mem: 6666, end: 'virus' });
     }
     // 开着的软件：同一个软件开几个窗口也只算一个进程
     const seen = {};
     OS.wm.wins.forEach(w => {
-      if (w.isClosed || !w.appId || w === tmWin || SHELL_APPS.has(w.appId) || w.appId === 'qianqian' || w.appId === 'koukou' || w.appId === 'taskmgr') return;
+      if (w.isClosed || !w.appId || w === tmWin || SHELL_APPS.has(w.appId) || w.appId === 'qianqian' || w.appId === 'koukou' || w.appId === 'taskmgr' || w.appId === 'ruixin') return;
       if (seen[w.appId]) { seen[w.appId].mem += 1200; return; }
       const a = OS.apps.byId[w.appId];
       const name = EXE[w.appId] || ((a ? a.name : w.appId) + '.exe');
@@ -191,6 +201,7 @@
       c.qianqian += v;
     }
     if ('virus' in c) c.virus += r(47, 53);
+    list.forEach(p => { if (p.hk) c[p.key] += r(3, 9); });   // 海葵发作：一堆副本把 CPU 吃满
     // 卡死的窗口：它的进程吃满
     listedWins().filter(isHung).forEach(w => { const k = 'app:' + w.appId; if (k in c) c[k] = 96; });
     let sum = 0;
@@ -400,6 +411,9 @@
       case 'koukou': OS.koukou.kill(); break;
       case 'virus': virusBack = Date.now() + 1000; virusN++; setTimeout(() => { if (ui) render(); }, 1100); break;
       case 'haikui': haikuiBack = Date.now() + 1000; setTimeout(() => { if (ui) render(); }, 1100); break;
+      case 'hk': setTimeout(() => { if (ui) render(); }, 600); break;   // 发作中的海葵：结束一个，下一秒又多一倍
+      case 'ruixin': if (OS.ruixin) OS.ruixin.quit(); break;
+      case 'baoge': if (OS.ruixin) OS.ruixin.knockOut(); break;   // 豹哥是杀毒的，你结束不掉它
       case 'app': OS.wm.wins.filter(w => w.appId === p.appId && !w.isClosed).forEach(w => OS.wm.close(w)); break;
     }
     selProc = null;

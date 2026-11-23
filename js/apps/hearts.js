@@ -1,8 +1,9 @@
-/* 黑心大战（XP 红心大战 → 黑心大战；开始 ▸ 所有程序 ▸ 游戏）——四个人一桌抽乌龟，黑桃 Q 就是乌龟
-   - 51 张（拿掉梅花 Q），点数一样就是一对，黑桃 Q 谁也不配；开局对子扔掉（你点中间的［扔掉对子］）
+/* 黑心大战（XP 红心大战 → 黑心大战；开始 ▸ 所有程序 ▸ 游戏）——四个人一桌抽王八（就是抽乌龟）
+   - 2026-11-23 改：原来拿黑桃 Q 当乌龟，太难认；现在一副 52 张全上，外加一张王——"王八"牌（小丑乌龟，Codex 画的），界面上都叫王八
+   - 53 张，点数一样就是一对，王八谁也不配；开局对子扔掉（你点中间的［扔掉对子］）
    - 一局从左家抽、一局从右家抽，箭头跟着变；每局第一个抽的人轮着换
    - 轮到你：那家的牌伸到桌子中间摊成一排，点一下指着（它会有反应），再点一下抽走；凑成对自动扔
-   - 最后拿着黑桃 Q 的是乌龟，记 13 分；有人到 52 分这一盘就结束，分最少的赢
+   - 记分（2026-11-23 改）：第一个走完 0 分、第二个 5 分、第三个 10 分，最后拿着王八的 30 分；有人到 100 分这一盘就结束，分最少的赢；得分表底下写着"分数越少的越领先"
    - 性格库：小猫、小狗、小鱼、小羊每盘随机三个上桌（你自己的头像不上桌），每家从自己四种心态里随机抽一种；
      头像下面的框能标"我觉得它是哪种"，一盘打完一家家揭晓，猜对、猜错、没标、全对各有反应，记进统计
    - 你自己的牌：点一下翘起来给下家看，按住拖能换位置
@@ -19,22 +20,23 @@
     menus: ['游戏(G)', '帮助(H)'],
     newGame: '新游戏　F2', score: '得分　F4', stats: '统计信息…', options: '选项…　F5', back: '牌背…', quit: '退出',
     help: '目录', about: '关于黑心大战',
-    helpText: '黑心大战\n\n黑桃 Q 是乌龟，谁也不跟它配对。\n开局先把手里的对子扔掉：点数一样就是一对。\n轮到你，从旁边那家手里抽一张：点一下指着，再点一下抽走。凑成对就扔掉。\n牌先扔光的先走，最后拿着黑桃 Q 的就是乌龟，记 13 分。\n有人到 52 分就结束，分最少的赢。',
-    aboutText: '黑心大战\n版本 2003\n别当乌龟。\n(C) ' + OS.YEAR + ' 无聊科技',
+    helpText: '黑心大战\n\n那张王八谁也不跟它配对，最后拿着它的就是王八。\n开局先把手里的对子扔掉：点数一样就是一对。\n轮到你，从旁边那家手里抽一张：点一下指着，再点一下抽走。凑成对就扔掉。\n牌先扔光的先走：第一个走完 0 分，第二个 5 分，第三个 10 分，最后拿着王八的 30 分。\n有人到 100 分就结束，分数越少的越领先，分最少的赢。',
+    aboutText: '黑心大战\n版本 2003\n别当王八。\n(C) ' + OS.YEAR + ' 无聊科技',
     welcome: '欢迎使用黑心大战。你叫什么名字？', me: '你',
     discard: '扔掉对子',
     stDiscard: '点中间的［扔掉对子］。',
     stYou: n => '轮到你了：从' + n + '手里抽一张。',
     stCpu: (a, b) => a + '正在从' + b + '手里抽牌……',
     stOut: n => n + '走了。',
-    stTurtle: n => '这一局的乌龟是：' + n + '。',
+    stTurtle: n => '这一局的王八是：' + n + '。',
     stPerfect: '火眼金睛：三家全看穿了！',
     out: '我走啦！',
     scoreTitle: '得分', total: '总分', ok: '确定', cancel: '取消',
-    over: (loser, n, winners) => '游戏结束\n' + loser + '当了 ' + n + ' 回乌龟。\n分最少的赢：' + winners + '！',
+    sheetTip: '分数越少的越领先。', sheetRule: '第一个走完 0 分 ／ 第二个 5 分 ／ 第三个 10 分 ／ 王八 30 分',
+    over: (loser, n, winners) => '游戏结束\n' + loser + '当了 ' + n + ' 回王八。\n分最少的赢：' + winners + '！',
     again: '再来一盘', quitGame: '不玩了',
     statsTitle: '统计信息', clear: '清除',
-    statsText: t => '盘数：' + t.matches + '　赢：' + t.wins + ' 盘\n你当乌龟：' + t.turtles + ' 回\n猜心态：标了 ' + t.marked + ' 家，猜对 ' + t.right + ' 家（' +
+    statsText: t => '盘数：' + t.matches + '　赢：' + t.wins + ' 盘\n你当王八：' + t.turtles + ' 回\n猜心态：标了 ' + t.marked + ' 家，猜对 ' + t.right + ' 家（' +
       (t.marked ? Math.round(t.right / t.marked * 100) : 0) + '%）\n全看穿：' + t.perfect + ' 盘',
     optTitle: '选项', speed: '动画速度', speeds: ['慢', '正常', '快'], names: '电脑玩家的名字',
     noMark: '不标', unknown: '？'
@@ -42,37 +44,37 @@
   const BSOD = n => ({ id: 'hearts', name: 'OPPONENT_FLIPPED_TABLE', text: n + '被你指烦了，把桌子掀了。' });
 
   /* ================= 角色和心态 ================= */
-  // tell：你指着它的牌时的反应。turtle：指着乌龟才有（比例）；any：指哪张都有；middle：指正中间那张就有；flip：说反话
-  // raise：它自己翘起一张给你看（turtle 翘乌龟 ／ decoy 翘一张不是乌龟的）；hide：乌龟藏在哪（right 最右 ／ middle 正中）
+  // tell：你指着它的牌时的反应。turtle：指着王八才有（比例）；any：指哪张都有；middle：指正中间那张就有；flip：说反话
+  // raise：它自己翘起一张给你看（turtle 翘王八 ／ decoy 翘一张不是王八的）；hide：王八藏在哪（right 最右 ／ middle 正中）
   // draw：它从你手里怎么抽（raised 翘起来的就抽 ／ avoid 专挑没翘的 ／ left 最左 ／ right 最右 ／ grudge 记仇 ／ random）
   const ROSTER = {
     cat: { name: '小猫', icon: 'ava-cat', ok: '被你看穿了……喵。', bad: '喵哈哈，猜错啦！', plain: m => '喵，这盘我是"' + m + '"。',
       minds: [
-        { id: '慌张', note: '你指着乌龟，它会吓一跳', tell: { turtle: 0.8, say: '喵！', mood: 'shake' }, draw: 'raised' },
-        { id: '嘴硬', note: '你指着乌龟，它反倒说"随便抽"', tell: { turtle: 0.85, say: '随便抽啊～' }, draw: 'random' },
-        { id: '爱藏', note: '乌龟总塞在最右边', hide: 'right', draw: 'raised' },
-        { id: '好心', note: '翘起来的那张就是乌龟', raise: 'turtle', raiseSay: '这张别抽哦', draw: 'random' }
+        { id: '慌张', note: '你指着王八，它会吓一跳', tell: { turtle: 0.8, say: '喵！', mood: 'shake' }, draw: 'raised' },
+        { id: '嘴硬', note: '你指着王八，它反倒说"随便抽"', tell: { turtle: 0.85, say: '随便抽啊～' }, draw: 'random' },
+        { id: '爱藏', note: '王八总塞在最右边', hide: 'right', draw: 'raised' },
+        { id: '好心', note: '翘起来的那张就是王八', raise: 'turtle', raiseSay: '这张别抽哦', draw: 'random' }
       ] },
     dog: { name: '小狗', icon: 'ava-dog', ok: '汪！你好厉害！', bad: '汪汪！不是哦～', plain: m => '汪，这盘我是"' + m + '"。',
       minds: [
         { id: '傻乐', note: '指哪张都叫，看不出来', tell: { any: 1, say: '汪！', mood: 'hop' }, draw: 'random' },
-        { id: '实诚', note: '你指着乌龟，它会耷拉耳朵', tell: { turtle: 0.7, say: '呜……', mood: 'droop' }, draw: 'raised' },
-        { id: '护食', note: '有乌龟就攥在正中间', hide: 'middle', tell: { middle: 1, say: '汪汪汪！', mood: 'shake' }, draw: 'random' },
+        { id: '实诚', note: '你指着王八，它会耷拉耳朵', tell: { turtle: 0.7, say: '呜……', mood: 'droop' }, draw: 'raised' },
+        { id: '护食', note: '有王八就攥在正中间', hide: 'middle', tell: { middle: 1, say: '汪汪汪！', mood: 'shake' }, draw: 'random' },
         { id: '好奇', note: '总抽你最左边那张', draw: 'left' }
       ] },
     fish: { name: '小鱼', icon: 'ava-fish', ok: '……算你狠。', bad: '……呵。', plain: m => '……"' + m + '"。',
       minds: [
         { id: '扑克脸', note: '看不出来，专抽你没翘的', tell: { any: 1, say: '……' }, draw: 'avoid' },
-        { id: '下套', note: '翘起来的那张一定不是乌龟', raise: 'decoy', raiseSay: '这张可别抽', draw: 'avoid' },
+        { id: '下套', note: '翘起来的那张一定不是王八', raise: 'decoy', raiseSay: '这张可别抽', draw: 'avoid' },
         { id: '说反话', note: '它说"别抽"的多半能抽', tell: { flip: 0.6, yes: '随便抽', no: '哎呀别' }, draw: 'random' },
         { id: '七秒记忆', note: '总抽你最右边那张', draw: 'right' }
       ] },
     sheep: { name: '小羊', icon: 'ava-sheep', ok: '咩，被发现了。', bad: '咩～猜错了也没关系。', plain: m => '咩，这盘我是"' + m + '"呀。',
       minds: [
         { id: '发呆', note: '什么都看不出来', draw: 'random' },
-        { id: '老好人', note: '你指着乌龟，它会劝你换一张', tell: { turtle: 0.9, say: '咩……换一张吧' }, draw: 'raised' },
-        { id: '记仇', note: '抽到过你的乌龟就不再上当', draw: 'grudge' },
-        { id: '犹豫', note: '你指着乌龟，它会想半天才松手', tell: { turtle: 0.7, say: '嗯……', slow: true }, draw: 'random' }
+        { id: '老好人', note: '你指着王八，它会劝你换一张', tell: { turtle: 0.9, say: '咩……换一张吧' }, draw: 'raised' },
+        { id: '记仇', note: '抽到过你的王八就不再上当', draw: 'grudge' },
+        { id: '犹豫', note: '你指着王八，它会想半天才松手', tell: { turtle: 0.7, say: '嗯……', slow: true }, draw: 'random' }
       ] }
   };
   const ICON2KEY = { 'ava-cat': 'cat', 'ava-dog': 'dog', 'ava-fish': 'fish', 'ava-sheep': 'sheep' };
@@ -86,8 +88,9 @@
   const SPEED = [1.6, 1, 0.5];
 
   /* ================= 牌 ================= */
-  const isTurtle = c => c.r === 12 && c.s === 0;
-  // 拿走所有对子（点数一样两张一对，黑桃 Q 不算），返回扔掉的
+  const isTurtle = c => !!c.joker;   // 王八牌
+  const PLACE_PTS = [0, 5, 10], TURTLE_PTS = 30, END_AT = 100;   // 第一、二、三个走完的；王八；到多少分这一盘结束
+  // 拿走所有对子（点数一样两张一对，王八不算），返回扔掉的
   function stripPairs(hand) {
     const out = [], seen = new Map();
     for (const c of hand.slice()) {
@@ -99,7 +102,7 @@
     return out;
   }
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; };
-  const turtleFace = card => { const n = C.face(card); if (isTurtle(card)) n.innerHTML = n.innerHTML.replace('q-spade.webp', 'q-spade-turtle.webp'); return n; };
+  const turtleFace = card => C.face(card);   // 王八牌本身就是小丑乌龟（原来黑桃 Q 要换成"乌龟皇后"那张图）
 
   /* ================= 窗口 ================= */
   let win = null, ui = null, G = null;
@@ -113,6 +116,7 @@
     ui.status = el('div', { class: 'hd-status' });
     ui.box = el('div', { class: 'hd-win' }, [OS.ui.menuBar(L.menus, menuFor, 'hd-mbar'), ui.table, ui.status]);
     win = OS.wm.open({ title: NAME, icon: 'hearts', width: 462, content: ui.box, appId: app.id, maximizable: false, center: true,
+      help: () => OS.ui.dialog({ title: L.help, icon: 'help', text: L.helpText }),   // 标题栏的 ？：跟 帮助 ▸ 目录 一样
       onClose: () => {
         if (G) G.tok++;
         document.removeEventListener('keydown', onKey, true);
@@ -165,7 +169,8 @@
       G.handNo++;
       G.dir = G.handNo % 2 ? 1 : -1;   // 一局从左家抽、一局从右家抽
       const d = [];
-      for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) if (!(s === 2 && r === 12)) d.push({ r, s, id: s * 13 + r });
+      for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) d.push({ r, s, id: s * 13 + r });
+      d.push({ r: 0, s: 4, id: 99, joker: true });   // 王八牌
       shuffle(d);
       G.hands = [[], [], [], []];
       const first = (G.handNo - 1) % 4;
@@ -311,12 +316,16 @@
     render();
     crawl();
     await wait(2600);
-    G.scores[loser] += 13;
+    // 走完的先后（G.gone 照走的顺序记）：0 ／ 5 ／ 10 分；王八 30 分
+    const row = [0, 0, 0, 0];
+    [...G.gone].forEach((p, i) => { row[p] = PLACE_PTS[Math.min(i, PLACE_PTS.length - 1)]; });
+    row[loser] = TURTLE_PTS;
+    row.forEach((v, p) => { G.scores[p] += v; });
     if (loser === 0) { S.stats.turtles++; persist(); }
-    const row = [0, 0, 0, 0]; row[loser] = 13; G.rounds.push(row);
+    G.rounds.push(row);
     await new Promise(res => scoreSheet(res));
     await wait(0);   // 看得分表的时候换了一盘 ／ 关了窗口：这一盘就不往下走了
-    if (G.scores.some(s => s >= 52)) { await revealMinds(); return; }
+    if (G.scores.some(s => s >= END_AT)) { await revealMinds(); return; }
     nextHand();
   }
 
@@ -352,7 +361,7 @@
     const loser = G.scores.indexOf(Math.max(...G.scores));
     const winners = [0, 1, 2, 3].filter(i => G.scores[i] === min).map(seatName).join('、');
     const tok = G.tok;
-    const v = await OS.ui.dialog({ title: NAME, icon: 'info', text: L.over(seatName(loser), G.scores[loser] / 13, winners), buttons: [L.again, L.quitGame] });
+    const v = await OS.ui.dialog({ title: NAME, icon: 'info', text: L.over(seatName(loser), G.rounds.filter(r => r[loser] === TURTLE_PTS).length, winners), buttons: [L.again, L.quitGame] });
     if (v === L.again && win && G && G.tok === tok) newMatch();
   }
 
@@ -576,7 +585,7 @@
       .concat([el('tr', { class: 'sum' }, G.scores.map(v => el('td', { text: String(v) })))]));
     const ok = el('button', { class: 'xpbtn default', text: L.ok });
     const w = OS.wm.open({ title: L.scoreTitle, width: 260, modal: true, taskbar: false, minimizable: false, maximizable: false, className: 'is-dialog',
-      content: el('div', { class: 'hd-sheetw' }, [tbl, el('div', { class: 'dlg-btns' }, [ok])]), onClose: () => { if (done) done(); } });
+      content: el('div', { class: 'hd-sheetw' }, [tbl, el('div', { class: 'hd-tip', text: L.sheetTip }), el('div', { class: 'hd-rule', text: L.sheetRule }), el('div', { class: 'dlg-btns' }, [ok])]), onClose: () => { if (done) done(); } });
     ok.addEventListener('click', () => { OS.sound.play('click'); w.close(); });
   }
   function statsDialog() {

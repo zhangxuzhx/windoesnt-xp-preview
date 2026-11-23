@@ -57,8 +57,8 @@
     '<text x="24.5" y="19.6" text-anchor="middle" font-size="14" font-weight="bold" font-family="Tahoma,Verdana,sans-serif" fill="#d40000" stroke="#fff" stroke-width=".6" paint-order="stroke">24</text></svg>';
   // 蜘蛛合牌：Codex 画的（assets/cards/spider.webp：两张黑桃一碰冒出王冠金牌，底下一只小蜘蛛）
   RAW.spider = '<svg viewBox="0 0 48 48"><image href="assets/cards/spider.webp" x="0" y="0" width="48" height="48"/></svg>';
-  // 黑心大战：Codex 画的（assets/cards/hearts.webp：黑桃 Q 后面探出一只戴小后冠的乌龟）
-  RAW.hearts = '<svg viewBox="0 0 48 48"><image href="assets/cards/hearts.webp" x="0" y="0" width="48" height="48"/></svg>';
+  // 黑心大战：Codex 画的（assets/cards/hearts.webp：2026-11-23 换成王八牌——小丑乌龟从牌后面探出来捏着红鼻子；?v=2 让玩过的人拿到新图）
+  RAW.hearts = '<svg viewBox="0 0 48 48"><image href="assets/cards/hearts.webp?v=2" x="0" y="0" width="48" height="48"/></svg>';
   // 二维弹球：Codex 画的（assets/pinball/icon.webp：弹球撞碎一块砖，底下一截挡板）
   RAW.pinball = '<svg viewBox="0 0 48 48"><image href="assets/pinball/icon.webp" x="0" y="0" width="48" height="48"/></svg>';
   RAW.sweep = '<svg viewBox="0 0 48 48"><image href="assets/cards/paile.webp" x="0" y="0" width="48" height="48"/></svg>';
@@ -68,6 +68,9 @@
   Object.assign(RAW, { info: cell('system.webp', 0, 13), warn: cell('system.webp', 1, 13), error: cell('system.webp', 2, 13), help: cell('system.webp', 3, 13), search: cell('system.webp', 4, 13), logout: cell('system.webp', 5, 13), power: cell('system.webp', 6, 13), standby: cell('system.webp', 7, 13), restart: cell('system.webp', 8, 13), volume: cell('system.webp', 9, 13), mute: cell('system.webp', 10, 13), shieldWarn: cell('system.webp', 11, 13), speaker: cell('system.webp', 12, 13) });
 
   let uid = 0;
+  // 瑞鑫杀毒：Codex 画的（盾牌上一个豹子头）；海葵：被感染的桌面图标、托盘
+  RAW.ruixin = '<svg viewBox="0 0 48 48"><image href="assets/ruixin/icon.webp" x="0" y="0" width="48" height="48"/></svg>';
+  RAW.haikui = '<svg viewBox="0 0 48 48"><image href="assets/ruixin/icon-haikui.webp" x="0" y="0" width="48" height="48"/></svg>';
   OS.icon = function (name) {
     const raw = RAW[name] || RAW.exe;
     const u = ++uid;

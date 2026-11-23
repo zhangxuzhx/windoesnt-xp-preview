@@ -157,6 +157,7 @@
     ui.body = el('div');
     ui.box.appendChild(ui.body);
     win = OS.wm.open({ title: NAME, icon: 'sweep', width: 200, content: ui.box, appId: app.id, maximizable: false, center: true,
+      help: () => OS.ui.dialog({ title: L.help, icon: 'help', text: L.helpText }),   // 标题栏的 ？：跟 帮助 ▸ 目录 一样
       onClose: () => {
         stopTimer(); win = null; ui = null; G = null; press = null; pinch = null; touches.clear();
         document.removeEventListener('keydown', onKey, true);

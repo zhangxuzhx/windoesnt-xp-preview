@@ -229,6 +229,7 @@
       folder('Offense 2003', [appItem('wordy'), appItem('excuse'), appItem('ppt')], 'offense'),
       folder('实用小程序', [appItem('swatter'), appItem('coil'), appItem('bootcheck'), appItem('pulse'), appItem('lifespan'), appItem('activator')]),
       // 照那几年装聊天软件的样子：一个文件夹，里面是软件本体 + 卸载（走 添加或删除程序 那一套，addremove.js）；卸掉了整个文件夹不显示
+      has('ruixin') ? folder('瑞鑫杀毒', [appItem('ruixin'), { label: '瑞鑫升级程序', icon: 'ruixin', action: closeThen(() => OS.ruixin && OS.ruixin.open('up')) }, { label: '卸载瑞鑫', icon: 'ruixin', action: closeThen(() => OS.soft.uninstall('ruixin')) }]) : null,
       has('koukou') ? folder('抠抠软件', [appItem('koukou'), { label: '卸载 抠抠2003', icon: 'exe', action: closeThen(() => OS.soft.uninstall('koukou')) }]) : null,
       has('qianqian') ? folder('千千不听', [appItem('qianqian'), { label: '卸载 千千不听', icon: 'exe', action: closeThen(() => OS.soft.uninstall('qianqian')) }]) : null,
       has('abcsee') ? folder('ABCSee 大眼看图', [appItem('abcsee'), { label: 'ABCSee 帮助', icon: 'help', action: closeThen(() => OS.abcsee && OS.abcsee.help()) }, { label: '卸载 ABCSee', icon: 'exe', action: closeThen(() => OS.soft.uninstall('abcsee')) }]) : null

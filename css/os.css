@@ -254,7 +254,6 @@ body {
 .say-bubble.below::after { bottom: calc(100% - 1px); margin-left: -6px; border-width: 0 6px 8px; border-bottom-color: #ffffe1; }
 .say-bubble.out { opacity: 0; transition: opacity .25s; }
 @keyframes sayIn { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
-#icons.refreshing .dicon { visibility: hidden; }
 .dicon.cut .di-img { opacity: .45; }
 .selbox { position: absolute; z-index: 20; border: 1px solid #316ac5; background: rgba(49, 106, 197, .28); pointer-events: none; }
 #watermark {
@@ -2758,6 +2757,11 @@ body {
 .jp-stock.x::before, .jp-stock.x::after { content: ''; position: absolute; left: 50%; top: 50%; width: 36px; height: 6px; border-radius: 2px; background: #e00000; transform: translate(-50%, -50%) rotate(45deg); }
 .jp-stock.x::after { transform: translate(-50%, -50%) rotate(-45deg); }
 .jp-top { cursor: pointer; }
+.jp-wslot { border-style: dashed; background: rgba(0, 0, 0, .03); }
+.jp-pile.cand, .jp-cand { animation: jpCand .5s steps(2) infinite; cursor: pointer; }
+.jp-pile.cand { border: 2px solid #ffe14d; }
+@keyframes jpCand { 50% { box-shadow: 0 0 0 2px #ffe14d, 0 0 8px 2px rgba(255, 225, 77, .8); } }
+.jp-pick { box-shadow: 0 0 0 2px #4da3ff; }
 .jp-drag { z-index: 50; box-shadow: 2px 3px 5px rgba(0, 0, 0, .35); }
 .jp-back { z-index: 50; transition: left .12s ease-out, top .12s ease-out; }
 .jp-fly { z-index: 60; transition: left .15s linear, top .15s linear; }
@@ -2867,13 +2871,16 @@ body {
 .hd-sheet th, .hd-sheet td { padding: 1px 4px; border: 1px solid #aca899; text-align: center; }
 .hd-sheet th { background: #ece9d8; }
 .hd-sheet tr.sum td { font-weight: bold; border-top: 2px solid #000; }
+.hd-tip { font-weight: bold; color: #b00000; text-align: center; margin-bottom: 2px; }
+.hd-rule { font-size: 10px; color: #555; text-align: center; margin-bottom: 8px; }
 .hd-speeds { display: flex; gap: 10px; }
 .hd-names { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
 #stage .hd-nm { width: 100%; box-sizing: border-box; }
 
 /* ---------- 二维弹球（pinball.js）：左边台子（canvas），右边灰色金属框面板、一格格黑色显示框、淡紫色老电脑字 ---------- */
 .pb-win { background: #ece9d8; }
-.pb-body { display: flex; height: 258px; background: #000; touch-action: none; user-select: none; -webkit-user-select: none; }
+.pb-body { position: relative; height: 258px; overflow: hidden; background: #000; touch-action: none; user-select: none; -webkit-user-select: none; }
+.pb-fit { display: flex; height: 258px; transform-origin: 0 0; }
 .pb-cv { display: block; width: 290px; height: 258px; flex: none; }
 .pb-panel { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 5px; box-sizing: border-box; overflow: hidden;
   background: linear-gradient(90deg, #6e6e6e, #b4b4b4 12%, #c8c8c8 50%, #a0a0a0 88%, #5e5e5e); border-left: 2px solid #3a3a3a;
@@ -2899,3 +2906,154 @@ body {
 .pb-sc { flex: 1; min-width: 0; height: 24px; display: flex; align-items: center; justify-content: flex-end; padding: 0 5px; }
 .pb-info { height: 34px; flex: none; }
 .pb-mis { flex: 1; min-height: 0; }
+
+/* ---------- 瑞鑫杀毒（ruixin.js）：豹哥、主窗口 ---------- */
+#rx-layer { z-index: 5450; pointer-events: none; }
+#rx-layer > * { pointer-events: auto; }
+.rx-pet { position: absolute; width: 40px; height: 40px; cursor: pointer; touch-action: none; filter: drop-shadow(1px 2px 1px rgba(0, 0, 0, .35)); }
+.rx-pet > i { display: block; width: 100%; height: 100%; background: url(../assets/ruixin/baoge.webp) 0 0 / 600% 400% no-repeat; }
+.rx-pet.flip > i { transform: scaleX(-1); }
+.rx-pet.jump { animation: rxJump .55s cubic-bezier(.3, 1.6, .6, 1); }
+@keyframes rxJump { from { transform: translateY(34px); opacity: 0; } 40% { opacity: 1; } to { transform: none; } }
+.rx-pet.leave { transform: translateY(40px); opacity: 0; transition: transform .45s ease-in, opacity .45s; }
+.rx-pet .rx-zz { position: absolute; left: 4px; top: -6px; font: bold 8px Tahoma, sans-serif; color: #6aa0ff; text-shadow: 0 0 2px #fff; display: none; }
+.rx-pet.sleeping .rx-zz { display: block; animation: rxZz 2s ease-out infinite; }
+@keyframes rxZz { from { transform: translate(0, 4px); opacity: 0; } 30% { opacity: 1; } to { transform: translate(-6px, -8px); opacity: 0; } }
+.rx-pet .rx-bang { position: absolute; left: 50%; top: -12px; margin-left: -4px; font: 900 13px "Arial Black", sans-serif; color: #ff2a2a; text-shadow: 0 0 3px #fff, 1px 1px 0 #600; display: none; }
+.rx-pet.alarm .rx-bang { display: block; animation: rxBang .3s steps(2) infinite; }
+.rx-pet.alarm > i { animation: rxShake .12s linear infinite; }
+@keyframes rxBang { 50% { transform: translateY(-2px); } }
+@keyframes rxShake { 25% { translate: -1px 0; } 75% { translate: 1px 0; } }
+.rx-say { max-width: 150px; }
+.rx-trayico > i { display: block; width: 16px; height: 16px; background: url(../assets/ruixin/tray.webp) 0 0 / 200% 100% no-repeat; }
+.rx-trayico.alarm > i { background-position: 100% 0; animation: rxBang .3s steps(2) infinite; }
+.rx-hug { position: absolute; width: 56px; height: 56px; animation: rxHug .9s ease-in-out infinite; }
+.rx-hug > i { display: block; width: 100%; height: 100%; background: url(../assets/ruixin/baoge.webp) 80% 100% / 600% 400% no-repeat; transform: scaleX(-1); }
+@keyframes rxHug { 50% { transform: translateX(2px) rotate(2deg); } }
+.rx-plead { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 10px 8px 18px; }
+.rx-plead .dlg-text { flex: 1; min-width: 0; }
+.rx-plead .dlg-btns { width: 100%; }
+
+.rx { background: #f4f1e2; }
+.rx-banner { height: 36px; position: relative; padding: 4px 8px; box-sizing: border-box; background: #0a3a24 url(../assets/ruixin/banner.webp) right center / auto 100% no-repeat; }
+.rx-bname { font: 900 15px/1.1 "Microsoft YaHei", SimHei, sans-serif; letter-spacing: 1px; color: #ffe27a; background: linear-gradient(#fff6c8, #ffd24a 50%, #c88a10); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(1px 1px 0 #2a1800); }
+.rx-bsub { font-size: 9px; color: #d8f0c8; margin-top: 1px; }
+.rx-main { display: flex; height: 196px; }
+.rx-nav { width: 64px; flex: none; background: linear-gradient(#1d5a3a, #0f3a26); padding: 3px 0; display: flex; flex-direction: column; gap: 1px; }
+.rx-navb { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 2px 0; color: #e8f4dc; font-size: 10px; cursor: pointer; border-left: 3px solid transparent; }
+.rx-navb:hover { background: rgba(255, 255, 255, .1); }
+.rx-navb.on { background: #f4f1e2; color: #0f3a26; border-left-color: #e8a810; font-weight: bold; }
+.rx-navi { width: 16px; height: 16px; }
+.rx-body { flex: 1; min-width: 0; padding: 6px 8px; overflow: auto; font-size: 11px; color: #222; }
+.rx-status { padding: 2px 6px; font-size: 9px; color: #333; background: #e6e0c6; border-top: 1px solid #c8bf98; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rx-targets { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 6px; }
+.rx-tg { display: flex; align-items: center; gap: 3px; cursor: pointer; }
+.rx-btns { display: flex; gap: 6px; margin: 6px 0 4px; }
+.rx-path { font-size: 10px; color: #333; white-space: pre-line; overflow: hidden; max-height: 26px; line-height: 13px; word-break: break-all; }
+.rx-bar { height: 8px; margin: 3px 0; border: 1px solid #7a8a6a; background: #fff; }
+.rx-barf { height: 100%; width: 0; background: repeating-linear-gradient(90deg, #2e8a4e 0 6px, #4cb86c 6px 8px); }
+.rx-count { font-size: 10px; color: #555; }
+.rx-res { margin-top: 4px; }
+.rx-sus { display: flex; gap: 4px; align-items: flex-start; font-size: 10px; line-height: 13px; white-space: pre-line; margin-bottom: 3px; color: #6a4a00; }
+.rx-susi { width: 13px; height: 13px; flex: none; }
+.rx-tip { color: #555; font-size: 10px; margin-bottom: 4px; }
+.rx-cap { margin: 6px 0 2px; font-weight: bold; font-size: 10px; }
+.rx-dim { color: #888; }
+.rx-monbtn { width: 100%; padding: 6px; font: bold 13px "Microsoft YaHei", SimHei, sans-serif; border: 2px solid #8a2a2a; border-radius: 4px; background: linear-gradient(#f0d0d0, #c87070); color: #4a0a0a; }
+.rx-monbtn.on { border-color: #1d6a3a; background: linear-gradient(#d8f4d8, #5ab87a); color: #0a3a1a; }
+.rx-monrows { display: flex; gap: 8px; margin-top: 4px; }
+.rx-monrow { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 3px; border: 1px solid #c8bf98; background: #fff; font-size: 10px; }
+.rx-monrow b.ok { color: #1d8a3a; }
+.rx-monrow b.off { color: #a22; }
+.rx-log { font-size: 10px; max-height: 44px; overflow: auto; background: #fff; border: 1px solid #c8bf98; padding: 2px 4px; }
+.rx-dex { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.rx-dcard { display: flex; flex-direction: column; align-items: center; padding: 3px; border: 1px solid #c8bf98; background: #fff; border-radius: 3px; cursor: pointer; min-height: 70px; }
+.rx-dcard:hover { border-color: #e8a810; }
+.rx-dpic { width: 46px; height: 46px; background: 0 0 / 300% 100% no-repeat; display: flex; align-items: center; justify-content: center; }
+.rx-dpic.big { width: 70px; height: 70px; flex: none; }
+.rx-pic-haikui { background-image: url(../assets/ruixin/haikui.webp); }
+.rx-pic-keygen { background-image: url(../assets/ruixin/bug-big.webp); }
+.rx-dpic.runaway { filter: brightness(0) opacity(.55); }
+.rx-dpic.unknown { background: #e8e4d0; border-radius: 50%; }
+.rx-dpic.unknown b { font: 900 22px "Arial Black", sans-serif; color: #b8b090; }
+.rx-dname { font-size: 10px; font-weight: bold; margin-top: 2px; text-align: center; }
+.rx-dstate { font-size: 9px; color: #777; }
+.rx-dbig { display: flex; gap: 8px; }
+.rx-dtext { font-size: 10px; line-height: 14px; }
+.rx-set { display: flex; flex-direction: column; gap: 3px; }
+.rx-set.rx-row { flex-direction: row; gap: 10px; }
+
+/* ---------- 瑞鑫 · 手动查杀（ruixin-fight.js）：背景变暗变糊，只有这个框清楚 ---------- */
+#stage.rx-focus > :not(#overlay):not(#screens) { filter: brightness(.42) blur(1.4px); transition: filter .35s; }
+.rxf { position: absolute; left: 50%; top: 50%; width: 300px; transform: translate(-50%, -52%); background: #f4f1e2; border: 2px solid #0f3a26; border-radius: 6px 6px 3px 3px; box-shadow: 0 6px 24px rgba(0, 0, 0, .6); font-size: 11px; color: #222; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+.rxf-title { display: flex; align-items: center; gap: 4px; height: 20px; padding: 0 4px; background: linear-gradient(#2e7a4e, #0f3a26); color: #ffe27a; font-weight: bold; }
+.rxf-title span { flex: 1; }
+.rxf-title .rxf-tico { flex: none; width: 14px; height: 14px; }
+.rxf-title .rxf-x { flex: none; width: 16px; height: 14px; line-height: 13px; text-align: center; background: #c8402a; color: #fff; border-radius: 2px; cursor: pointer; }
+.rxf-head { display: flex; gap: 6px; padding: 4px 6px 2px; align-items: center; }
+.rxf-pic { width: 34px; height: 34px; flex: none; background: 0 0 / 300% 100% no-repeat; }
+.rxf-pic-haikui { background-image: url(../assets/ruixin/haikui.webp); }
+.rxf-pic-keygen { background-image: url(../assets/ruixin/bug-big.webp); }
+.rxf-pic.hurt { animation: rxfHurt .4s steps(2) 1; }
+@keyframes rxfHurt { 50% { filter: brightness(2) saturate(0); } }
+.rxf-who { flex: 1; min-width: 0; }
+.rxf-name { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rxf-stars { color: #e89a10; font-size: 10px; line-height: 11px; }
+.rxf-hp { display: flex; align-items: center; gap: 4px; font-size: 9px; color: #555; }
+.rxf-hpb { flex: 1; height: 7px; border: 1px solid #6a2a2a; background: #fff; }
+.rxf-hpf { height: 100%; width: 100%; background: linear-gradient(#ff7a6a, #c82a2a); transition: width .2s; }
+.rxf-time { display: flex; align-items: center; gap: 4px; padding: 0 6px 3px; font-size: 9px; color: #555; }
+.rxf-tb { flex: 1; height: 5px; background: #ddd; border: 1px solid #999; }
+.rxf-tf { height: 100%; width: 100%; background: #3a9a5a; }
+.rxf-tf.low { background: #e03a2a; }
+.rxf-tt { font: bold 10px "Courier New", monospace; color: #333; width: 34px; text-align: right; }
+.rxf-play { position: relative; margin: 0 6px; height: 150px; border: 1px solid #0f3a26; cursor: crosshair; }
+.rxf-cv { display: block; width: 280px; height: 150px; }
+.rxf-say { position: absolute; left: 20px; transform: translateY(-50%); max-width: 170px; padding: 2px 5px; font-size: 9px; line-height: 12px; background: #ffffe1; border: 1px solid #000; border-radius: 6px; pointer-events: none; animation: rxfSay 2.6s ease-out forwards; }
+@keyframes rxfSay { 0% { opacity: 0; } 8% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+.rxf-hint { padding: 3px 6px 5px; font-size: 10px; color: #444; }
+.rxf-end { position: absolute; left: 6px; right: 6px; top: 64px; height: 150px; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: rgba(244, 241, 226, .94); border: 1px solid #0f3a26; }
+.rxf-end.show { display: flex; }
+.rxf-big { font: 900 16px "Microsoft YaHei", SimHei, sans-serif; }
+.rxf-big.win { color: #1d7a3a; }
+.rxf-big.lose { color: #b8241a; }
+.rxf-sub { white-space: pre-line; text-align: center; font-size: 11px; line-height: 16px; }
+
+/* ---------- 海葵发作（haikui.js）---------- */
+#hk-layer { z-index: 5600; pointer-events: none; overflow: hidden; }
+.hk-tent { position: absolute; width: 18px; height: 60px; transform-origin: 50% 100%; transform: translate(-50%, -100%) rotate(var(--r)) scale(var(--g)); transition: transform 1.2s ease-out; }
+.hk-tent i { display: block; width: 100%; height: 100%; background: url(../assets/ruixin/tentacle.webp) center bottom / 100% 100% no-repeat; transform-origin: 50% 100%; animation: hkSway 2.2s ease-in-out infinite alternate; animation-delay: var(--d); }
+@keyframes hkSway { from { transform: rotate(-9deg); } to { transform: rotate(9deg); } }
+.hk-water { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: linear-gradient(rgba(70, 210, 200, .38), rgba(10, 80, 110, .78)); transition: height .3s linear; }
+#hk-layer.hk-ebb .hk-water { transition: height 1.4s ease-in; }
+.hk-wtop { position: absolute; left: 0; right: 0; top: -4px; height: 6px; background: radial-gradient(ellipse at 50% 100%, rgba(160, 255, 245, .7) 0 40%, transparent 42%) 0 0 / 24px 6px repeat-x; animation: hkWave 1.6s linear infinite; }
+@keyframes hkWave { to { background-position: 24px 0; } }
+.hk-wb { position: absolute; bottom: 0; width: 5px; height: 5px; border-radius: 50%; border: 1px solid rgba(220, 255, 255, .8); animation: hkRise 2.6s ease-in infinite; }
+@keyframes hkRise { from { transform: translateY(0); opacity: 0; } 20% { opacity: 1; } to { transform: translateY(-120px); opacity: 0; } }
+.hk-bub { position: absolute; width: 5px; height: 5px; margin: -3px 0 0 -3px; border-radius: 50%; border: 1px solid rgba(120, 240, 230, .9); background: rgba(200, 255, 250, .25); animation: hkBub .9s ease-out forwards; }
+@keyframes hkBub { to { transform: translate(3px, -16px) scale(1.4); opacity: 0; } }
+.hk-trayico .tray-ico { animation: virBug .7s steps(2) infinite; }
+.dicon.hk-inf .di-img { animation: hkInf 1.6s ease-in-out infinite alternate; }
+@keyframes hkInf { to { transform: rotate(4deg) scale(1.05); } }
+.hk-spam { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; font-size: 10px; background: linear-gradient(#e0fbf6, #fff); }
+.hk-spami { width: 26px; height: 26px; }
+.hk-spamt { flex: 1; min-width: 0; white-space: pre-line; line-height: 13px; }
+.hk-spamb { width: 100%; height: 8px; border: 1px solid #3a8a8a; background: #fff; }
+.hk-spamf { height: 100%; width: 0; background: #2ab8a8; transition: width 2.5s linear; }
+.hk-spaml { width: 100%; color: #2a6a6a; }
+
+/* 文件夹"缩略图"：ABCSee 破解以后图片显示成小图 */
+.ex-thumb { width: 48px; height: 38px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid #b8c4d8; box-shadow: 1px 1px 0 #dde4ee; }
+
+/* ---------- 桌面刷新（workers.js）：环卫大爷、刷墙师傅、绿漆 ---------- */
+.paintcv { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+.worker { position: absolute; width: 48px; height: 48px; pointer-events: none; filter: drop-shadow(1px 2px 1px rgba(0, 0, 0, .3)); }
+.worker > i { display: block; width: 100%; height: 100%; background: 0 0 / 600% 200% no-repeat; }
+.worker.cleaner > i { background-image: url(../assets/scene/cleaner.webp); }
+.worker.painter > i { background-image: url(../assets/scene/painter.webp); }
+.worker.flip > i, .worker.flip .worker-ph { transform: scaleX(-1); }
+.worker-ph { position: absolute; left: 8px; bottom: 2px; width: 32px; height: 32px; }
+.worker.cleaner .worker-ph { filter: sepia(1) saturate(6) hue-rotate(-25deg); }
+.worker-say { max-width: 160px; }
+.wpsign.taken { display: none; }
+.poop.swept { opacity: 0; transform: translateY(4px) scale(.6); transition: opacity .25s, transform .25s; }

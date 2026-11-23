@@ -62,6 +62,7 @@
     ui.table = el('div', { class: 'sp-table' });
     ui.box = el('div', { class: 'sp-win' }, [OS.ui.menuBar(L.menus, menuFor, 'sp-mbar'), ui.table]);
     win = OS.wm.open({ title: NAME, icon: 'spider', width: 462, content: ui.box, appId: app.id, maximizable: false, center: true,
+      help: () => OS.ui.dialog({ title: L.help, icon: 'help', text: L.helpText }),   // 标题栏的 ？：跟 帮助 ▸ 目录 一样
       onClose: () => {
         autosave();
         stopFireworks();

@@ -67,6 +67,7 @@
      补丁自己带病毒，这次不发作：只在任务管理器里留一个 haikui_update.exe（taskmgr.js），给以后的杀毒软件 */
   const PATCH_KEY = 'kkPatch';
   const TOOLBAR_KEY = 'kkToolbar';   // 装补丁时勾了"安装海葵工具条"
+  const CLEAN_KEY = 'kkPatchClean'; // 装上的补丁是干净的（打赢了海葵 ／ 从添加或删除程序装回来的）；老存档装着的那份带着睡着的病毒
   const patched = () => !!OS.save.get(PATCH_KEY, false);
   const P = {
     title: '抠抠2003 海葵版', login: '海葵抠抠 显IP版',
@@ -78,6 +79,7 @@
     officialTitle: '抠抠系统消息', official: '抠抠官方提醒：检测到你正在使用非官方插件，请立即卸载，否则……',
     // 安装向导
     wizTitle: '海葵抠抠补丁 安装向导', brand: '海葵抠抠', brandSub: '显IP版 2003.12',
+    broken: '补丁安装失败：文件已损坏。\n请重新下载。',
     welcome: '欢迎使用海葵抠抠补丁！\n本补丁纯绿色、无毒、无插件。\n作者：海葵',
     pickDir: '选择抠抠所在的文件夹：', dir: 'C:\\Program Files\\抠抠软件', browse: '抠抠就装在这儿，不用找了。',
     pickOpts: '选择要安装的功能：',
@@ -461,7 +463,12 @@
     if (alive(S.login)) S.login.setTitle(patched() ? P.login : '抠抠用户登录');
     renderPanel();
   }
-  function patchInstaller() {
+  /* 2026-11-23 起：网上邻居里那个补丁文件永远带毒（瑞鑫杀毒-创意.md 第四、五部分）
+     - 没开瑞鑫（或者关了实时监控）：进度条走到 99% 停住 → 补丁安装失败 → 海葵发作（haikui.js）；勾了工具条的，工具条倒先装上了
+     - 开着瑞鑫：99% 时被拦下来，打赢查杀小游戏才接着装完，装上的是干净的显 IP 版；没打赢 ／ 放它进来 → 跟没开一样
+     - 从添加或删除程序装回来（o.clean）：它能出现在那个列表里，说明当初是打赢了才装上的，干净的 */
+  function patchInstaller(o) {
+    o = o || {};
     const again = patched();   // 已经装过了还装：补丁打在补丁上 → 蓝屏
     let page = 0, toolbar = true, busy = false;
     const main = el('div', { class: 'hk-main' });
@@ -495,11 +502,23 @@
         const fill = el('div', { class: 'hk-fill' });
         main.append(el('div', { class: 'hk-text', text: P.patching }), el('div', { class: 'hk-bar' }, [fill]));
         btnRow.append(b(P.back, () => {}, true), b(P.next, () => {}, true), b(P.cancel, () => {}, true));
-        requestAnimationFrame(() => { fill.style.width = '100%'; });
-        setTimeout(() => {
+        requestAnimationFrame(() => { fill.style.width = o.clean || again ? '100%' : '99%'; });
+        setTimeout(async () => {
           if (win.isClosed) return;
           if (again) { OS.ui.bsod(PATCH_BSOD); return; }
+          if (!o.clean) {
+            const won = OS.ruixin && OS.ruixin.guarding() ? await OS.ruixin.intercept('haikui', '网上邻居\\隔壁大学生\\电影') : false;
+            if (!won) {
+              if (toolbar) OS.save.set(TOOLBAR_KEY, true);   // 补丁没装上，捆绑的工具条倒先装上了
+              if (!win.isClosed) win.close();
+              OS.ui.dialog({ title: P.wizTitle, icon: 'error', text: P.broken });
+              if (OS.haikui) OS.haikui.infect();
+              return;
+            }
+            fill.style.width = '100%';
+          }
           OS.save.set(PATCH_KEY, true);
+          OS.save.set(CLEAN_KEY, true);
           // 勾了工具条：记下来，Internot Explorer 地址栏下面多一条海葵工具条（ie.js；卸载补丁也不会跟着走，那几年的工具条就是这样）
           if (toolbar) OS.save.set(TOOLBAR_KEY, true);
           refreshPatch();
@@ -527,6 +546,7 @@
   // 删补丁：挽留、进度条都在 添加或删除程序 里（addremove.js），这里只管拿掉
   function removePatch() {
     OS.save.set(PATCH_KEY, false);
+    OS.save.set(CLEAN_KEY, false);
     refreshPatch();
   }
 
@@ -1171,6 +1191,21 @@
     kill: () => { if (S.logged) dropped = true; quit(); },
     // 海葵抠抠补丁：装没装、安装向导、拿掉（添加或删除程序 里删）
     patched, patchInstaller, removePatch,
+    patchClean: () => !!OS.save.get(CLEAN_KEY, false),
+    setPatchClean: () => OS.save.set(CLEAN_KEY, true),
+    // 海葵发作：抠抠自己登录，给所有好友群发；replies：{ 好友 id: 回的话 }，一个个回过来
+    massSend: (text, replies) => {
+      if (!S.logged) { if (alive(S.login)) S.login.close(); login(false); }
+      Object.keys(F).forEach(id => {
+        if (S.deleted.has(id) || (F[id].hidden && S.guimi !== 'friend')) return;
+        push(id, { who: 'me', text, ad: true });
+        const r = replies && replies[id];
+        if (!r || S.blocked.has(id) || S.offline.has(id)) return;
+        later(() => { if (S.logged && !S.blocked.has(id) && !S.offline.has(id)) deliver(id, r, { quiet: Math.random() < 0.5 }); }, 2500 + Math.random() * 22000);
+      });
+    },
+    // 别的软件往聊天记录里补一句（瑞鑫查杀小游戏里被传染的好友说的话）
+    logLine: (id, text) => { if (F[id] && !S.deleted.has(id)) push(id, { who: id, text }); },
     // 海葵工具条装没装（Internot Explorer 看这个决定要不要冒出那一条）
     toolbar: () => !!OS.save.get(TOOLBAR_KEY, false)
   };

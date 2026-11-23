@@ -1,5 +1,5 @@
 /* 扑克牌（接牌、空当算 24、蜘蛛合牌、黑心大战共用）
-   - 牌一张 { r: 1–13, s: 0 黑桃 1 红心 2 梅花 3 方块 }
+   - 牌一张 { r: 1–13, s: 0 黑桃 1 红心 2 梅花 3 方块 }；王：{ joker: true, r: 0 }（黑心大战的王八牌，assets/cards/joker.webp）
    - 牌面：数字牌代码画（角上点数和花色，中间花色排好，照 XP 那种干净的画法）；
      J、Q、K 用 Codex 画的 12 张人头（assets/cards/，上下对称的双头像）；OS.cards.art = false 就退回框里一个大字母
    - 牌背：12 张，几张会动；拿现成的图拼（小鸭子、铁公鸡、蚊香、羊、葱油饼……），会动的用代码动
@@ -38,6 +38,7 @@
 
   const cache = {};
   function faceSvg(c) {
+    if (c.joker) return jokerSvg();
     const key = c.r + '-' + c.s;
     if (cache[key]) return cache[key];
     const col = red(c.s) ? '#d40000' : '#000';
@@ -56,9 +57,17 @@
     cache[key] = svg;
     return svg;
   }
+  // 王：红字，两个角竖着写 J O K E R，中间是小丑乌龟
+  function jokerSvg() {
+    if (cache.joker) return cache.joker;
+    const letters = 'JOKER'.split('').map((ch, i) => '<text x="4.4" y="' + (8.4 + i * 6.3).toFixed(1) + '" text-anchor="middle" font-size="6.4" font-weight="bold" font-family="Tahoma,Verdana,sans-serif">' + ch + '</text>').join('');
+    cache.joker = '<svg viewBox="0 0 ' + W + ' ' + H + '" fill="#d40000"><image href="assets/cards/joker.webp" x="8" y="7" width="38" height="58" preserveAspectRatio="xMidYMid slice"/><rect x="8" y="7" width="38" height="58" fill="none" stroke="#d40000" stroke-width=".8"/>' +
+      letters + '<g transform="rotate(180 27 36)">' + letters + '</g></svg>';
+    return cache.joker;
+  }
   cards.faceSvg = faceSvg;
   cards.face = function (c) {
-    const n = el('div', { class: 'cd' + (red(c.s) ? ' red' : ''), html: faceSvg(c) });
+    const n = el('div', { class: 'cd' + (red(c.s) || c.joker ? ' red' : '') + (c.joker ? ' joker' : ''), html: faceSvg(c) });
     return n;
   };
 

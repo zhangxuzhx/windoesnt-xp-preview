@@ -65,12 +65,17 @@
       on: () => !!(OS.koukou && OS.koukou.patched()),
       remove: () => OS.koukou.removePatch(),
       // 用它自己那个安装向导；抠抠开着就先帮你关掉
-      reinstall: () => { if (OS.koukou.running()) OS.koukou.kill(); OS.koukou.patchInstaller(); } },
+      // 能出现在这个列表里，说明当初是打赢了海葵才装上的：从这里装回来是干净的（网上邻居里那个原文件照样带毒）
+      reinstall: () => { if (OS.koukou.running()) OS.koukou.kill(); OS.koukou.patchInstaller({ clean: true }); } },
     { id: 'qianqian', name: '千千不听', icon: 'music', size: 8.8, apps: ['qianqian'], dir: '千千不听',
       plead: ['真的不听了吗？', '不听了', '再听听'], after: '删除完成。\n世界安静了。',
       stop: () => OS.qianqian && OS.qianqian.kill() },
     { id: 'abcsee', name: 'ABCSee 大眼看图 V3.1', icon: 'abcsee', size: 4.2, apps: ['abcsee'], dir: 'ABCSee',
-      plead: ['ABCSee 还没把您的图片看够。', '残忍删除', '再想想'] },
+      plead: ['ABCSee 还没把您的图片看够。', '残忍删除', '再想想'],
+      onRemove: () => OS.abcsee && OS.abcsee.unregister && OS.abcsee.unregister() },   // 卸了再装回来又是共享版
+    // 瑞鑫：豹哥跳上来抱住卸载那个窗口不撒手
+    { id: 'ruixin', name: '瑞鑫杀毒软件 2003', icon: 'ruixin', size: 36.5, apps: ['ruixin'], dir: '瑞鑫杀毒',
+      pleadFn: () => OS.ruixin.plead(), after: '瑞鑫已卸载。\n豹哥走了。', stop: () => OS.ruixin && OS.ruixin.quit() },
     // 办公三件套：一整行，［更改］勾要哪几个（offense.js）；三个各自算"组件"，存在 softRemoved 里
     { id: 'offense', name: 'Offense 2003', icon: 'offense', size: 345, dir: 'Offense 2003',
       comps: [['wordy', 'Wordy 2003', 112], ['excuse', 'Excuse 2003', 156], ['ppt', 'PowerPointless 2003', 77]] },
@@ -179,7 +184,7 @@
   async function uninstall(id) {
     const p = PROG[id];
     if (!p || !progOn(p)) return false;
-    const ok = p.plead
+    const ok = p.pleadFn ? await p.pleadFn() : p.plead
       ? await OS.ui.dialog({ title: T, icon: p.icon, text: p.plead[0], buttons: [p.plead[1], p.plead[2]] }) === p.plead[1]
       : await OS.ui.dialog({ title: T, icon: 'help', text: L.confirm(p.name), buttons: [L.yes, L.no] }) === L.yes;
     if (!ok) return false;
@@ -190,6 +195,7 @@
     [p].concat(kids).forEach(x => { if (x.stop) x.stop(); closeApps(idsOf(x)); });   // 开着的直接帮你关掉
     await progress(L.removing(p.name), 1600);
     kids.concat(p).forEach(x => {
+      if (x.onRemove) x.onRemove();
       if (x.remove) x.remove();
       else if (x.comps) setRemoved(removed().concat(x.comps.map(c => c[0])));
       else setRemoved(removed().concat(x.id));

@@ -199,6 +199,15 @@
     pbChase(t) { [1200, 1500, 1800, 2100].forEach((f, i) => osc('square', f, t + i * 0.05, 0.04, 0.045)); }, // 灯跑马"嘀嘀嘀"
     pbHole(t) { osc('sine', 180, t, 1.1, 0.24, 1200); osc('sine', 270, t + 0.1, 1.0, 0.14, 1800); },      // 超空间洞"嗡——"
     pbDrain(t) { osc('sawtooth', 320, t, 0.9, 0.1, 60); },                                                // 掉球"呜——"
+    // 瑞鑫 ／ 海葵
+    rxAlarm(t) { for (let i = 0; i < 4; i++) { osc('square', 880, t + i * 0.32, 0.15, 0.07); osc('square', 660, t + i * 0.32 + 0.16, 0.15, 0.07); } },   // 警报"嘀嘟嘀嘟"
+    rxRoar(t) { osc('sawtooth', 160, t, 0.55, 0.12, 90); noise(t, 0.5, 0.08, 900); osc('sawtooth', 240, t + 0.05, 0.45, 0.05, 120); },          // 豹哥"嗷呜"
+    rxShield(t) { osc('triangle', 520, t, 0.08, 0.16, 980); noise(t, 0.04, 0.12, 3000); },                                                        // 盾牌挡回去
+    rxHit(t) { osc('sine', 300, t, 0.16, 0.22, 90); osc('square', 140, t, 0.1, 0.06); },                                                          // 打中病毒
+    rxWin(t) { [523, 659, 784, 1046].forEach((f, i) => osc('square', f, t + i * 0.1, 0.16, 0.06)); osc('sine', 1318, t + 0.42, 0.4, 0.1); },      // 杀掉了
+    rxLose(t) { osc('sawtooth', 420, t, 0.7, 0.08, 110); },                                                                                       // 病毒跑了
+    hdd(t) { for (let i = 0; i < 5; i++) noise(t + i * 0.045 + Math.random() * 0.02, 0.025, 0.09, 4200); },                                       // 硬盘"咔啦咔啦"
+    bubble(t) { osc('sine', 380 + Math.random() * 200, t, 0.09, 0.14, 900 + Math.random() * 300); },                                              // 冒泡
     pbLevel(t) { [523, 659, 784, 1046, 1318].forEach((f, i) => osc('square', f, t + i * 0.09, 0.14, 0.06)); } // 升级
   };
 
