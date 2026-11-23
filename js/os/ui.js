@@ -31,9 +31,32 @@
         title: o.title, width: o.width, content, modal: true, taskbar: false,
         minimizable: false, maximizable: false, className: 'is-dialog', onClose: finish
       });
+      fitDialog(win, content);
       OS.sound.play(o.sound || (o.icon === 'error' || o.icon === 'warn' ? 'error' : 'ding'));
     });
   };
+
+  // 字多了竖着放不下：先加宽；还放不下，字那一块自己滚，按钮总露在外面
+  function fitDialog(win, content) {
+    const W = OS.stage.work, room = W.h - 2;
+    // 窗口打开时高度被卡在屏幕高，多出来的被切掉了；这里量不卡的真实高度
+    const natural = () => { win.hStyle = 'auto'; win.el.style.height = 'auto'; return win.el.offsetHeight; };
+    let h = natural();
+    if (h <= room - 40) { win.h = h; return; } // 快顶满就加宽，不同手机字体高矮不一样
+    const wide = Math.min(W.w - 12, 440);
+    if (wide > win.w) { win.opts.width = wide; OS.wm.setWidth(win, wide); h = natural(); }
+    if (h > room) {
+      const t = content.querySelector('.dlg-text');
+      t.style.maxHeight = Math.max(48, t.offsetHeight - (h - room)) + 'px';
+      t.style.overflowY = 'auto';
+      ui.scrollable(t);
+      h = natural();
+    }
+    win.h = h;
+    win.x = W.x + Math.max(0, (W.w - win.w) / 2);
+    win.y = W.y + Math.max(0, (W.h - h) / 2);
+    OS.wm.setWidth(win, win.w);
+  }
 
   /* ---------- 右下角气泡 ----------
      OS.ui.notify({ title, text, icon, timeout, replace, onClick, actions: [[按钮字, 点了干嘛], …] }) */

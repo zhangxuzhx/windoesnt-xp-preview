@@ -85,6 +85,8 @@
       beforeClose: () => { if (busy) { OS.sound.play('ding'); return false; } if (!dirty) return true; askSave(() => win.close()); return false; }
     });
     OS.ui.scrollable(page);
+    // 磁盘清理（cleanup.js）删了这个文件：窗口直接关掉
+    win.filePath = () => (where && where.type === 'fs' ? where.path : where && where.type === 'desk' ? 'desk:' + name : null);
 
     function title() { return name + ' - ' + NAME; }
     function setDirty() { dirty = true; }

@@ -4,12 +4,19 @@
    - 点一段 = 选中这一段，格式栏改的就是它；编辑 ▸ 全选 一起改
    - 插入 ▸ 对象：抠抠表情、我的图片（欠条、示例图片）、千千不听音乐片段、羊；插入 ▸ 日期和时间
    - 存 RTF / Word 排版都在；存成文本文档全丢；存到桌面羊照吃，文章里插了羊的话羊不吃
-   - 蓝屏：格式 ▸ 字体… 字号填超过 1638（XP 写字板真上限），头一回报错，再填 → 那个字撑破屏幕 → FONT_TOO_BIG */
+   - 蓝屏：格式 ▸ 字体… 字号填超过 1638（XP 写字板真上限），头一回报错，再填 → 那个字撑破屏幕 → FONT_TOO_BIG
+   Wordy 2003（Offense 2003 三件套里写文章的，OS.wordy）也是这一套：写字、范文、排版、保存都一样，另外
+   - 样子照那几年的 Word：蓝色工具栏、灰底上一张白纸、最下面"第 1 页 1/1 …中文(中国)"那条状态栏
+   - 插入 ▸ 图片 ▸ 艺术字：6 种艺术字；选中艺术字有一条艺术字工具栏［更大］［更小］……
+   - 工具 ▸ 字数统计（离老师要求的 800 字还差几字）、拼写和语法（红绿波浪线，F7）
+   - 小算盘（offense.js）：看你写的是什么，来问"需要帮助吗？"
+   - 蓝屏：艺术字一直点［更大］→ 跑出窗口 → 撑满屏幕 → WORDART_TOO_BIG */
 (function () {
   'use strict';
   const el = OS.el;
   const FS = OS.fs;
   const app = OS.apps.byId.wordpad;
+  const wapp = OS.apps.byId.wordy;   // Wordy 2003
   const say = (title, icon, text) => () => OS.ui.dialog({ title, icon, text });
 
   /* ================= 文案 ================= */
@@ -21,11 +28,10 @@
     about: '写字板\n版本 2003\n(C) ' + OS.YEAR + ' 无聊科技',
     open: '打开失败：文件都在我的文档里，去那儿双击。',
     page: '纸张大小：作业本',
-    send: 'Outluck Excess 正在施工。\n你的作文只能自己看了。',
     undo: '撤销功能需要升级专业版：后悔药 2.0。',
     find: '找不到"作业"。\n你本来也没写。',
     tabs: '制表位是什么？\n写了这么多年作文也没人知道。',
-    wordArt: '写字板没有艺术字。\n想要艺术字，请购买 Wuliao Word 2003。',
+    wordArt: '写字板没有艺术字。\n想要艺术字，请购买 Wordy 2003。',
     noDrawing: '你还没画过画。',
     preview: '第 1 页\n共 1 页，后面那页是你想象出来的',
     ask: n => '要保存对 ' + n + ' 的更改吗？',
@@ -66,6 +72,64 @@
   const BSOD = { id: 'wordpad', name: 'FONT_TOO_BIG', text: '一个字太大，把屏幕撑破了。' };
   const TYPES = [['RTF 文档(*.rtf)', 'rtf', '.rtf'], ['Word 6.0 文档(*.doc)', 'doc', '.doc'], ['文本文档(*.txt)', 'txt', '.txt'], ['Unicode 文本文档(*.txt)', 'txt', '.txt']];
 
+  /* ================= Wordy 2003 的文案 ================= */
+  const WY = {
+    name: 'Wordy 2003', untitled: '文档1', icon: 'wordy',
+    menus: ['文件(F)', '编辑(E)', '视图(V)', '插入(I)', '格式(O)', '工具(T)', '表格(A)', '窗口(W)', '帮助(H)'],
+    status: line => '第 1 页　1/1　第 ' + line + ' 行　第 1 列　　录制　修订　扩展　改写　中文(中国)',
+    help: 'Wordy 帮助', about: '关于 Wordy 2003', aboutText: 'Wordy 2003\n版本 2003\n本软件话比较多，\n请多包涵。\n(C) ' + OS.YEAR + ' 无聊科技',
+    palShow: '显示小算盘', palHide: '隐藏小算盘',
+    newTypes: ['空白文档', '电子邮件'],
+    table: '想做表格，\n请打开 Excuse 2003。', insertTable: '插入表格…',
+    newWin: '一篇检讨一个窗口，\n够用了。', newWinItem: '新建窗口',
+    types: [['Word 文档(*.doc)', 'doc', '.doc'], ['RTF 格式(*.rtf)', 'rtf', '.rtf'], ['纯文本(*.txt)', 'txt', '.txt']],
+    // 字数统计
+    countItem: '字数统计…', countTitle: '字数统计',
+    count: n => '页数：1\n字数：' + n + '\n\n' + (n < 800 ? '离老师要求的 800 字还差 ' + (800 - n) + ' 字。' : '够 800 字了，可以交了。'),
+    // 拼写和语法：红波浪线 = 拼写，绿波浪线 = 语法
+    red: ['抄作业', '小人', '小卖部', '肚子疼', '联通', '在吗'],
+    green: ['我错了', '写了也是错', '这次真的我请', '明天考数学', '骗你的'],
+    spellItem: '拼写和语法…　F7', spellTitle: '拼写和语法：中文(中国)', spellDone: '拼写和语法检查已完成。',
+    spellKinds: [['检讨', n => '你的检讨书里有 ' + n + ' 处不够诚恳。'], ['请假', n => '你的请假条里有 ' + n + ' 处理由不够充分。'],
+      ['致 ', n => '你的情书里有 ' + n + ' 处不够勇敢。'], ['同桌', n => '你的作文里有 ' + n + ' 处像是抄的。']],
+    spellOther: n => '你的文章里有 ' + n + ' 处可疑的地方。',
+    // 艺术字
+    pic: '图片', waItem: '艺术字…', waTitle: '艺术字库', waText: '编辑"艺术字"文字', waLabel: '文字：', waDefault: '请在此键入您自己的内容',
+    waStyles: [['rainbow', '彩虹'], ['arch', '拱桥'], ['solid', '立体'], ['gold', '金光闪闪'], ['wave', '波浪'], ['tilt', '斜着飞']],
+    waSample: '艺术字', waBar: '艺术字：', waEdit: '编辑文字…', waGallery: '艺术字库…', waBigger: '更大', waSmaller: '更小',
+    tbSpell: '拼写', tbWa: '艺术字',
+    // 小算盘（offense.js）
+    pal: { back: '我又回来了。', wake: '我没睡！\n我在帮你数字数。',
+      tips: ['小提示：检讨书越长，\n显得越诚恳。', '小提示：按 F7 检查拼写，\n检查完也不会帮你改。', '小提示：艺术字越大越好看。', '小提示：字数统计只数字，\n不数诚意。'] },
+    greet: {
+      '写检讨': ['看起来你在写检讨。\n需要帮助吗？', '帮我写得诚恳一点', '我保证下次不会再犯了，下次的事下次再说。'],
+      '写作文': ['看起来你在写作文。\n需要帮助吗？', '帮我写个结尾', '总之，这真是难忘的一天。'],
+      '写情书': ['看起来你在写情书。\n需要帮助吗？', '帮我写得勇敢一点', '如果你不同意，就当我没说。'],
+      '写请假条': ['看起来你在写请假条。\n需要帮助吗？', '帮我编个理由', '另外，我家的羊也病了。']
+    },
+    no: '不用了', noHelp: '好的。\n我会一直看着你的。',
+    waOut: '艺术字跑出来了！', waWarn: '再大，屏幕就装不下了！'
+  };
+  const WY_BSOD = { id: 'wordy', name: 'WORDART_TOO_BIG', text: '艺术字太大，屏幕装不下了。' };
+  const WA_BASE = 26;   // 艺术字 1 倍时的字号（像素）
+  // 一个艺术字（写字板里打开 Wordy 存的文档也照样显示）；max = 最宽能占多少像素（超了就缩小显示）
+  function waEl(o, max) {
+    const chars = [...(o.text || '')];
+    let fs = WA_BASE * (o.scale || 1);
+    if (max) fs = Math.min(fs, max / Math.max(2, chars.length) * 0.95);
+    const box = el('span', { class: 'wa wa-' + o.style, style: { fontSize: fs + 'px' } });
+    if (o.style === 'arch') {
+      const w = Math.max(2, chars.length) * fs, h = fs * 1.9, id = 'wa' + Math.random().toString(36).slice(2, 8);
+      box.innerHTML = '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '"><defs><path id="' + id + '" d="M ' + fs * 0.2 + ' ' + (h - fs * 0.25) + ' Q ' + w / 2 + ' ' + (-h * 0.35) + ' ' + (w - fs * 0.2) + ' ' + (h - fs * 0.25) + '"/>' +
+        '<linearGradient id="' + id + 'g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fc3ff"/><stop offset="1" stop-color="#0b3fa8"/></linearGradient></defs>' +
+        '<text font-size="' + fs + '" font-weight="bold" fill="url(#' + id + 'g)" stroke="#06205c" stroke-width="' + Math.max(0.6, fs / 36) + '" paint-order="stroke" text-anchor="middle"><textPath href="#' + id + '" startOffset="50%"></textPath></text></svg>';
+      box.querySelector('textPath').textContent = o.text;
+    } else if (o.style === 'wave') {
+      chars.forEach((ch, k) => box.appendChild(el('span', { text: ch, style: { transform: 'translateY(' + (Math.sin(k * 0.9) * fs * 0.22) + 'px)' } })));
+    } else box.textContent = o.text;
+    return box;
+  }
+
   const today = () => { const d = OS.clock.now(); return OS.YEAR + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日'; };
   const blank = () => ({ text: '', font: '宋体', size: 10 });
   // 纯文字变成一段一段（打开只有字的 .doc 时用）
@@ -77,22 +141,24 @@
 
   /* ================= 打开 =================
      f: { name, doc: [段], where: { type: 'fs', path } | { type: 'desk' } | { type: 'ro', msg } } */
-  function open(f) {
+  function open(f, kind) {
     f = f || {};
-    let name = f.name || UNTITLED, where = f.where || null;
+    const W = kind === 'wordy';   // Wordy 2003
+    const NM = W ? WY.name : NAME, UT = W ? WY.untitled : UNTITLED;
+    let name = f.name || UT, where = f.where || null;
     let doc = (f.doc || [blank()]).map(p => Object.assign(blank(), p));
     if (!doc.length) doc = [blank()];
     let sel = new Set(), dirty = false, busy = false, unit = '厘米', clip = null, oversize = 0, typingAt = -1;
     const show = { tools: true, fmt: true, ruler: true, status: true };
 
     /* ---------- 窗口 ---------- */
-    const bar = OS.ui.menuBar(L.menus, menuFor, 'np-mbar');
+    const bar = OS.ui.menuBar(W ? WY.menus : L.menus, menuFor, 'np-mbar');
     const tb = (text, title, fn, cls) => { const b = el('button', { class: 'wp-tb' + (cls ? ' ' + cls : ''), text, title: title || text }); b.addEventListener('click', e => { e.stopPropagation(); OS.sound.play('click'); fn(b); }); return b; };
     const sep = () => el('span', { class: 'wp-sep' });
     const tools = el('div', { class: 'wp-bar' }, [
-      tb('新建', '', fileNew), tb('打开', '', say(NAME, 'info', L.open)), tb('保存', '', () => save(false)), tb('打印', '', print), tb('预览', '打印预览', preview), sep(),
-      tb('查找', '', say('查找', 'info', L.find)), sep(), tb('剪切', '', cut), tb('复制', '', copy), tb('粘贴', '', paste), tb('撤销', '', say(NAME, 'warn', L.undo)), sep(), tb('日期', '日期和时间', insertDate)
-    ]);
+      tb('新建', '', fileNew), tb('打开', '', say(NM, 'info', L.open)), tb('保存', '', () => save(false)), tb('打印', '', print), tb('预览', '打印预览', preview), sep(),
+      tb('查找', '', say('查找', 'info', L.find)), sep(), tb('剪切', '', cut), tb('复制', '', copy), tb('粘贴', '', paste), tb('撤销', '', say(NM, 'warn', L.undo)), sep(), tb('日期', '日期和时间', insertDate)
+    ].concat(W ? [sep(), tb(WY.tbSpell, WY.spellTitle, spell), tb(WY.tbWa, WY.waItem, insertWordArt)] : []));
     const fontBtn = tb('宋体 ▾', '字体', b => drop(b, Object.keys(FONTS).map(k => ({ label: k, checked: cur().font === k, action: () => apply({ font: k }) }))), 'wp-drop wp-fontsel');
     const sizeBtn = tb('10 ▾', '字号', b => drop(b, SIZES.map(s => ({ label: String(s), checked: cur().size === s, action: () => apply({ size: s }) }))), 'wp-drop wp-sizesel');
     const bBtn = tb('B', '粗体', () => apply({ b: !cur().b }), 'f-b'), iBtn = tb('I', '斜体', () => apply({ i: !cur().i }), 'f-i'), uBtn = tb('U', '下划线', () => apply({ u: !cur().u }), 'f-u');
@@ -104,13 +170,19 @@
     const page = el('div', { class: 'wp-page' });
     const paper = el('div', { class: 'wp-paper' }, [page]);
     const status = el('div', { class: 'wp-status', text: L.status });
-    const box = el('div', { class: 'wp' }, [bar, tools, fmtBar, ruler, paper, status]);
+    // Wordy：选中艺术字时多一条艺术字工具栏；白纸外面包一层（小算盘蹲在这层里，不跟着纸滚）
+    const waBar = W ? el('div', { class: 'wp-bar wy-wabar' }, [el('span', { class: 'wy-wacap', text: WY.waBar }),
+      tb(WY.waEdit, '', () => waEdit()), tb(WY.waGallery, '', () => waGallery()), tb(WY.waBigger, '', () => waGrow(1)), tb(WY.waSmaller, '', () => waGrow(-1))]) : null;
+    const stageEl = W ? el('div', { class: 'wy-stage' }, [paper]) : paper;
+    const box = el('div', { class: 'wp' + (W ? ' wy' : '') }, [bar, tools, fmtBar, waBar, ruler, stageEl, status]);
     const win = OS.wm.open({
-      title: title(), icon: 'wordpad', width: 400, height: 286, content: box, appId: app.id,
+      title: title(), icon: W ? WY.icon : 'wordpad', width: W ? 476 : 400, height: W ? 300 : 286, content: box, appId: W ? wapp.id : app.id, center: W,
       beforeClose: () => { if (busy) { OS.sound.play('ding'); return false; } if (!dirty) return true; askSave(() => win.close()); return false; }
     });
     OS.ui.scrollable(paper);
-    function title() { return name + ' - ' + NAME; }
+    // 磁盘清理（cleanup.js）删了这个文件：窗口直接关掉
+    win.filePath = () => (where && where.type === 'fs' ? where.path : where && where.type === 'desk' ? 'desk:' + name : null);
+    function title() { return name + ' - ' + NM; }
     const setDirty = () => { dirty = true; };
 
     /* ---------- 标尺 ---------- */
@@ -138,6 +210,10 @@
       fmtBar.style.display = show.fmt ? '' : 'none';
       ruler.style.display = show.ruler ? '' : 'none';
       status.style.display = show.status ? '' : 'none';
+      if (W) {
+        status.textContent = WY.status(sel.size ? [...sel][0] + 1 : doc.length);
+        waBar.style.display = sel.size && c.obj && c.obj.type === 'wordart' ? '' : 'none';
+      }
     }
     function paraEl(p, i) {
       const d = el('div', { class: 'wp-p' + (sel.has(i) ? ' sel' : '') });
@@ -160,12 +236,25 @@
         const hue = 'hsl(' + ((k * 47) % 360) + ', 90%, 48%)';
         d.appendChild(el('span', { text: ch, style: p.font === '华文彩云' ? { color: 'transparent', webkitTextStroke: '1px ' + hue } : { color: hue } }));
       });
+      else if (W && text) markText(d, text);
       else d.appendChild(document.createTextNode(text || '​'));
       return d;
+    }
+    // 拼写和语法：红波浪线（拼写）、绿波浪线（语法）
+    function markText(d, text) {
+      const words = WY.red.map(w => [w, 'wy-red']).concat(WY.green.map(w => [w, 'wy-green']));
+      let i = 0, plain = '';
+      while (i < text.length) {
+        const hit = words.find(([w]) => text.startsWith(w, i));
+        if (hit) { if (plain) { d.appendChild(document.createTextNode(plain)); plain = ''; } d.appendChild(el('span', { class: hit[1], text: hit[0] })); i += hit[0].length; }
+        else { plain += text[i]; i++; }
+      }
+      if (plain) d.appendChild(document.createTextNode(plain));
     }
     // 插进文章里的东西
     function objEl(o) {
       if (o.type === 'emo') return el('span', { class: 'wp-emo', style: { backgroundPosition: (o.i / 15 * 100) + '% 0' } });
+      if (o.type === 'wordart') return waEl(o, 330);
       if (o.type === 'sheep') return el('span', { class: 'wp-sheep', html: OS.desktop.sheepHtml });
       if (o.type === 'music') {
         const n = el('span', { class: 'wp-music' }, [OS.iconEl('music', 'wp-music-ico'), el('span', { text: o.title })]);
@@ -203,7 +292,7 @@
       render();
       const pt = OS.stage.toLocal(e.clientX, e.clientY);
       let picked = false;
-      const items = TEMPLATES.map(([label, paras]) => ({ label, action: () => { picked = true; writeParas(paras); } }))
+      const items = TEMPLATES.map(([label, paras]) => ({ label, action: () => { picked = true; writeParas(paras).then(() => greet(label)); } }))
         .concat([{ label: '写一句话', sub: LINES.map(t => ({ label: t, action: () => { picked = true; writeParas([D(t)]); } })) }, '-', { label: SELF_TYPE, action: () => { picked = true; selfType(); } }]);
       OS.ui.contextMenu(items, pt.x, pt.y, false, { onClose: () => setTimeout(() => { if (!picked) menuClosedAt = Date.now(); }, 0) });
     });
@@ -265,12 +354,12 @@
       OS.ui.contextMenu(items, pt.x, pt.y);
     }
 
-    /* ---------- 菜单 ---------- */
+    /* ---------- 菜单（按名字分，写字板和 Wordy 共用） ---------- */
     function menuFor(m) {
       if (busy) return null;
-      if (m === L.menus[0]) return [
+      if (m === '文件(F)') return [
         { label: '新建…', action: fileNew },
-        { label: '打开…', action: say(NAME, 'info', L.open) },
+        { label: '打开…', action: say(NM, 'info', L.open) },
         { label: '保存', action: () => save(false) },
         { label: '另存为…', action: () => save(true) },
         '-',
@@ -278,12 +367,12 @@
         { label: '打印预览', action: preview },
         { label: '页面设置…', action: say('页面设置', 'info', L.page) },
         '-',
-        { label: '发送…', action: say('发送', 'info', L.send) },
+        { label: '发送…', action: () => OS.mail.compose({ name: /\.(doc|rtf)$/i.test(name) ? name : name + '.doc', icon: 'doc', path: where && where.type === 'fs' ? where.path : null }) },
         '-',
         { label: '退出', action: () => OS.wm.requestClose(win) }
       ];
-      if (m === L.menus[1]) return [
-        { label: '撤销', action: say(NAME, 'warn', L.undo) },
+      if (m === '编辑(E)') return [
+        { label: '撤销', action: say(NM, 'warn', L.undo) },
         '-',
         { label: '剪切', disabled: !sel.size, action: cut },
         { label: '复制', disabled: !sel.size, action: copy },
@@ -293,7 +382,7 @@
         '-',
         { label: '查找…', action: say('查找', 'info', L.find) }
       ];
-      if (m === L.menus[2]) return [
+      if (m === '查看(V)' || m === '视图(V)') return [
         { label: '工具栏', checked: show.tools, action: () => { show.tools = !show.tools; render(); } },
         { label: '格式栏', checked: show.fmt, action: () => { show.fmt = !show.fmt; render(); } },
         { label: '标尺', checked: show.ruler, action: () => { show.ruler = !show.ruler; render(); } },
@@ -301,22 +390,34 @@
         '-',
         { label: '选项…', sub: UNITS.map(u => ({ label: '度量单位：' + u, checked: unit === u, action: () => { unit = u; drawRuler(); } })) }
       ];
-      if (m === L.menus[3]) return [
+      if (m === '插入(I)') return [
         { label: '日期和时间…', action: insertDate },
         { label: '对象…', action: insertObject },
         '-',
-        { label: '艺术字…', action: say('艺术字', 'info', L.wordArt) }
+        W ? { label: WY.pic, sub: [{ label: WY.waItem, action: insertWordArt }] } : { label: '艺术字…', action: say('艺术字', 'info', L.wordArt) }
       ];
-      if (m === L.menus[4]) return [
+      if (m === '格式(O)') return [
         { label: '字体…', action: fontDialog },
         { label: '项目符号样式', sub: [{ label: '无', checked: !cur().bullet, action: () => apply({ bullet: null }) }].concat(BULLETS.map(([n, k]) => ({ label: n, checked: cur().bullet === k, action: () => apply({ bullet: k }) }))) },
         { label: '段落…', sub: [0, 2, 4].map(n => ({ label: '左缩进：' + (n ? n + ' 字' : '无'), checked: (cur().indent || 0) === n, action: () => apply({ indent: n }) })) },
         { label: '制表位…', action: say('制表位', 'info', L.tabs) }
       ];
+      if (m === '工具(T)') return [{ label: WY.spellItem, action: spell }, { label: WY.countItem, action: wordCount }];
+      if (m === '表格(A)') return [{ label: WY.insertTable, action: say(NM, 'info', WY.table) }];
+      if (m === '窗口(W)') return [{ label: WY.newWinItem, action: say(NM, 'info', WY.newWin) }];
+      if (W) return [
+        { label: WY.help, action: () => pal.tip() },
+        pal.hidden() ? { label: WY.palShow, action: () => pal.comeBack() } : { label: WY.palHide, action: () => pal.hide() },
+        '-', { label: WY.about, action: say(WY.about, 'info', WY.aboutText) }
+      ];
       return [{ label: '帮助主题', action: say('写字板帮助', 'help', L.help) }, '-', { label: '关于写字板', action: say('关于写字板', 'info', L.about) }];
     }
     // F1：帮助
-    function onKey(e) { if (!win.isClosed && OS.wm.active === win && e.key === 'F1') { e.preventDefault(); OS.ui.dialog({ title: '写字板帮助', icon: 'help', text: L.help }); } }
+    function onKey(e) {
+      if (win.isClosed || OS.wm.active !== win) return;
+      if (e.key === 'F1') { e.preventDefault(); if (W) pal.tip(); else OS.ui.dialog({ title: '写字板帮助', icon: 'help', text: L.help }); }
+      if (e.key === 'F7' && W) { e.preventDefault(); spell(); }
+    }
     document.addEventListener('keydown', onKey, true);
     win.closed.then(() => document.removeEventListener('keydown', onKey, true));
 
@@ -432,9 +533,9 @@
         const v = parseInt(sizeIn.value, 10);
         if (!(v >= 1 && v <= SIZE_MAX)) {
           // 超过 1638：头一回报错（XP 真是这句）；再来一次，那个字就撑破屏幕
-          if (v > SIZE_MAX && oversize >= 1) { w.close(); burst(); return; }
+          if (v > SIZE_MAX && oversize >= 1 && !W) { w.close(); burst(); return; }
           if (v > SIZE_MAX) oversize++;
-          OS.ui.dialog({ title: NAME, icon: 'warn', text: L.sizeErr });
+          OS.ui.dialog({ title: NM, icon: 'warn', text: L.sizeErr });
           return;
         }
         pick.size = v;
@@ -458,10 +559,17 @@
 
     /* ---------- 新建、打印、预览 ---------- */
     function fileNew() {
+      if (W) {
+        pickList(L.newTitle, WY.newTypes, i => {
+          if (i === 1) { if (OS.mail) OS.mail.compose(); return; }
+          askSave(() => { doc = [blank()]; name = UT; where = null; dirty = false; sel = new Set(); win.setTitle(title()); render(); });
+        });
+        return;
+      }
       pickList(L.newTitle, L.newTypes, i => {
         askSave(() => {
           if (i === 1 || i === 2) { win.close(); OS.notepad.open(); return; }   // 文本文档就用记事本
-          doc = [blank()]; name = UNTITLED; where = null; dirty = false; sel = new Set(); win.setTitle(title()); render();
+          doc = [blank()]; name = UT; where = null; dirty = false; sel = new Set(); win.setTitle(title()); render();
         });
       });
     }
@@ -481,18 +589,19 @@
     /* ---------- 保存 ---------- */
     function askSave(done) {
       if (!dirty) { done(); return; }
-      OS.ui.dialog({ title: NAME, icon: 'warn', text: L.ask(name), buttons: ['是', '否', '取消'] }).then(v => {
+      OS.ui.dialog({ title: NM, icon: 'warn', text: L.ask(name), buttons: ['是', '否', '取消'] }).then(v => {
         if (v === '否') { dirty = false; done(); } else if (v === '是') save(false).then(ok => { if (ok) done(); });
       });
     }
     async function save(asNew) {
-      if (!asNew && where && where.type === 'ro') { await OS.ui.dialog({ title: NAME, icon: 'error', text: where.msg || L.roFail }); return false; }
+      if (!asNew && where && where.type === 'ro') { await OS.ui.dialog({ title: NM, icon: 'error', text: where.msg || L.roFail }); return false; }
       if (!asNew && where && where.type === 'fs' && FS.get(where.path)) { FS.setDoc(where.path, doc); dirty = false; return true; }
-      const pick = await saveAs(name);
+      const types = W ? WY.types : TYPES;
+      const pick = await saveAs(name, types);
       if (!pick || win.isClosed) return false;
-      const [, kind, ext] = TYPES[pick.type];
+      const [, kind, ext] = types[pick.type];
       if (kind === 'txt' && doc.some(p => p.obj || p.b || p.i || p.u || (p.color && p.color !== '#000000') || p.font !== '宋体' || p.size !== 10 || p.bullet || p.align)) {
-        const v = await OS.ui.dialog({ title: NAME, icon: 'warn', text: L.toText, buttons: ['是', '否'] });
+        const v = await OS.ui.dialog({ title: NM, icon: 'warn', text: L.toText, buttons: ['是', '否'] });
         if (v !== '是') return false;
       }
       const fname = pick.name.replace(/\.(rtf|doc|txt)$/i, '') + ext;
@@ -508,7 +617,7 @@
       } else {
         const snapshot = JSON.parse(JSON.stringify(doc));
         const ok = await OS.notepad.toDesktop(fname, text, true, kind === 'txt' ? null : {
-          icon: 'doc', sheepInside: hasSheep(doc), open: () => open({ name: fname, doc: snapshot, where: { type: 'desk' } }), typeName: kind === 'rtf' ? 'RTF 文档' : 'Word 文档'
+          icon: 'doc', sheepInside: hasSheep(doc), open: () => open({ name: fname, doc: snapshot, where: { type: 'desk' } }, W ? 'wordy' : null), typeName: kind === 'rtf' ? 'RTF 文档' : 'Word 文档'
         });
         if (!ok) return false;
         name = fname; where = { type: 'desk' };
@@ -517,11 +626,93 @@
       win.setTitle(title());
       return true;
     }
+
+    /* ================= Wordy 才有的 ================= */
+    const timers = [];
+    const later = (fn, ms) => timers.push(setTimeout(() => { if (!win.isClosed) fn(); }, ms));
+    const pal = W ? OS.offense.pal(stageEl, later, () => win.isClosed, WY.pal) : null;
+    let greeted = false;
+    // 写完一篇范文：小算盘看你写的是什么，问要不要帮忙（帮的就是在最后补一句）
+    function greet(label) {
+      const g = W && !greeted && WY.greet[label];
+      if (!g || win.isClosed) return;
+      greeted = pal.ask(g[0], [g[1], WY.no], i => { if (i === 0) writeParas([D(g[2], { indent: 2 })]); else pal.say(WY.noHelp); });
+    }
+    // 工具 ▸ 字数统计
+    function wordCount() {
+      const n = doc.filter(p => !p.obj).map(p => p.text).join('').replace(/\s/g, '').length;
+      OS.ui.dialog({ title: WY.countTitle, icon: 'info', text: WY.count(n) });
+    }
+    // 工具 ▸ 拼写和语法（F7）：数波浪线，看你写的是什么说一句
+    function spell() {
+      const all = doc.filter(p => !p.obj).map(p => p.text).join('\n');
+      let n = 0;
+      WY.red.concat(WY.green).forEach(w => { n += all.split(w).length - 1; });
+      const kindLine = (WY.spellKinds.find(([k]) => all.indexOf(k) >= 0) || [null, WY.spellOther])[1];
+      OS.ui.dialog({ title: WY.spellTitle, icon: 'info', text: WY.spellDone + (n ? '\n' + kindLine(n) : '') });
+    }
+    // 插入 ▸ 图片 ▸ 艺术字：先挑样式，再挑字
+    function insertWordArt() { waPick(style => waAskText(text => insertParas([Object.assign(blank(), { align: 'center', obj: { type: 'wordart', style, text, scale: 1 } })]))); }
+    function waPick(done) {
+      const grid = el('div', { class: 'wy-gal' });
+      const w = OS.wm.open({ title: WY.waTitle, icon: 'doc', width: 290, content: el('div', { class: 'wy-galw' }, [grid]), modal: true, taskbar: false, minimizable: false, maximizable: false, className: 'is-dialog' });
+      WY.waStyles.forEach(([k, n]) => {
+        const c = el('div', { class: 'wy-gcell', title: n }, [waEl({ style: k, text: WY.waSample, scale: 0.75 })]);
+        c.addEventListener('click', () => { OS.sound.play('click'); w.close(); done(k); });
+        grid.appendChild(c);
+      });
+    }
+    function waAskText(done) {
+      const own = sel.size && cur().text ? [cur().text.slice(0, 20)] : [];
+      const opts = own.concat(LINES.filter(t => own.indexOf(t) < 0), [SELF_TYPE]);
+      pickList(WY.waText, opts, i => {
+        if (opts[i] !== SELF_TYPE) { done(opts[i]); return; }
+        OS.explorer.askText(WY.waText, WY.waLabel, WY.waDefault, v => { if (v && v.trim()) done(v.trim().slice(0, 20)); });
+      });
+    }
+    const waCur = () => { const p = cur(); return sel.size && p.obj && p.obj.type === 'wordart' ? p.obj : null; };
+    function waEdit() { const o = waCur(); if (o) waAskText(t => { o.text = t; setDirty(); render(); waOut(o); }); }
+    function waGallery() { const o = waCur(); if (o) waPick(k => { o.style = k; setDirty(); render(); waOut(o); }); }
+    // ［更大］［更小］：大到窗口装不下就跑出窗口；再大，撑满屏幕 → 蓝屏
+    let giant = null, warned = false;
+    function waGrow(dir) {
+      const o = waCur();
+      if (!o || busy) return;
+      o.scale = Math.max(0.5, (o.scale || 1) * (dir > 0 ? 1.35 : 1 / 1.35));
+      setDirty();
+      render();
+      OS.sound.play('click');
+      const wide = WA_BASE * o.scale * Math.max(2, [...o.text].length);
+      if (dir > 0 && wide > OS.stage.W * 2.4) { waBoom(o); return; }
+      waOut(o);
+      if (dir > 0 && giant && wide > OS.stage.W * 1.3 && !warned) { warned = true; pal.say(WY.waWarn); }
+    }
+    // 跑出窗口的那个大艺术字：盖在窗口上面，跟着变大
+    function waOut(o) {
+      const wide = WA_BASE * o.scale * Math.max(2, [...o.text].length);
+      if (wide <= paper.clientWidth * 1.15) { if (giant) { giant.remove(); giant = null; } return; }
+      const first = !giant;
+      if (giant) giant.remove();
+      giant = el('div', { class: 'wy-giant' }, [waEl(o)]);
+      const r = OS.stage.rectOf(win.el);
+      giant.style.left = (r.left + r.width / 2) + 'px';
+      giant.style.top = (r.top + r.height / 2) + 'px';
+      document.getElementById('overlay').appendChild(giant);
+      if (first) pal.say(WY.waOut);
+    }
+    function waBoom(o) {
+      busy = true;
+      waOut(o);
+      if (giant) giant.classList.add('boom');
+      OS.sound.play('burst');
+      setTimeout(() => { if (giant) { giant.remove(); giant = null; } OS.ui.bsod(WY_BSOD); }, 1300);
+    }
+    win.closed.then(() => { timers.forEach(clearTimeout); if (giant) { giant.remove(); giant = null; } });
     return win;
   }
 
   /* ================= 另存为：保存在 桌面 ／ 我的文档；保存类型 四种 ================= */
-  function saveAs(fname) {
+  function saveAs(fname, TYPES) {
     return new Promise(resolve => {
       let place = 'desk', type = 0;
       const row = (k, v, drop) => el('div', { class: 'np-sa-row' }, [el('span', { class: 'np-sa-k', text: k }), el('div', { class: 'np-sa-v' + (drop ? ' drop' : '') }, v)]);
@@ -551,5 +742,10 @@
   }
 
   app.open = () => open();
-  OS.wordpad = { open, fromText };
+  OS.wordpad = { open: f => open(f), fromText };
+  // Wordy 2003（Offense 2003）：同一套，换个样子、多几样东西
+  if (wapp) wapp.open = () => open({}, 'wordy');
+  OS.wordy = { open: f => open(f, 'wordy') };
+  // 艺术字：PowerPointless 2003（pptless.js）也用这一套
+  OS.wordart = { el: waEl, styles: WY.waStyles };
 })();

@@ -371,8 +371,11 @@
   function viewer(f) {
     const pic = blurryPic();
     pic.className = 'rv-pic';
+    // 角落的小水印：点一下把网址采集进 Internot Explorer 的地址栏（ie.js）
+    const mark = el('span', { class: 'rv-mark' });
+    mark.addEventListener('click', e => { e.stopPropagation(); OS.sound.play('click'); if (OS.web) OS.web.collect(PIC_MARK); });
     const content = el('div', { class: 'rv' }, [
-      el('div', { class: 'rv-stage' }, [pic]),
+      el('div', { class: 'rv-stage' }, [el('div', { class: 'rv-picw' }, [pic, mark])]),
       el('div', { class: 'rv-bar', text: f.name + '　240 × 150 像素　' + f.size })
     ]);
     OS.wm.open({ title: f.name + ' - 图片和传真查看器', icon: 'paint', width: 300, content, maximizable: false });
@@ -401,7 +404,7 @@
       {
         label: '发送到', sub: [
           { label: '3½ 软盘 (A:)', action: say('发送到', 'error', '软盘只有 1.44 MB，装不下暴富。') },
-          { label: '邮件接收者', action: say('发送到', 'warn', '发送失败：你的 163 邮箱附件上限只有 5 MB。') },
+          { label: '邮件接收者', action: say('发送到', 'warn', '发送失败：你的抠抠邮箱附件上限只有 5 MB。') },
           { label: '桌面快捷方式', action: P.shortcut.action }
         ]
       },

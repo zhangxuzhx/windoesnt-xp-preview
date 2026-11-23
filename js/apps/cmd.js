@@ -131,7 +131,7 @@
   // 显示在 ping 里的“对方”：ip 是假装的局域网地址；last = 第 4 次的回复换成这句
   const PING = {
     '127.0.0.1': { ip: '127.0.0.1', end: '自己 ping 自己，你是有多寂寞。' },
-    '白度.com': { lost: true, end: '拨号猫的灯不亮了。' },
+    'shidu.com': { lost: true, end: '拨号猫的灯不亮了。' },
     '前任': { none: 'Ping 请求找不到主机 前任。请检查该名称，然后重试。' },
     '楼下小卖部老板': { ip: '192.168.1.4', last: '来自 楼下小卖部老板 的回复：先把账结了。' },
     '你 (2)': { ip: '192.168.1.250', last: '来自 你 (2) 的回复：别 ping 了，我知道你在。' }
@@ -232,7 +232,7 @@
       { t: 'cls', run: async () => { endInput(); scr.textContent = ''; }, quiet: true },
       { t: 'ipconfig', run: () => out(IPCONFIG, 60) },
       { t: 'ping', next: Object.keys(PING).map(k => ({ t: k, run: () => ping(k) })) },
-      { t: 'tracert', next: [{ t: '白度.com', run: tracert }] },
+      { t: 'tracert', next: [{ t: 'shidu.com', run: tracert }] },
       { t: 'color', next: COLORS.map(c => ({ t: c.t, run: () => color(c) })) },
       { t: 'echo', next: ECHO.map(s => ({ t: s, run: () => out([s]) })) },
       { t: 'shutdown', next: () => [
@@ -274,7 +274,7 @@
       await out(['', k + ' 的 Ping 统计信息:', '    数据包: 已发送 = 4，已接收 = ' + got + '，丢失 = ' + (4 - got) + ' (' + (p.lost ? 100 : 0) + '% 丢失)'].concat(p.end ? ['', p.end] : []), 40);
     }
     async function tracert() {
-      await out(['', '通过最多 30 个跃点跟踪', '到 白度.com 的路由:', ''], 40);
+      await out(['', '通过最多 30 个跃点跟踪', '到 shidu.com 的路由:', ''], 40);
       for (const [l] of TRACERT) { await OS.wait(650); if (win.isClosed) return; line(l); }
       await out(['', TRACERT_END], 300);
     }

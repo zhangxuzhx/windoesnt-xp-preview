@@ -54,7 +54,7 @@
     initClouds();
     initSign();
     initSheep();
-    OS.apps.list.filter(a => a.desktop).forEach(addIcon);
+    OS.apps.list.filter(a => a.desktop && !(OS.soft && !OS.soft.appOk(a.id))).forEach(addIcon);   // 卸掉的不摆
     OS.on('stage:resize', relayout);
     relayout();
   };
@@ -519,6 +519,11 @@
     if (!keepFix) syncLeft();
   };
   D.hasFile = id => !!icons[id];
+  // 磁盘清理（cleanup.js）：直接删掉一个桌面上的文本文档；羊正要去吃它的话记一笔（扑空）
+  D.dropFile = function (id) {
+    if (current === id) missed.add(id);
+    D.removeFile(id);
+  };
   // 桌面上的；inBin = true 只要回收站里的
   D.tempFiles = inBin => Object.keys(icons).filter(k => icons[k].app.temp && !!icons[k].binned === !!inBin).map(k => ({ id: k, name: icons[k].app.name }));
 
@@ -569,6 +574,7 @@
   }
   const arrived = s => sheep.dataset.x != null && Math.abs(parseFloat(sheep.dataset.x) - s.x) < 3 && Math.abs(parseFloat(sheep.dataset.y) - s.y) < 3;
   let current = null;
+  const missed = new Set();   // 羊正要去吃、被磁盘清理删掉的：扑个空
   async function nextMeal() {
     const job = feedQueue.shift();
     if (!job) { feeding = false; current = null; sheep.classList.remove('angry'); return goHome(); }
@@ -578,7 +584,16 @@
     // 追：文件挪到哪追到哪；回收站里也翻出来吃（生气）
     for (let round = 0; round < 80; round++) {
       const w = whereIs(job.id);
-      if (!w) return nextMeal();
+      if (!w) {
+        if (missed.delete(job.id)) {   // 扑空：愣一下，头顶一个问号
+          sheep.classList.remove('wobble'); void sheep.offsetWidth; sheep.classList.add('wobble', 'stunned');
+          OS.sound.play('baa', 1);
+          await pause(1200);
+          sheep.classList.remove('stunned');
+          if (!D.sheepHere()) return stopMeals();
+        }
+        return nextMeal();
+      }
       sheep.classList.toggle('angry', w.inBin);
       const s = spotFor(w);
       if (!arrived(s)) {
@@ -799,6 +814,36 @@
     if (img) img.innerHTML = OS.icon(name);
   };
   D.placeIcon = id => { if (icons[id] && !icons[id].binned) position(icons[id]); };
+  // 添加或删除程序（addremove.js）：卸了 = 图标收走，记住原来的格子（存档 softPos）；在回收站里的也一并拿掉
+  D.dropApp = function (id) {
+    const ic = icons[id];
+    if (!ic) return;
+    const pos = OS.save.get('softPos', {});
+    const b = binList().find(x => x.id === id);
+    pos[id] = ic.binned ? (b ? [b.col, b.row] : null) : [ic.col, ic.row];
+    OS.save.set('softPos', pos);
+    if (ic.binned) saveBin(binList().filter(x => x.id !== id));
+    ic.el.remove();
+    selected.delete(ic);
+    delete icons[id];
+    savePositions();
+  };
+  // 装回来 = 图标回原来的格子；被别的占了就放到下一个空格
+  D.bringApp = function (id) {
+    const app = OS.apps.byId[id];
+    if (!app || !app.desktop || icons[id]) return;
+    addIcon(app);
+    const ic = icons[id];
+    const pos = OS.save.get('softPos', {}), p = pos[id];
+    const cell = p && p[0] >= 0 && valid(p[0], p[1]) && !occupant(p[0], p[1], ic) ? p : firstFree(ic);
+    ic.col = cell[0]; ic.row = cell[1];
+    position(ic);
+    ic.el.classList.add('restored');
+    setTimeout(() => ic.el.classList.remove('restored'), 400);
+    delete pos[id];
+    OS.save.set('softPos', pos);
+    savePositions();
+  };
   D.burstAt = (cx, cy, k, kind) => burst(cx, cy, k, kind);
 
   function addIcon(app) {

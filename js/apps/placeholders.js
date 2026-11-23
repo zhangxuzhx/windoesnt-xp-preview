@@ -54,10 +54,26 @@
     { id: 'paint', name: '画图 AI版', icon: 'paint', desktop: false },
     // 任务管理器（taskmgr.js）：任务栏空白处右键、命令提示符 taskmgr
     { id: 'taskmgr', name: '任务管理器', icon: 'gauge', desktop: false },
-    // 开始菜单左边那几个（照 XP 的开始菜单），暂时都是施工中
+    // Internot Explorer（ie.js）：开始菜单左栏"Internot"；收藏夹里的 .url；命令提示符 iexplore
     { id: 'ie', name: 'Internot Explorer', icon: 'ie', desktop: false },
+    // Offense 2003 三件套（offense.js）：开始 ▸ 所有程序 ▸ Offense 2003。Wordy 在 wordpad.js，Excuse 在 debt.js，PowerPointless 在 pptless.js
+    { id: 'wordy', name: 'Wordy 2003', icon: 'wordy', desktop: false },
+    { id: 'excuse', name: 'Excuse 2003', icon: 'sheet', desktop: false },
+    { id: 'ppt', name: 'PowerPointless 2003', icon: 'ppt', desktop: false },
+    // Outluck Excess（mail.js）：开始菜单左栏"电子邮件"
     { id: 'mail', name: 'Outluck Excess', icon: 'mail', desktop: false },
-    { id: 'sweep', name: '扫雪', icon: 'sweep', desktop: false },
+    // 排雷（paile.js）：扫雷的样子、数织的玩法；开始菜单左栏、所有程序 ▸ 游戏
+    { id: 'sweep', name: '排雷', icon: 'sweep', desktop: false },
+    // 接牌（jiepai.js）：XP 纸牌的样子、高尔夫的玩法；所有程序 ▸ 游戏。牌面、牌背在 cards.js
+    { id: 'solitaire', name: '接牌', icon: 'solitaire', desktop: false },
+    // 空当算24（freecell.js）：XP 空当接龙的样子、算 24 点的玩法；所有程序 ▸ 游戏
+    { id: 'freecell', name: '空当算24', icon: 'freecell', desktop: false },
+    // 蜘蛛合牌（spider.js）：XP 蜘蛛纸牌的样子、凑 13 合 K 的玩法；所有程序 ▸ 游戏；局号在 spider-data.js
+    { id: 'spider', name: '蜘蛛合牌', icon: 'spider', desktop: false },
+    // 黑心大战（hearts.js）：XP 红心大战的样子、抽乌龟的玩法（黑桃 Q 是乌龟）；所有程序 ▸ 游戏
+    { id: 'hearts', name: '黑心大战', icon: 'hearts', desktop: false },
+    // 二维弹球（pinball.js）：XP 三维弹球的右边面板、打砖块的台子；所有程序 ▸ 游戏
+    { id: 'pinball', name: '二维弹球', icon: 'pinball', desktop: false },
     // 命令提示符（cmd.js）：开始 ▸ 所有程序 ▸ 附件，开始菜单左栏也有
     { id: 'cmd', name: '命令提示符', icon: 'cmd', desktop: false },
     // 控制面板（controlpanel.js）：开始菜单右栏；我的电脑左边也有链接。就是这个游戏的“设置”

@@ -17,11 +17,9 @@
     trial: n => '欢迎使用 ABCSee 大眼看图 V3.1 共享版\n您的试用期还剩 ' + n + ' 天。' + (n < 0 ? '\n请继续试用。' : ''),
     negative: '天数变负了也能用，I服了U！',
     reg: '注册…', goOn: '继续试用',
-    uninstall: '卸载失败：ABCSee 已经和您的图片融为一体。',
     helpTitle: 'ABCSee 帮助', help: '双击图片就能看。\n看完一张，点下一张。',
     about: 'ABCSee 大眼看图 V3.1\n大眼看图，越看眼越大。\n共享版　(C) ' + OS.YEAR + ' 无聊科技',
     open: '打开失败：图片都在我的图片里，去那儿双击。',
-    mail: 'Outluck Excess 正在施工。',
     paint: '画图 AI版 正在施工。',
     rename: '重命名失败：示例图片是系统送的，名字是出厂设置。',
     pickOne: '请先选一张图片。',
@@ -309,7 +307,7 @@
       const v = mode === 'view';
       if (m === MENUS[0]) return [
         { label: '打开…', action: say(NAME, 'info', L.open) },
-        { label: '发送到', sub: [{ label: '电子邮件', action: say('发送到', 'info', L.mail) }] },
+        { label: '发送到', sub: [{ label: '邮件收件人', action: () => withPic(p => OS.mail.compose({ name: p.name, icon: 'abcpic', path: p.node && p.node.path })) }] },
         '-',
         { label: '打印…', action: print },
         { label: '属性', action: () => withPic(props) },
@@ -640,7 +638,7 @@
     const [title, text, btn, after] = OS.pick(VL.ads);
     const b = el('button', { class: 'xpbtn vir-adbtn', text: btn });
     const W = OS.stage.work;
-    const w = OS.wm.open({ title, icon: 'ie', width: 210, content: el('div', { class: 'vir-ad' }, [el('div', { class: 'vir-adtext', text }), b]),
+    const w = OS.wm.open({ title, icon: 'ie', width: 210, content: el('div', { class: 'vir-ad' }, [el('div', { class: 'vir-adtext' }, OS.web ? OS.web.linkify(text) : text), b]),
       maximizable: false, x: W.x + 10 + Math.random() * (W.w - 230), y: W.y + 10 + Math.random() * (W.h - 130) });
     V.ads.add(w);
     w.closed.then(() => V.ads.delete(w));
@@ -659,7 +657,6 @@
     aspect: nd => aspectOf(picOf(nd)),
     setWallUrl,
     keygen,
-    uninstall: say('卸载 ABCSee', 'warn', L.uninstall),
     help: say(L.helpTitle, 'help', L.help)
   };
 })();

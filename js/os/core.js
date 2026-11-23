@@ -108,6 +108,7 @@
   OS.apps.open = function (id) {
     const app = OS.apps.byId[id];
     if (!app) return null;
+    if (OS.soft && OS.soft.blocked(id)) return null;   // 在 添加或删除程序 里卸掉了（addremove.js）：说一句"请先装回"
     if (!OS.apps.opened(id)) OS.save.set('opened', OS.save.get('opened', []).concat(id));
     if (app.singleton) {
       const w = OS.wm.wins.find(x => x.appId === id);

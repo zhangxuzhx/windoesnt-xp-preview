@@ -119,6 +119,10 @@
     squish(t) { noise(t, 0.12, 0.3, 900); osc('sine', 320, t, 0.1, 0.12, 110); },
     // 命令提示符里一个字一个字“打”出来的哒哒声
     key(t) { noise(t, 0.025, 0.12, 3500); osc('square', 520 + Math.random() * 160, t, 0.02, 0.025); },
+    // PowerPointless 的动画声音（pptless.js）：鼓掌（一阵噼噼啪啪）、风铃（几声叮叮）、打字机（噼里啪啦 + 叮）；爆炸用 burst
+    clap(t) { for (let i = 0; i < 22; i++) noise(t + i * 0.055 + Math.random() * 0.04, 0.045, 0.2 + Math.random() * 0.2, 2200 + Math.random() * 3000); },
+    chime(t) { [2093, 2637, 3136, 2349, 2793, 3520].forEach((f, i) => osc('sine', f * (0.98 + Math.random() * 0.04), t + i * 0.08 + Math.random() * 0.05, 0.9, 0.06)); },
+    typewriter(t) { for (let i = 0; i < 7; i++) { noise(t + i * 0.075, 0.025, 0.16, 3500); osc('square', 480 + Math.random() * 220, t + i * 0.075, 0.02, 0.03); } osc('sine', 2400, t + 0.6, 0.45, 0.12); },
     printer(t) {
       for (let i = 0; i < 4; i++) osc('square', 260 + (i % 2) * 90, t + i * 0.05, 0.045, 0.05);
       noise(t, 0.2, 0.08, 2400);
@@ -181,7 +185,21 @@
       osc('sine', 2100, t2, 0.5, 0.08);
       [980, 1180, 980, 1180, 1650, 1850, 1650, 1850].forEach((f, i) => osc('square', f, t2 + 0.55 + i * 0.1, 0.09, 0.035));
       noise(t2 + 1.4, 0.7, 0.16, 3500);
-    }
+    },
+    // 二维弹球：一套弹球机的声音（全是合成的，不用别人的录音）
+    pbFlip(t) { noise(t, 0.05, 0.3, 2400); osc('square', 150, t, 0.06, 0.1, 80); },                       // 挡板"啪"
+    pbPop(t) { osc('sine', 280, t, 0.12, 0.32, 900); noise(t, 0.04, 0.18, 4000); },                      // 蘑菇弹框"嘣"
+    pbBrick(t) { osc('square', 1300 + Math.random() * 500, t, 0.05, 0.07); noise(t, 0.03, 0.14, 6000); }, // 碎砖"咔"
+    pbSpin(t) { osc('square', 2300, t, 0.015, 0.045); },                                                  // 旋转片"哒"
+    pbRoll(t) { osc('triangle', 1600, t, 0.06, 0.1); osc('triangle', 2150, t + 0.05, 0.07, 0.08); },      // 翻灯"嘀"
+    pbTarget(t) { osc('square', 620, t, 0.06, 0.14, 300); noise(t, 0.05, 0.22, 3000); },                  // 落靶"啪嗒"
+    pbKick(t) { noise(t, 0.08, 0.45, 1800); osc('sine', 95, t, 0.16, 0.4, 50); },                         // 弹板 ／ 回球器"嘭"
+    pbLaunch(t) { noise(t, 0.3, 0.22, 1400); osc('sine', 130, t, 0.3, 0.2, 520); },                       // 发球"嗖"
+    pbRamp(t) { osc('triangle', 420, t, 0.45, 0.18, 1700); },                                             // 上坡道"嗖——"
+    pbChase(t) { [1200, 1500, 1800, 2100].forEach((f, i) => osc('square', f, t + i * 0.05, 0.04, 0.045)); }, // 灯跑马"嘀嘀嘀"
+    pbHole(t) { osc('sine', 180, t, 1.1, 0.24, 1200); osc('sine', 270, t + 0.1, 1.0, 0.14, 1800); },      // 超空间洞"嗡——"
+    pbDrain(t) { osc('sawtooth', 320, t, 0.9, 0.1, 60); },                                                // 掉球"呜——"
+    pbLevel(t) { [523, 659, 784, 1046, 1318].forEach((f, i) => osc('square', f, t + i * 0.09, 0.14, 0.06)); } // 升级
   };
 
   S.play = function (name, arg) {

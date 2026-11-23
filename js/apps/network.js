@@ -109,7 +109,9 @@
       { name: '英语听力（其实是电影）.rmvb', icon: 'video', text: MOVIE },
       { name: '高数网课（其实也是电影）.rmvb', icon: 'video', text: MOVIE },
       { name: '千万别点.exe', icon: 'exe', open: dontClick },
-      { name: 'ABCSee3.1注册机.exe', icon: 'keygen', open: () => OS.abcsee && OS.abcsee.keygen() }
+      { name: 'ABCSee3.1注册机.exe', icon: 'keygen', open: () => OS.abcsee && OS.abcsee.keygen() },
+      // 海葵抠抠补丁（koukou.js）：装上能看见谁把你拉黑了；自己带病毒，这次不发作
+      { name: '海葵抠抠2003显IP版.exe', icon: 'exe', open: () => OS.koukou && OS.koukou.patchInstaller() }
     ] },
     { id: 'boss', name: '楼下小卖部老板', note: '收银台旁边那台', share: '账本', files: [
       { name: '账本.xls', icon: 'sheet', open: ledger }
@@ -422,6 +424,7 @@
   // 转发：发给你的抠抠好友（有人回）
   // 转发：不弹框，只有抠抠那边有动静（文件发出去、好友陆续回）；没登录抠抠 = 右下角提示先登录
   function forward(name, icon, preview, replies) {
+    if (OS.soft && !OS.soft.has('koukou')) { OS.ui.notify({ title: '转发', text: '转发失败：请先安装 抠抠2003。', icon: 'warn', replace: true }); return; }   // 在 添加或删除程序 里卸掉了
     if (!OS.koukou || !OS.koukou.loggedIn()) { OS.ui.notify({ title: '转发', text: '转发失败：需要先登录抠抠。', icon: 'warn', replace: true }); return; }
     OS.koukou.sendFile({ name, icon, text: preview });
     replies.forEach(([id, t], i) => setTimeout(() => OS.koukou.receive(id, t), 1500 + i * 1800));
@@ -435,7 +438,7 @@
   function longevity() {
     const P = (text, o) => Object.assign({ text, font: '宋体', size: 12 }, o || {});
     const lines = LONGEVITY.split('\n');
-    OS.wordpad.open({ name: LONG_NAME, where: { type: 'ro', msg: '保存失败：这是王阿姨的文件，你改不了。' },
+    (OS.docEditor ? OS.docEditor() : OS.wordpad).open({ name: LONG_NAME, where: { type: 'ro', msg: '保存失败：这是王阿姨的文件，你改不了。' },
       doc: [P('转发给10个人就能长寿！！！', { align: 'center', b: true, size: 18, color: 'rainbow', font: '华文彩云' }), P(''),
         P(lines[0], { color: '#ff0000', size: 14 }), P(lines[1], { color: '#ff0000', size: 14, b: true }), P(lines[2], { size: 12, color: '#808080' })] });
     askForward(LONG_NAME, FORWARD_TIP,
@@ -447,9 +450,12 @@
     askForward('隔夜水致癌.txt', OVERNIGHT_TIP,
       () => forward('隔夜水致癌.txt', 'txt', OVERNIGHT_PREVIEW, OVERNIGHT_REPLIES));
   }
-  OS.netShared = { longevity };   // 我的电脑 ▸ 共享文档 里也有王阿姨这篇
+  // 我的电脑 ▸ 共享文档 里也有王阿姨这篇；Outluck Excess 里王阿姨那封转发链点［转发］也走这里
+  OS.netShared = { longevity, forwardChain: () => forward(LONG_NAME, 'doc', FORWARD_PREVIEW, FORWARD_REPLIES) };
   // 只读的小表格（账本、投诉记录）：仿 Excuse 2003
+  // 别人的表：Excuse 2003 只读打开（debt.js）
   function sheet(o) {
+    if (OS.excuse) return OS.excuse.view(o);
     const head = el('tr', {}, o.cols.map(c => el('th', { text: c })));
     const rows = o.rows.map((r, k) => el('tr', o.total && k === o.rows.length - 1 ? { class: 'net-total' } : null, r.map((c, i) => el('td', { class: o.align && o.align[i] ? 'xl-' + o.align[i] : null, text: c }))));
     const body = [el('div', { class: 'net-sheet-cap', text: o.cap }), el('table', { class: 'xl-grid net-sheet' }, [head].concat(rows))];
@@ -469,20 +475,20 @@
     btn.addEventListener('click', () => {
       OS.sound.play('click');
       if (!OS.printSlip) return;
-      OS.printSlip({ to: '楼下小卖部老板', who: '你', rows: LEDGER.map(([what, qty, amt]) => ({ what, qty, amt })), total: LEDGER_TOTAL, note: '（手印是老板替你按的）', post: false, title: '账本.xls' });
+      OS.printSlip({ to: '楼下小卖部老板', who: '你', rows: LEDGER.map(([what, qty, amt]) => ({ what, qty, amt })), total: LEDGER_TOTAL, note: '手印是老板替你按的。', post: false, title: '账本.xls' });
     });
     sheet({
       name: '账本.xls', cap: '楼下小卖部 · 赊账本　　欠款人：你',
       cols: ['商品', '数量', '金额'], align: [null, 'c', 'r'],
       rows: LEDGER.map(([a, b, c]) => [a, b, '¥' + c.toFixed(2)]).concat([['合计', '', '¥' + LEDGER_TOTAL.toFixed(2)]]),
-      foot: '（概不赊账。除了你。）', tools: [btn], total: true
+      foot: '概不赊账。除了你。', tools: [btn], total: true, widths: [150, 60, 84]
     });
   }
   // 物业的投诉记录：你在新建文件夹(2) 掀屋顶、敲门的真实次数
   function complaints() {
     const st = OS.folder2 ? OS.folder2.stats() : { roofs: 0, knocks: 0 };
     sheet({
-      name: '投诉记录.xls', cap: '幸福小区 3 号楼 · 物业投诉记录', width: 360,
+      name: '投诉记录.xls', cap: '幸福小区 3 号楼 · 物业投诉记录', width: 360, widths: [104, 58, 116, 52],
       cols: ['投诉人', '被投诉人', '事由', '次数'], align: [null, null, null, 'c'],
       rows: [
         ['新建文件夹(2) 住户', '你', '有人掀我家屋顶', st.roofs + ' 次'],

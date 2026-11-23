@@ -34,7 +34,6 @@
     guest: '访客账户已停用，\n因为没有人来看你。',
     mars: '伱の電腦巳經變荿吙暒文鍄',
     magnifier: '想大一点就凑近点看。',
-    cleanCalc: '正在计算……', cleanDone: '可以释放 0 字节。羊已经吃干净了。',
     swap: '你用的是手指。\n手指没有左右键。',
     dblHint: '双击文件夹以测试设置。如果文件夹没有打开或关闭，请使用较慢的设置。',
     keep: '您的桌面已重新配置。是否要保留这些设置？',
@@ -74,7 +73,7 @@
   /* ================= 分类 ================= */
   const CATS = [
     { label: '外观和主题', icon: 'theme', tasks: [['更改屏幕方向', () => displayProps('设置')], ['更改桌面背景', () => displayProps('桌面')], ['选择一个屏幕保护程序', () => displayProps('屏幕保护程序')]], icons: ['display', 'folder'] },
-    { label: '网络和 Internot 连接', icon: 'network', tasks: [['查看网络连接状态', netStatus]], icons: ['network'] },
+    { label: '网络和 Internot 连接', icon: 'network', tasks: [['查看网络连接状态', netStatus], ['Internet 选项', () => OS.ie && OS.ie.options()]], icons: ['network'] },
     { label: '添加/删除程序', icon: 'cd', direct: 'addRemove' },
     { label: '声音、语音和音频设备', icon: 'volume', tasks: [['调整系统音量', soundProps]], icons: ['sound'] },
     { label: '性能和维护', icon: 'gauge', tasks: [['查看你的电脑的基本信息', () => OS.menus.systemProps()], ['释放磁盘空间', cleanup], ['一键还原，从头开始', () => OS.apps.open('restore')]], icons: ['system', 'restore', 'cleanup'] },
@@ -586,6 +585,6 @@
     close.addEventListener('click', () => { OS.sound.play('click'); w.close(); });
     OS.sound.play('error');
   }
-  function cleanup() { busy('磁盘清理', 'recycle', L.cleanCalc, 1400).then(() => OS.ui.dialog({ title: '磁盘清理', icon: 'info', text: L.cleanDone })); }
+  function cleanup() { if (OS.cleanup) OS.cleanup.open(); }   // 磁盘清理：cleanup.js
   function checkUpdate() { busy(L.update, 'logo', L.updChecking, 1600).then(() => OS.ui.dialog({ title: L.update, icon: 'warn', text: L.updFound })); }
 })();

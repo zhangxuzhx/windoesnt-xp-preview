@@ -46,27 +46,15 @@
     hjCopying: '正在复制文件……',
     hjDone: '安装完成。\n请把光盘留在光驱里，拿出来就玩不了了。',
     hjAgain: '已经装过了。\n再装一遍也不会多出一个游戏。',
-    hjUninstall: '删除：游戏是光盘的，不是你的。',
     shared: '共享文档',
     movie: '下载到 99% 卡住了……',
-    stickyShared: '别动我东西！！',
-    ieFav: 'Internot Explorer 正在施工。'
+    stickyShared: '别动我东西！！'
   };
   // 光盘里的 6 个游戏（先占位：转 3 秒弹“施工中”；以后一个个做）
   const GAMES = [
     { id: 'zhuma', name: '蛛玛' }, { id: 'miner', name: '五金矿工' }, { id: 'tank', name: '怪怪水煮箱' },
     { id: 'tea', name: '大家来找茶' }, { id: 'sticky', name: '黏黏看' }, { id: 'stone', name: '结石迷阵' }
   ];
-  // 添加/删除程序 里的软件
-  const PROGRAMS = () => [
-    { name: '抠抠2003', icon: 'koukou', size: '23.6 MB', act: () => OS.koukou && OS.koukou.uninstall() },
-    { name: '千千不听', icon: 'music', size: '8.80 MB', act: () => OS.qianqian && OS.qianqian.uninstall() },
-    { name: 'ABCSee 大眼看图 V3.1', icon: 'abcsee', size: '4.20 MB', act: () => OS.abcsee && OS.abcsee.uninstall() },
-    { name: 'Excuse 2003', icon: 'sheet', size: '156 MB', act: say('添加或删除程序', 'warn', '删不掉：还有人欠你钱没还呢。') },
-    { name: '解压专家 2003', icon: 'rar', size: '2.30 MB', act: say('添加或删除程序', 'warn', '删不掉：它还在给暴富秘籍解压。') },
-    { name: "Windoesn't 自带小程序", icon: 'logo', size: '0.50 MB', act: say('添加或删除程序', 'warn', '删不掉：这些是系统的一部分，\n删了系统就只剩"不"了。') }
-  ].concat(installed() ? [{ name: '幻觉游戏 V3.0', icon: 'cd', size: '650 MB', act: say('添加或删除程序', 'warn', L.hjUninstall) }] : []);
-
   /* ================= 光驱状态 ================= */
   const installed = () => !!OS.save.get('hjInstalled', false);
   let discOut = false, cup = false, tray = null;
@@ -80,7 +68,7 @@
     { title: L.groups[2], nodes: [FS.get('A:'), FS.get('D:')] }
   ]);
   EX.setTasks(FS.ROOT, ctx => [
-    { title: L.sysTasks, links: [[L.tasks[0], OS.menus.systemProps], [L.tasks[1], addRemove], [L.tasks[2], () => OS.apps.open('control')]] },
+    { title: L.sysTasks, links: [[L.tasks[0], OS.menus.systemProps], [L.tasks[1], () => OS.addRemove()], [L.tasks[2], () => OS.apps.open('control')]] },
     { title: L.others, links: [[L.places[0], () => OS.apps.open('network')], [L.places[1], () => ctx.go(FS.MYDOCS)], [L.places[2], () => ctx.go(FS.SHARED)], [L.places[3], () => OS.apps.open('control')]] }
   ]);
 
@@ -124,9 +112,11 @@
       el('div', { class: 'fx-pie-note', text: L.cPie })
     ]);
     const ok = el('button', { class: 'xpbtn default', text: '确定' });
-    content.appendChild(el('div', { class: 'dlg-btns' }, [ok]));
+    const clean = el('button', { class: 'xpbtn', text: '磁盘清理' });   // 跟 XP 一样，饼图旁边能直接开磁盘清理（cleanup.js）
+    content.appendChild(el('div', { class: 'dlg-btns' }, [clean, ok]));
     const w = OS.wm.open({ title: '本地磁盘 (C:) 属性', icon: 'hdd', width: 300, content, modal: true, taskbar: false, minimizable: false, maximizable: false, className: 'is-dialog' });
     ok.addEventListener('click', () => { OS.sound.play('click'); w.close(); });
+    clean.addEventListener('click', () => { OS.sound.play('click'); w.close(); if (OS.cleanup) OS.cleanup.open(); });
   }
   ['Documents and Settings', 'Program Files', 'WINDOWS'].forEach(n => FS.add(C + '\\' + n, { kind: 'folder', noDelete: '删不掉：这是系统的文件夹。' }));
   FS.add(C + '\\boot.ini', { hidden: true, roMsg: L.sysRoSave, noDelete: '删不掉：删了就开不了机了。',
@@ -156,17 +146,21 @@
     return out;
   });
   FS.add(ME + '\\收藏夹', { kind: 'folder' });
-  [['白度一下.url', 'http://www.baidu.zz'], ['幸福小区业主论坛.url', 'http://bbs.xingfu3.zz']].forEach(([n, u]) =>
-    FS.add(ME + '\\收藏夹\\' + n, { kind: 'url', open: () => OS.apps.open('ie'), detail: () => 'Internet 快捷方式\n' + u }));
+  // 双击 = Internot Explorer 打开这一页（ie.js）；自己在浏览器里"添加到收藏夹"的也放这儿
+  [['拾度一下.url', 'www.shidu.com'], ['幸福小区业主论坛.url', 'bbs.xingfu3.zz']].forEach(([n, u]) =>
+    FS.add(ME + '\\收藏夹\\' + n, { kind: 'url', url: u, text: '[InternetShortcut]\nURL=http://' + u + '/\n', open: () => (OS.ie ? OS.ie.open(u) : OS.apps.open('ie')), detail: () => 'Internet 快捷方式\nhttp://' + u + '/' }));
   FS.add(ME + '\\开始菜单', { kind: 'folder' });
   [['命令提示符.lnk', 'cmd'], ['记事本.lnk', 'notepad'], ['千千不听.lnk', 'qianqian'], ['网上邻居.lnk', 'network']].forEach(([n, id]) =>
-    FS.add(ME + '\\开始菜单\\' + n, { kind: 'lnk', icon: OS.apps.byId[id] ? OS.apps.byId[id].icon : 'exe', app: id }));
+    FS.add(ME + '\\开始菜单\\' + n, { kind: 'lnk', icon: OS.apps.byId[id] ? OS.apps.byId[id].icon : 'exe', app: id, when: () => !OS.soft || OS.soft.appOk(id) }));
 
   /* ---------- Program Files：每个软件一个文件夹，一个 .exe + 一个说明.txt ---------- */
   const prog = (folder, exes, readme, extra) => {
     FS.add(PF + '\\' + folder, { kind: 'folder', noDelete: '删不掉：要卸载软件，去 添加/删除程序。' });
-    exes.forEach(([n, id]) => FS.add(PF + '\\' + folder + '\\' + n, { kind: 'exe', icon: OS.apps.byId[id] ? OS.apps.byId[id].icon : 'exe', app: id, noDelete: '删不掉：要卸载软件，去 添加/删除程序。' }));
-    FS.add(PF + '\\' + folder + '\\说明.txt', { text: readme, roMsg: L.pfRoSave, noDelete: '删不掉：说明书是厂家的。' });
+    // 卸掉了（addremove.js）：exe、说明都不显示，文件夹空着留下（那几年卸载都删不干净）
+    const ok = id => () => !OS.soft || OS.soft.present(id);
+    const any = () => exes.some(([, id]) => ok(id)());
+    exes.forEach(([n, id]) => FS.add(PF + '\\' + folder + '\\' + n, { kind: 'exe', icon: OS.apps.byId[id] ? OS.apps.byId[id].icon : 'exe', app: id, when: ok(id), noDelete: '删不掉：要卸载软件，去 添加/删除程序。' }));
+    FS.add(PF + '\\' + folder + '\\说明.txt', { text: readme, roMsg: L.pfRoSave, when: any, noDelete: '删不掉：说明书是厂家的。' });
     (extra || []).forEach(([n, o]) => FS.add(PF + '\\' + folder + '\\' + n, o));
   };
   prog('抠抠软件', [['抠抠2003.exe', 'koukou']], '抠抠2003 使用说明\n\n1. 双击铁公鸡登录。\n2. 好友找你，你就回。\n3. 好友不找你，你也可以找好友，但他不一定回。\n\n抠抠很抠，不送抠币。',
@@ -175,13 +169,13 @@
   prog('ABCSee', [['ABCSee.exe', 'abcsee']], 'ABCSee 大眼看图 V3.1 使用说明\n\n双击图片就能看。\n共享版，试用期 30 天，过了也能用。');
   prog('无聊科技', [['开机检测器 Pro.exe', 'bootcheck'], ['阳寿余额查询.exe', 'lifespan'], ['赛博把脉.exe', 'pulse'], ['弹窗杀手.exe', 'swatter'], ['电子蚊香.exe', 'coil'], ["Windoesn't 激活器.exe", 'activator'], ['一键还原小精灵.exe', 'restore']],
     "Windoesn't 自带小程序 说明\n\n这些小程序是系统送的。\n送的东西不要挑。\n\n无聊科技　出品");
-  prog('Excuse 2003', [['Excuse.exe', 'debt']], 'Excuse 2003 使用说明\n\n专为要账设计。\n算出来的利息仅供吓唬，不具法律效力。');
+  prog('Offense 2003', [['WORDY.EXE', 'wordy'], ['EXCUSE.EXE', 'excuse'], ['POWERPOINTLESS.EXE', 'ppt']], 'Offense 2003 使用说明\n\nWordy 写文章，Excuse 做表格，\nPowerPointless 做幻灯片。\n\nExcuse 专为要账设计。\n算出来的利息仅供吓唬，不具法律效力。');
   prog('解压专家 2003', [['解压专家.exe', 'rich']], '解压专家 2003 使用说明\n\n本软件为 40 天试用版。\n试用期已经过了 40 天。');
-  prog('Internot Explorer', [['iexplore.exe', 'ie']], 'Internot Explorer 使用说明\n\n本浏览器正在施工。\n施工期间，请用想象力上网。');
+  prog('Internot Explorer', [['iexplore.exe', 'ie']], 'Internot Explorer 使用说明\n\n56K 上网，请耐心。\n家里有人打电话时请勿上网。');
   prog('Outluck Excess', [['outluck.exe', 'mail']], 'Outluck Excess 使用说明\n\n收件箱里有 0 封新邮件。\n以后也不一定有。');
-  FS.add(PF + '\\幻觉游戏', { kind: 'folder', when: installed, noDelete: '删不掉：要卸载软件，去 添加/删除程序。' });
+  FS.add(PF + '\\幻觉游戏', { kind: 'folder', when: () => installed() || (OS.soft && OS.soft.got('hj')), noDelete: '删不掉：要卸载软件，去 添加/删除程序。' });
   GAMES.forEach(g => FS.add(PF + '\\幻觉游戏\\' + g.name + '.exe', { kind: 'exe', icon: 'game-' + g.id, when: installed, open: () => runGame(g) }));
-  FS.add(PF + '\\幻觉游戏\\卸载.exe', { kind: 'exe', when: installed, open: say('卸载', 'warn', L.hjUninstall) });
+  FS.add(PF + '\\幻觉游戏\\卸载.exe', { kind: 'exe', when: installed, open: () => OS.soft && OS.soft.uninstall('hj') });
 
   /* ---------- WINDOWS ---------- */
   let winOk = false;   // 这次开机点过“显示此文件夹的内容”就不再拦
@@ -374,20 +368,11 @@
   FS.add(FS.SHARED + '\\转发给10个人就能长寿.doc', { kind: 'doc', open: () => OS.netShared && OS.netShared.longevity(), noDelete: '删不掉：王阿姨说删了会折寿。' });
   FS.add(FS.SHARED + '\\便利贴.txt', { text: L.stickyShared, roMsg: '保存失败：这是楼上熊孩子的，人家只给你看。', noDelete: '删不掉：熊孩子说了，别动他东西。' });
 
-  /* ================= 添加/删除程序 ================= */
-  OS.addRemove = () => addRemove();
-  function addRemove() {
-    const list = el('div', { class: 'ar-list' }, PROGRAMS().map(p => {
-      const btn = el('button', { class: 'xpbtn', text: '删除' });
-      btn.addEventListener('click', () => { OS.sound.play('click'); p.act(); });
-      return el('div', { class: 'ar-row' }, [OS.iconEl(p.icon, 'ar-ico'), el('div', { class: 'ar-name' }, [el('b', { text: p.name }), el('div', { class: 'ar-sub', text: '大小：' + p.size + '　使用频率：很少' })]), btn]);
-    }));
-    OS.ui.scrollable(list);
-    OS.wm.open({ title: '添加或删除程序', icon: 'control', width: 330, height: 220, content: el('div', { class: 'ar' }, [el('div', { class: 'ar-cap', text: '当前安装的程序：' }), list]), maximizable: false, center: true });
-  }
+  /* 添加/删除程序：addremove.js（OS.addRemove） */
 
   /* ================= 给别的地方用 ================= */
-  OS.hj = { games: GAMES, run: runGame, installed };
+  // 添加或删除程序（addremove.js）：卸 = 记成没装（光盘还在光驱里，随时能再装）；装回 = 走光盘自己的安装向导
+  OS.hj = { games: GAMES, run: runGame, installed, install: () => install(), uninstall: () => { OS.save.set('hjInstalled', false); OS.emit('fs:change'); } };
   OS.mycomputer = { shared: () => EX.open(FS.SHARED) };
   // 中毒时光驱自己弹出来又缩回去（abcsee.js）；托盘上放着可乐就不缩回去，也不弹框
   OS.cdTray = { out: () => discOut, eject: () => eject(), close: () => { if (discOut && !cup) closeTray(); } };

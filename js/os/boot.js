@@ -55,7 +55,19 @@
     logo: '正在把木板钉回去',
     paint: '正在用抹布擦显示器',
     taskmgr: '正在把被结束的进程请回来',
-    calc: '正在把宇宙的洞补上'
+    calc: '正在把宇宙的洞补上',
+    kkpatch: '正在把抠抠身上多出来的那层补丁揭下来',
+    mail: '正在把全楼的“收到”一封封删掉',
+    ie: '正在把搜索记录删掉',
+    addremove: '正在把系统装回去',
+    wordy: '正在把艺术字缩回去',
+    ppt: '正在给不奔腾扇扇子',
+    sweep: '正在给表情脸揉揉脸',
+    solitaire: '正在把落下来的牌捡起来',
+    freecell: '正在给老人头递计算器',
+    spider: '正在帮蜘蛛把脑子理顺',
+    hearts: '正在把桌子扶起来',
+    pinball: '正在把球从桌子底下捡回来'
   };
   OS.on('bsod', o => { if (BSOD_FIX[o.id]) OS.bootFix.add('bsod-' + o.id, BSOD_FIX[o.id]); });
 

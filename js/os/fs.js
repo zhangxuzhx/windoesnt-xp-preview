@@ -25,7 +25,7 @@
     folder: ['folder', '文件夹'], txt: ['txt', '文本文档'], doc: ['doc', 'Word 文档'], jpg: ['abcpic', 'ABCSee JPEG 图像'], bmp: ['abcpic', 'ABCSee BMP 图像'],
     mp3: ['mp3file', 'MP3 音频文件'], exe: ['exe', '应用程序'], lnk: ['exe', '快捷方式'], dll: ['control', '应用程序扩展'], sys: ['control', '系统文件'],
     dmp: ['txt', '故障转储文件'], ttf: ['doc', '字体文件'], tmp: ['txt', '临时文件'], ini: ['control', '配置设置'], inf: ['txt', '安装信息'],
-    url: ['ie', 'Internet 快捷方式'], rtf: ['doc', 'RTF 文档'], dat: ['txt', 'DAT 文件'], rmvb: ['video', 'RealMedia 文件'], drive: ['computer', '本地磁盘']
+    url: ['ie', 'Internet 快捷方式'], xls: ['sheet', 'Excuse 工作表'], ppt: ['ppt', 'PowerPointless 演示文稿'], rtf: ['doc', 'RTF 文档'], dat: ['txt', 'DAT 文件'], rmvb: ['video', 'RealMedia 文件'], drive: ['computer', '本地磁盘']
   };
   FS.kindName = k => (KINDS[k] || ['', '文件'])[1];
   FS.kindIcon = k => (KINDS[k] || ['exe'])[0];
@@ -91,8 +91,13 @@
     return user.length + temp.length + desk;
   };
   FS.room = () => FS.userCount() < CAP;
-  FS.capFail = () => OS.ui.dialog({ title: CAP_TITLE, icon: 'warn', text: CAP_TEXT });
-  FS.capNotify = () => OS.ui.notify({ title: CAP_TITLE, text: CAP_TEXT, icon: 'warn', wide: true, timeout: 7000 });
+  // 满了：多一个［磁盘清理］，点了直接打开（cleanup.js）
+  const CLEAN_BTN = '磁盘清理';
+  const openClean = () => OS.cleanup && OS.cleanup.open();
+  FS.capFail = () => OS.ui.dialog({ title: CAP_TITLE, icon: 'warn', text: CAP_TEXT, buttons: ['确定', CLEAN_BTN] }).then(v => { if (v === CLEAN_BTN) openClean(); });
+  FS.capNotify = () => OS.ui.notify({ title: CAP_TITLE, text: CAP_TEXT, icon: 'warn', wide: true, timeout: 7000, actions: [[CLEAN_BTN, openClean]] });
+  // 玩家自己弄出来的（磁盘清理用）：新建的文件夹 + 存档里的文件；桌面上的文本文档另外从桌面拿
+  FS.mine = () => temp.map(t => FS.get(t.path)).concat(user.map(userNode)).filter(Boolean);
 
   /* ---------- 改 ---------- */
   // 同一个地方重名：新建的叫“新建文件夹 (2)”，复制的叫“复件 xx”
@@ -148,6 +153,7 @@
     const doc = FS.docOf(node);
     if (doc) data.doc = doc;
     if (node.copyOf || node.open) data.copyOf = node.copyOf || node.path;   // 复制出来的还能照原样打开（比如游戏、歌）
+    data.made = 'copy';   // 磁盘清理按这个分组
     user.push(Object.assign({ path: FS.join(dir, name), kind: node.kind, at: Date.now() }, data));
     saveUser();
     return FS.get(FS.join(dir, name));
@@ -177,6 +183,16 @@
     const docs = OS.save.get('fsDoc', {});
     if (docs[node.path]) return docs[node.path];
     return node.doc || null;
+  };
+  // Excuse 2003 存的表（debt.js）：只改玩家自己的
+  FS.setSheet = function (path, sheet) {
+    const u = user.find(x => x.path === path);
+    if (u) { u.sheet = JSON.parse(JSON.stringify(sheet)); saveUser(); }
+  };
+  // PowerPointless 2003 存的幻灯片（pptless.js）：只改玩家自己的
+  FS.setDeck = function (path, deck) {
+    const u = user.find(x => x.path === path);
+    if (u) { u.deck = JSON.parse(JSON.stringify(deck)); saveUser(); }
   };
   // 画图 AI版 存的画：只改玩家自己的
   FS.setImg = function (path, img) {

@@ -54,11 +54,11 @@
     netCols: ['适配器名称', '网络使用', '链接速度', '状态'],
     netRow: ['拨号连接', '0 %', '56 Kbps', '正在拨号……'],
     userCols: ['用户', '状态'],
-    users: [['你', '活动'], ['管理员', '已跑路'], ['Guest', '已停用']],
+    users: [['你', '活动'], ['管理员', '已断开'], ['Guest', '已停用']],
     disconnect: '断开', logoff: '注销', sendMsg: '发送消息…',
     userSay: {
       '你': { disconnect: '断开不了：你断开了，谁来玩？', sendMsg: '给自己发消息？\n想说什么，直接想就行了。' },
-      '管理员': { disconnect: '他早就断开了。', logoff: '他早就注销了。', sendMsg: '消息发送失败：对方已跑路。' },
+      '管理员': { disconnect: '这个用户已经断开了。', logoff: '这个用户没有登录。', sendMsg: '消息发送失败：对方不在线。' },
       'Guest': { all: 'Guest 已停用。' }
     },
     fileMenu: { newTask: '新任务(运行)…', exit: '退出任务管理器' },
@@ -98,8 +98,8 @@
   // 我们自己的软件：窗口开着就有进程
   const EXE = {
     bootcheck: '开机检测器.exe', lifespan: '阳寿查询.exe', rich: '解压专家.exe', pulse: '赛博把脉.exe', debt: 'EXCUSE.EXE',
-    swatter: '弹窗杀手.exe', coil: '电子蚊香.exe', calc: 'calc.exe', paint: 'mspaint.exe', ie: 'Internot.exe', mail: 'outluck.exe',
-    sweep: 'sweep.exe', cmd: 'cmd.exe', abcsee: 'ABCSee.exe', notepad: 'notepad.exe', wordpad: 'wordpad.exe',
+    swatter: '弹窗杀手.exe', coil: '电子蚊香.exe', calc: 'calc.exe', paint: 'mspaint.exe', ie: 'Internot.exe', mail: 'outluck.exe', wordy: 'WORDY.EXE', excuse: 'EXCUSE.EXE', ppt: 'POWERPOINTLESS.EXE',
+    sweep: 'sweep.exe', solitaire: 'sol.exe', freecell: 'freecell.exe', spider: 'spider.exe', hearts: 'mshearts.exe', pinball: 'PINBALL.EXE', cmd: 'cmd.exe', abcsee: 'ABCSee.exe', notepad: 'notepad.exe', wordpad: 'wordpad.exe',
     activator: '激活器.exe', restore: '一键还原.exe'
   };
   // 文件夹窗口都算 explorer.exe 的（结束 explorer.exe 它们也跟着关）
@@ -111,6 +111,7 @@
   const gone = new Set();          // 这次开机结束掉的系统进程（svchost、ctfmon、spoolsv、下载器）
   const prio = {};                 // key → 优先级（没写就是标准）
   let virusN = 1, virusBack = 0;   // 病毒结束一次换个名字复活：keygen_helper(2).exe……
+  let haikuiBack = 0;               // 海葵补丁带的：结束了一秒后又回来（以后杀毒软件来收拾它）
   const hiddenWins = new Set();    // 千千不听“隐藏主界面”：不算在应用程序里
   OS.on('win:hide', w => hiddenWins.add(w));
   OS.on('win:show', w => hiddenWins.delete(w));
@@ -143,6 +144,7 @@
     if (sheep.here) out.push({ key: 'sheep', name: 'sheep.exe', user: '你', mem: 3072 + sheep.ate * 1024, end: 'sheep' });
     if (OS.qianqian && OS.qianqian.running()) out.push({ key: 'qianqian', name: '千千不听.exe', user: '你', mem: 9216 + (OS.qianqian.playing() ? 6144 : 0), end: 'qianqian' });
     if (OS.koukou && OS.koukou.running()) out.push({ key: 'koukou', name: '抠抠2003.exe', user: '你', mem: 12844, end: 'koukou' });
+    if (OS.koukou && OS.koukou.patched && OS.koukou.patched() && !(OS.soft && OS.soft.virusBeaten('haikui')) && Date.now() > haikuiBack) out.push({ key: 'haikui', name: 'haikui_update.exe', user: '你', mem: 6, end: 'haikui' });
     if (OS.virus && OS.virus.on() && Date.now() > virusBack) {
       out.push({ key: 'virus', name: 'keygen_helper' + (virusN > 1 ? '(' + virusN + ')' : '') + '.exe', user: '你', mem: 6666, end: 'virus' });
     }
@@ -397,6 +399,7 @@
       case 'qianqian': OS.qianqian.kill(); break;
       case 'koukou': OS.koukou.kill(); break;
       case 'virus': virusBack = Date.now() + 1000; virusN++; setTimeout(() => { if (ui) render(); }, 1100); break;
+      case 'haikui': haikuiBack = Date.now() + 1000; setTimeout(() => { if (ui) render(); }, 1100); break;
       case 'app': OS.wm.wins.filter(w => w.appId === p.appId && !w.isClosed).forEach(w => OS.wm.close(w)); break;
     }
     selProc = null;
@@ -525,7 +528,7 @@
   }
 
   /* ---------- 新任务（运行） ---------- */
-  const RUN = { notepad: 'notepad', calc: 'calc', cmd: 'cmd', mspaint: 'paint', pbrush: 'paint', write: 'wordpad', wordpad: 'wordpad', control: 'control', taskmgr: 'taskmgr', iexplore: 'ie' };
+  const RUN = { notepad: 'notepad', calc: 'calc', cmd: 'cmd', mspaint: 'paint', pbrush: 'paint', write: 'wordpad', wordpad: 'wordpad', control: 'control', taskmgr: 'taskmgr', iexplore: 'ie', wordy: 'wordy', excuse: 'excuse', powerpointless: 'ppt' };
   function newTask() {
     const input = el('input', { class: 'tm-ntin', type: 'text' });
     const drop = el('button', { class: 'tm-ntdrop', text: '▼' });
@@ -557,6 +560,7 @@
     const cmd = raw.toLowerCase().replace(/\.exe$/, '');
     if (L.ntSpecial[raw]) { OS.ui.dialog({ title: raw, icon: 'error', text: L.notFound(raw) + '\n' + L.ntSpecial[raw] }); return; }
     if (cmd === 'explorer') { if (!OS.desktop.shellOn()) restoreShell(false); else OS.apps.open('mydocs'); return; }
+    if (RUN[cmd] && OS.soft && !OS.soft.appOk(RUN[cmd])) { OS.ui.dialog({ title: raw, icon: 'error', text: L.notFound(raw) }); return; }   // 卸掉了（addremove.js）
     if (RUN[cmd]) { OS.apps.open(RUN[cmd]); return; }
     OS.ui.dialog({ title: raw, icon: 'error', text: L.notFound(raw) });
   }

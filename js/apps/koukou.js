@@ -53,15 +53,59 @@
     autoReply: '[自动回复] 我妈叫我回家吃饭了，886。',
     delAsk: n => '确定要删除好友「' + n + '」吗？',
     toBlack: '移不动：拉黑别人要 10 抠币。\n你有 0 抠币。',
-    needLogin: '请先登录抠抠。',
-    uninstall: '卸载失败：抠抠很抠，\n舍不得离开你的电脑。'
+    needLogin: '请先登录抠抠。'
   };
   const SHAKE_SENT = '你发送了一个窗口抖动。';
   const SHAKE_LINES = ['干嘛？', '别抖了！', '再抖拉黑你！'];
-  const BLOCKED = '对方已将你拉黑。';
-  const BLOCKED_SEND = '对方已将你拉黑，消息发送失败。';
   const OFFLINE_SEND = '对方已下线，消息将在对方上线后送达。\n（对方不会上线了）';
   const FIX_BLOCK = '正在把你从好友的黑名单里放出来';
+  // 被拉黑 = 你进了对方的黑名单：你这边什么都看不出来——他还在原来的分组，消息照常显示发出去，就是永远没回音。
+  // 想知道谁拉黑了你，只能装海葵补丁（下面）。你自己的"黑名单"分组一直是空的（拉黑别人要 10 抠币，你有 0 个）。
+
+  /* ---------- 海葵抠抠补丁：网上邻居 ▸ 隔壁大学生 ▸ 电影 ▸ 海葵抠抠2003显IP版.exe ----------
+     装上就一直在（存档记着），添加或删除程序里能卸载；能看谁拉黑了你、好友的 IP 和在哪、谁在隐身。
+     补丁自己带病毒，这次不发作：只在任务管理器里留一个 haikui_update.exe（taskmgr.js），给以后的杀毒软件 */
+  const PATCH_KEY = 'kkPatch';
+  const TOOLBAR_KEY = 'kkToolbar';   // 装补丁时勾了"安装海葵工具条"
+  const patched = () => !!OS.save.get(PATCH_KEY, false);
+  const P = {
+    title: '抠抠2003 海葵版', login: '海葵抠抠 显IP版',
+    blockTag: '【已把你拉黑】',
+    blockHead: '海葵提示：对方已将你拉黑，你的消息他收不到。',
+    blockNow: '海葵提示：对方刚刚把你拉黑了。',
+    inv: '（隐身中）', invCaught: '你怎么知道我在？你也装海葵了？',
+    noIp: 'IP 显示不出来（对方也装了海葵）',
+    officialTitle: '抠抠系统消息', official: '抠抠官方提醒：检测到你正在使用非官方插件，请立即卸载，否则……',
+    // 安装向导
+    wizTitle: '海葵抠抠补丁 安装向导', brand: '海葵抠抠', brandSub: '显IP版 2003.12',
+    welcome: '欢迎使用海葵抠抠补丁！\n本补丁纯绿色、无毒、无插件。\n作者：海葵',
+    pickDir: '选择抠抠所在的文件夹：', dir: 'C:\\Program Files\\抠抠软件', browse: '抠抠就装在这儿，不用找了。',
+    pickOpts: '选择要安装的功能：',
+    opts: ['显示好友 IP 和地理位置', '显示隐身的好友', '显示谁把我拉黑了', '去除广告', '安装海葵工具条'],
+    running: '请先退出抠抠，再安装补丁。',
+    patching: '正在打补丁……',
+    done: '补丁安装成功！\n已为你去除广告 0 条。\n抠抠2003 本来就没有广告。',
+    toolbar: '海葵工具条已安装。\n上网的时候，它会一直陪着你。',
+    back: '< 上一步', next: '下一步 >', install: '安装', cancel: '取消', finish: '完成', browseBtn: '浏览…'
+  };
+  const PATCH_BSOD = { id: 'kkpatch', name: 'PATCH_ON_PATCH', text: '抠抠被打了两层补丁，已经认不出自己是谁了。' };
+  // 显 IP：全是熟人，全在附近（跟网上邻居的"幸福小区 3 号楼"对上）
+  const IP = {
+    deskmate: ['192.168.0.12', '幸福小区 3 号楼 401'],
+    faxiao: ['192.168.0.8', '幸福小区 3 号楼——你家'],
+    roommate: ['10.0.3.27', '学校宿舍　楼道里那台公用电脑'],
+    boss: ['192.168.0.66', '楼下小卖部　收银台旁边那台'],
+    nextdoor: ['10.0.1.103', '学校机房　第 3 排'],
+    monitor: ['10.0.0.5', '学校老师办公室'],
+    feiyang: ['192.168.0.7', '幸福小区 3 号楼　对门'],
+    taxue: ['192.168.0.67', '楼下小卖部　里屋那台'],
+    yanhua: ['218.31.4.88', '县一中　微机室']
+  };
+  const ipText = id => (IP[id] ? IP[id][0] + '　' + IP[id][1] : P.noIp);
+  const placeText = id => (IP[id] ? IP[id][1] : P.noIp);   // 好友列表窄：只写人在哪（笑点在这），IP 在聊天窗顶上
+  // 一直隐身的：没装补丁看着是离线，装了才看见
+  const INVISIBLE = new Set(['monitor']);
+  const looksOff = id => S.offline.has(id) || (INVISIBLE.has(id) && !patched());
   const FIX_QUIT = '正在劝退群的同学回来';
   const FIX_MUTE = '正在求班长解除禁言';
   // 切到隐身几秒后，班长或小卖部老板来一句（那几年的“显隐身外挂”）
@@ -130,8 +174,8 @@
         { say: '伱恏~', choices: [['你好', '莪哋惢，伱鈈慬……'], ['？', '嗯，伱鈈慬。'], ['说人话', '迣堺仩朂遙逺哋距離……']] },
         { say: '伱噯過①個亽嗎？', choices: [['爱过', '噯過，迣痛。'], ['没有', '迣恏，鈈噯僦鈈傷。'], ['说人话', '……']] }
       ],
-      // 连着两轮都选［说人话］：破功，打出一句正常字（白度 = 山寨的搜索网站，跟 Internot Explorer 一样不用真名）
-      twice: { pick: 2, line: '别催了，我刚在白度找的火星文转换器，复制粘贴很累的' } },
+      // 连着两轮都选［说人话］：破功，打出一句正常字（拾度 = Internot Explorer 里的搜索网站 shidu.com，搜"火星文转换器"真能搜到）
+      twice: { pick: 2, line: '别催了，我刚在拾度找的火星文转换器，复制粘贴很累的' } },
     taxue: { name: '≮踏雪无痕≯', group: 'net', num: '66666666', sig: '高手寂寞。', away: true,
       turns: [
         { say: '高手，带我练级！', choices: [['好', '那我等你！'], ['没空', '高手都这么说。'], ['我也是新手', '……那你加我干嘛？']] },
@@ -234,7 +278,7 @@
   const SHOW_IDX = { me: 0, deskmate: 0, faxiao: 0, roommate: 0, monitor: 1, nextdoor: 2, yanhua: 2, feiyang: 3, guimi: 3, boss: 4, taxue: 5 };
   const cell = (i, n) => (n > 1 ? (i / (n - 1)) * 100 : 0) + '% 0';
   function avEl(id, cls) {
-    const off = F[id] && S.offline.has(id);
+    const off = F[id] && looksOff(id);
     return el('span', { class: 'kk-av' + (cls ? ' ' + cls : '') + (off ? ' off' : ''), style: { backgroundPosition: cell(AV_IDX[id] || 0, AV_N) } });
   }
   const emoEl = i => el('span', { class: 'kk-emo', style: { backgroundPosition: cell(i, EMO_N) } });
@@ -352,7 +396,7 @@
       body,
       el('div', { class: 'kk-lfoot' }, [link('申请密码保护', say('申请密码保护', 'info', L.protect)), el('span', { class: 'kk-sp' }), goBtn, btn('取消', () => win.close()), btn('注册向导', say('注册向导', 'info', L.register))])
     ]);
-    const win = OS.wm.open({ title: '抠抠用户登录', icon: 'koukou', width: 300, appId: app.id, content, maximizable: false, center: true, onClose: () => {
+    const win = OS.wm.open({ title: patched() ? P.login : '抠抠用户登录', icon: 'koukou', width: 300, appId: app.id, content, maximizable: false, center: true, onClose: () => {
       S.login = null;
       // 没登录就把登录框关了（× 或 取消）：跟 QQ 一样整个退出，托盘里的灰头像也收走
       if (!S.logged && S.tray) { S.tray.remove(); S.tray = null; }
@@ -383,6 +427,7 @@
     later(sysRequest, 25000);
     S.deleted.forEach(id => later(() => sysRequest(id), readdDelay()));   // 删掉的好友：上线后照样来加你
     if (invisible) caughtInvisible();
+    if (patched()) later(() => { if (S.logged && patched()) OS.ui.dialog({ title: P.officialTitle, icon: 'warn', text: P.official }); }, 45000);
     // 上次是在任务管理器里被结束掉的：同桌问一句
     if (dropped) {
       dropped = false;
@@ -410,6 +455,81 @@
     S = Object.assign(fresh(), keep);   // 退出再登录：拉黑、退群这些这次开机里还算数
   }
 
+  /* ================= 海葵抠抠补丁：安装向导 ／ 卸载 ================= */
+  function refreshPatch() {
+    if (alive(S.panel)) S.panel.setTitle(patched() ? P.title : SOFT);
+    if (alive(S.login)) S.login.setTitle(patched() ? P.login : '抠抠用户登录');
+    renderPanel();
+  }
+  function patchInstaller() {
+    const again = patched();   // 已经装过了还装：补丁打在补丁上 → 蓝屏
+    let page = 0, toolbar = true, busy = false;
+    const main = el('div', { class: 'hk-main' });
+    const btnRow = el('div', { class: 'hk-btns' });
+    const box = el('div', { class: 'hk' }, [
+      el('div', { class: 'hk-side' }, [OS.iconEl('koukou', 'hk-logo'), el('div', { class: 'hk-brand', text: P.brand }), el('div', { class: 'hk-sub', text: P.brandSub })]),
+      el('div', { class: 'hk-right' }, [main, btnRow])
+    ]);
+    const win = OS.wm.open({ title: P.wizTitle, icon: 'exe', width: 320, content: box, maximizable: false, center: true });
+    const b = (label, fn, dis) => { const x = el('button', { class: 'xpbtn', text: label }); x.disabled = !!dis; x.addEventListener('click', () => { OS.sound.play('click'); fn(); }); return x; };
+    function show() {
+      if (win.isClosed) return;
+      main.textContent = ''; btnRow.textContent = '';
+      if (page === 0) {
+        main.appendChild(el('div', { class: 'hk-text', text: P.welcome }));
+        btnRow.append(b(P.back, () => {}, true), b(P.next, () => { page = 1; show(); }), b(P.cancel, () => win.close()));
+      } else if (page === 1) {
+        main.append(el('div', { class: 'hk-text', text: P.pickDir }), el('div', { class: 'hk-dir' }, [el('span', { class: 'hk-path', text: P.dir }), b(P.browseBtn, () => OS.ui.dialog({ title: P.wizTitle, icon: 'info', text: P.browse }))]));
+        btnRow.append(b(P.back, () => { page = 0; show(); }), b(P.next, () => { page = 2; show(); }), b(P.cancel, () => win.close()));
+      } else if (page === 2) {
+        main.appendChild(el('div', { class: 'hk-text', text: P.pickOpts }));
+        P.opts.forEach((t, i) => {
+          const c = el('input', { type: 'checkbox' });
+          c.checked = true;
+          if (i < 4) c.disabled = true;   // 这几样是补丁本身，去不掉
+          else c.addEventListener('change', () => { toolbar = c.checked; });
+          main.appendChild(el('label', { class: 'hk-opt' }, [c, el('span', { text: t })]));
+        });
+        btnRow.append(b(P.back, () => { page = 1; show(); }), b(P.install, install), b(P.cancel, () => win.close()));
+      } else if (page === 3) {
+        const fill = el('div', { class: 'hk-fill' });
+        main.append(el('div', { class: 'hk-text', text: P.patching }), el('div', { class: 'hk-bar' }, [fill]));
+        btnRow.append(b(P.back, () => {}, true), b(P.next, () => {}, true), b(P.cancel, () => {}, true));
+        requestAnimationFrame(() => { fill.style.width = '100%'; });
+        setTimeout(() => {
+          if (win.isClosed) return;
+          if (again) { OS.ui.bsod(PATCH_BSOD); return; }
+          OS.save.set(PATCH_KEY, true);
+          // 勾了工具条：记下来，Internot Explorer 地址栏下面多一条海葵工具条（ie.js；卸载补丁也不会跟着走，那几年的工具条就是这样）
+          if (toolbar) OS.save.set(TOOLBAR_KEY, true);
+          refreshPatch();
+          page = 4; show();
+        }, 2200);
+      } else {
+        main.appendChild(el('div', { class: 'hk-text', text: P.done }));
+        btnRow.append(b(P.finish, () => { win.close(); if (toolbar) OS.ui.dialog({ title: P.wizTitle, icon: 'info', text: P.toolbar }); }));
+      }
+    }
+    // 抠抠开着就装：先退出抠抠（重试 ／ 取消）
+    async function install() {
+      if (busy) return;
+      busy = true;
+      while (S.logged || alive(S.login)) {
+        const v = await OS.ui.dialog({ title: P.wizTitle, icon: 'warn', text: P.running, buttons: ['重试', '取消'] });
+        if (v !== '重试' || win.isClosed) { busy = false; return; }
+      }
+      busy = false;
+      page = 3; show();
+    }
+    show();
+    return win;
+  }
+  // 删补丁：挽留、进度条都在 添加或删除程序 里（addremove.js），这里只管拿掉
+  function removePatch() {
+    OS.save.set(PATCH_KEY, false);
+    refreshPatch();
+  }
+
   /* ================= 主面板 ================= */
   function openPanel() {
     if (!S.logged) return openLogin();
@@ -434,7 +554,7 @@
     ]);
     const content = el('div', { class: 'kk-panel' }, [head, list, foot]);
     // 主面板不占任务栏（那几年就是这样：主面板只待在托盘里，聊天窗口才上任务栏）
-    const win = OS.wm.open({ title: SOFT, icon: 'koukou', width: 150, height: 300, x: W.x + W.w - 154, y: W.y + 4, appId: app.id, content, maximizable: false, taskbar: false, onClose: () => { S.panel = null; S.panelParts = null; } });
+    const win = OS.wm.open({ title: patched() ? P.title : SOFT, icon: 'koukou', width: 150, height: 300, x: W.x + W.w - 154, y: W.y + 4, appId: app.id, content, maximizable: false, taskbar: false, onClose: () => { S.panel = null; S.panelParts = null; } });
     S.panel = win;
     S.panelParts = { head, list };
     dockable(win);
@@ -534,9 +654,9 @@
     GROUPS.forEach(([g, label]) => {
       let ids = [];
       if (g === 'qun') ids = ['qun'];
-      else if (g === 'black') ids = Object.keys(F).filter(id => S.blocked.has(id) && !S.deleted.has(id));
-      else ids = Object.keys(F).filter(id => F[id].group === g && !S.blocked.has(id) && !S.deleted.has(id) && !(F[id].hidden && S.guimi !== 'friend'));
-      const on = id => id === 'qun' || !S.offline.has(id);
+      else if (g === 'black') ids = [];   // 你自己的黑名单：拉黑别人要 10 抠币，你一个也没拉黑过
+      else ids = Object.keys(F).filter(id => F[id].group === g && !S.deleted.has(id) && !(F[id].hidden && S.guimi !== 'friend'));
+      const on = id => id === 'qun' || !looksOff(id);
       ids.sort((a, b) => on(b) - on(a));
       const cnt = g === 'qun' ? '' : ' [' + ids.filter(on).length + '/' + ids.length + ']';
       const gh = el('div', { class: 'kk-gh', text: (S.open[g] ? '▼ ' : '▶ ') + label + cnt });
@@ -547,9 +667,12 @@
         const isQun = id === 'qun';
         const f = F[id];
         const unread = S.unread[id] > 0;
-        const row = el('div', { class: 'kk-fr' + (S.sel === id ? ' sel' : '') + (unread ? ' jump' : '') + (!isQun && S.offline.has(id) ? ' offl' : '') }, [
+        const name = el('span', { class: 'kk-fname', text: isQun ? QUN : f.name + (f.away ? '（离开）' : '') + (f.note || '') + (patched() && INVISIBLE.has(id) ? P.inv : '') });
+        // 装了海葵：名字下面一行小字，拉黑你的写红字，其他人写 IP 和在哪
+        const extra = !isQun && patched() ? el('span', { class: 'kk-fpatch' + (S.blocked.has(id) ? ' blk' : ''), text: S.blocked.has(id) ? P.blockTag : placeText(id) }) : null;
+        const row = el('div', { class: 'kk-fr' + (S.sel === id ? ' sel' : '') + (unread ? ' jump' : '') + (!isQun && !on(id) ? ' offl' : '') + (extra ? ' two' : '') }, [
           avEl(id, 'kk-fav'),
-          el('span', { class: 'kk-fname', text: isQun ? QUN : f.name + (S.blocked.has(id) ? '' : (f.away ? '（离开）' : '') + (f.note || '')) })
+          extra ? el('div', { class: 'kk-fnames' }, [name, extra]) : name
         ]);
         let lastT = 0;
         row.addEventListener('click', e => {
@@ -599,7 +722,7 @@
     if (m.who === 'sys') return el('div', { class: 'kk-sys', text: m.text });
     const mine = m.who === 'me';
     const name = mine ? '你' : nameOf(m.who);
-    const body = m.file ? fileEl(m.file) : m.card ? cardEl(m.card) : m.emo != null ? emoEl(m.emo) : el('div', { class: 'kk-mtext' + (m.ad ? ' kk-ad' : ''), text: m.text });
+    const body = m.file ? fileEl(m.file) : m.card ? cardEl(m.card) : m.emo != null ? emoEl(m.emo) : m.ad && OS.web ? el('div', { class: 'kk-mtext kk-ad' }, OS.web.linkify(m.text)) : el('div', { class: 'kk-mtext' + (m.ad ? ' kk-ad' : ''), text: m.text });
     return el('div', { class: 'kk-msg' + (mine ? ' me' : '') }, [el('div', { class: 'kk-mh', text: name + '  ' + m.time }), body]);
   }
   function cardEl(c) {
@@ -627,13 +750,14 @@
     refreshChips(id);
   }
   function chipsFor(id) {
-    if (!S.wait[id] || S.blocked.has(id) || S.offline.has(id)) return [];
+    if (S.blocked.has(id)) return GENERIC_CHIPS;   // 被拉黑了还能一直发，就是没人回
+    if (!S.wait[id] || S.offline.has(id)) return [];
     const t = F[id].turns[S.turn[id]];
     return t ? t.choices.map(c => c[0]) : GENERIC_CHIPS;
   }
   function choose(id, i) {
     const f = F[id];
-    if (S.blocked.has(id)) { sys(id, BLOCKED_SEND); return; }
+    if (S.blocked.has(id)) { push(id, { who: 'me', text: GENERIC_CHIPS[i] || GENERIC_CHIPS[0] }); return; }   // 照常发出去，永远没回音
     if (S.offline.has(id)) { sys(id, OFFLINE_SEND); return; }
     const t = f.turns[S.turn[id]];
     const mine = t ? t.choices[i][0] : GENERIC_CHIPS[i];
@@ -712,7 +836,7 @@
     const closeBtn = el('button', { class: 'xpbtn', text: '关闭(C)' });
     const histBtn = el('span', { class: 'kk-link', text: '聊天记录(H)' });
     const dressBtn = el('button', { class: 'xpbtn kk-dress', text: '换装' });
-    body.appendChild(el('div', { class: 'kk-chead' }, [avEl(id, 'kk-cav'), el('div', {}, [el('div', { class: 'kk-cname', text: f.name + '（' + f.num + '）' }), el('div', { class: 'kk-csig', text: f.sig })])]));
+    body.appendChild(el('div', { class: 'kk-chead' }, [avEl(id, 'kk-cav'), el('div', {}, [el('div', { class: 'kk-cname', text: f.name + '（' + f.num + '）' }), el('div', { class: 'kk-csig', text: f.sig }), patched() ? el('div', { class: 'kk-cip', text: 'IP：' + ipText(id) }) : null])]));
     body.appendChild(el('div', { class: 'kk-cmain' }, [
       el('div', { class: 'kk-cleft' }, [logEl, tools.bar, chipsEl, el('div', { class: 'kk-cbtns' }, [histBtn, el('span', { class: 'kk-sp' }), closeBtn, sendBtn])]),
       el('div', { class: 'kk-cright' }, [el('div', { class: 'kk-cap', text: '抠秀形象' }), showEl(id), el('div', { class: 'kk-cap', text: '我的抠秀' }), showEl('me'), dressBtn])
@@ -731,7 +855,8 @@
     S.unread[id] = 0;
     updateTray();
     renderPanel();
-    if (S.blocked.has(id)) sys(id, BLOCKED_SEND);
+    if (S.blocked.has(id)) { if (patched()) sys(id, P.blockHead); }
+    else if (patched() && INVISIBLE.has(id) && !S.invSaid) { S.invSaid = true; later(() => deliver(id, P.invCaught), 1200); }
     else if (S.turn[id] == null) { S.turn[id] = 0; later(() => friendSay(id), 600); }
     refreshChips(id);
     if (o.shake) shakeWin(win);
@@ -746,12 +871,21 @@
   }
   function sendEmo(id, i) {
     if (id === 'qun' && S.muted) { sys('qun', MUTE_SEND); return; }
-    if (id !== 'qun' && (S.blocked.has(id) || S.offline.has(id))) { sys(id, S.blocked.has(id) ? BLOCKED_SEND : OFFLINE_SEND); return; }
+    if (id !== 'qun' && S.offline.has(id)) { sys(id, OFFLINE_SEND); return; }   // 被拉黑了：表情照常发出去，没人回
     push(id, { who: 'me', emo: i });
     later(() => {
       if (id === 'qun') deliver('qun', '', { from: OS.pick(members()), emo: Math.floor(Math.random() * EMO_N), quiet: true });
       else if (!S.blocked.has(id) && !S.offline.has(id)) deliver(id, '', { emo: Math.floor(Math.random() * EMO_N) });
     }, 900);
+  }
+  // 好友把你拉黑：你进了他的黑名单。你这边没有任何提示，只有装了海葵才看得出来
+  function blockMe(id) {
+    S.blocked.add(id);
+    S.wait[id] = false;
+    refreshChips(id);
+    OS.bootFix.add('kk-block', FIX_BLOCK);
+    if (patched()) { sys(id, P.blockNow); OS.sound.play('error'); }
+    renderPanel();
   }
   // 私聊窗口抖动：抖 3 次警告，第 4 次拉黑
   let shakeT = 0;
@@ -759,20 +893,14 @@
     if (Date.now() - shakeT < 400) return;
     shakeT = Date.now();
     const c = S.chats[id];
-    if (S.blocked.has(id)) { sys(id, BLOCKED_SEND); return; }
+    if (S.blocked.has(id)) { sys(id, SHAKE_SENT); if (c) shakeWin(c.win); return; }
     sys(id, SHAKE_SENT);
     if (c) shakeWin(c.win);
     if (S.offline.has(id)) { sys(id, OFFLINE_SEND); return; }
     const n = S.shakes[id] = (S.shakes[id] || 0) + 1;
     later(() => {
       if (n <= SHAKE_LINES.length) { deliver(id, SHAKE_LINES[n - 1]); return; }
-      sys(id, BLOCKED);
-      S.blocked.add(id);
-      S.wait[id] = false;
-      refreshChips(id);
-      OS.bootFix.add('kk-block', FIX_BLOCK);
-      OS.sound.play('error');
-      later(() => { const cc = S.chats[id]; if (cc && alive(cc.win)) cc.win.close(); renderPanel(); }, 1400);
+      blockMe(id);   // 第 4 下：他把你拉黑了——你这边什么提示都没有
     }, 700);
   }
 
@@ -877,13 +1005,8 @@
           S.turn[id] = S.turn[id] == null ? 99 : S.turn[id];
           deliver(id, f.quit);
           later(() => {
-            sys(id, BLOCKED);
-            S.blocked.add(id);
-            S.wait[id] = false;
-            refreshChips(id);
+            blockMe(id);
             S.gone.push({ name: info.who, why: '拉黑了你' });
-            OS.bootFix.add('kk-block', FIX_BLOCK);
-            renderPanel();
           }, 1200);
         }, 1000);
       }
@@ -1008,6 +1131,7 @@
   OS.on('desktop:ready', () => {
     setTimeout(() => {
       if (OS.boot.state !== 'desktop' || S.logged || alive(S.login)) return;
+      if (OS.soft && !OS.soft.has('koukou')) return;   // 卸掉了就不弹
       if (autoOn()) { ensureTray(); login(false); } else openLogin();
     }, 2600);
   });
@@ -1029,12 +1153,12 @@
     gone: () => S.gone.slice(),
     loggedIn: () => S.logged,
     // 别的软件让某个好友发来一句（网上邻居：转发“长寿”文章后有人回）；没登录 / 被拉黑 / 下线了就发不到
-    // 别的软件替你给所有好友发一个文件（网上邻居：转发“长寿”文章）；拉黑你的不发，下线的照发但提示对方不在
+    // 别的软件替你给所有好友发一个文件（网上邻居：转发“长寿”文章）；下线的照发但提示对方不在
     sendFile: file => {
       if (!S.logged) return 0;
       let n = 0;
       Object.keys(F).forEach(id => {
-        if (S.blocked.has(id) || S.deleted.has(id) || (F[id].hidden && S.guimi !== 'friend')) return;
+        if (S.deleted.has(id) || (F[id].hidden && S.guimi !== 'friend')) return;   // 拉黑你的也照常"发过去"了，只是没人回
         push(id, { who: 'me', file });
         if (S.offline.has(id)) sys(id, OFFLINE_SEND);
         n++;
@@ -1045,6 +1169,9 @@
     // 任务管理器：抠抠2003.exe 在不在（登着、或者开着登录框）、结束它 = 直接掉线；下次登录同桌来问
     running: () => !!(S.logged || alive(S.login)),
     kill: () => { if (S.logged) dropped = true; quit(); },
-    uninstall: say('卸载 抠抠2003', 'warn', L.uninstall)
+    // 海葵抠抠补丁：装没装、安装向导、拿掉（添加或删除程序 里删）
+    patched, patchInstaller, removePatch,
+    // 海葵工具条装没装（Internot Explorer 看这个决定要不要冒出那一条）
+    toolbar: () => !!OS.save.get(TOOLBAR_KEY, false)
   };
 })();

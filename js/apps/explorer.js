@@ -224,6 +224,7 @@
       const base = [
         { label: '打开', bold: true, action: () => openNode(nd) },
         '-',
+        ...(nd.folder ? [] : [{ label: '发送到', sub: [{ label: '邮件收件人', action: () => OS.mail && OS.mail.compose({ name: nd.name, icon: nd.icon, path: nd.path }) }] }, '-']),
         { label: '剪切', action: () => cut(nd) },
         { label: '复制', action: () => copy(nd) },
         '-',
@@ -337,7 +338,7 @@
     }
     function newText() {
       if (!FS.writable(cur)) { OS.ui.dialog({ title: '新建', icon: 'warn', text: (FS.get(cur) || {}).noNew || L.noNew }); return; }
-      FS.createFile(cur, '新建 文本文档.txt', 'txt', { text: '' });
+      FS.createFile(cur, '新建 文本文档.txt', 'txt', { text: '', made: 'new' });   // made：磁盘清理按这个分组
     }
     function props(nd) {
       if (!nd) return;
@@ -388,9 +389,13 @@
     // .doc / .rtf：写字板（带排版）
     if ((kind === 'doc' || kind === 'rtf') && OS.wordpad) {
       const where = FS.writable(FS.parentOf(nd.path)) ? { type: 'fs', path: nd.path } : { type: 'ro', msg: nd.roMsg };
-      OS.wordpad.open({ name: nd.name, doc: FS.docOf(nd) || OS.wordpad.fromText(FS.text(nd)), where });
+      // .doc：装着 Wordy 2003 就用它，删了回到写字板；.rtf 还是写字板（offense.js）
+      (kind === 'doc' && OS.docEditor ? OS.docEditor() : OS.wordpad).open({ name: nd.name, doc: FS.docOf(nd) || OS.wordpad.fromText(FS.text(nd)), where });
       return;
     }
+    if (kind === 'url' && nd.url && OS.ie) { OS.ie.open(nd.url); return; }
+    if (kind === 'xls' && OS.excuse) { OS.excuse.open(nd); return; }   // 自己存的表：Excuse 2003（debt.js）
+    if (kind === 'ppt' && OS.pptless) { OS.pptless.open(nd); return; }   // 幻灯片：PowerPointless 2003（pptless.js）   // 收藏夹里的网页：Internot Explorer 打开
     if (['txt', 'ini', 'inf', 'dmp', 'url', 'dat', 'tmp'].indexOf(kind) >= 0) {
       let text = FS.text(nd);
       // 日记的 .LOG：每打开一次，最后自动加一行现在的时间（XP 记事本真有这功能）

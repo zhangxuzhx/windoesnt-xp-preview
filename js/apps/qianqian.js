@@ -18,7 +18,6 @@
     notFound: '未找到歌词：连谁唱的都不知道，我上哪给你找。',
     serverTry: '正在连接歌词服务器……',
     serverFail: '歌词服务器在楼下，网线被老鼠咬了。',
-    uninstall: '卸载失败：千千不听不听你的。',
     about: NAME + '　版本 5.1\n(C) ' + OS.YEAR + ' 无聊科技\n你说什么？听不见。',
     knock: '楼上的，小点声！',
     toEarth: '翻译成地球文', toMars: '变回火星文',
@@ -529,6 +528,7 @@
   OS.on('desktop:ready', () => {
     setTimeout(() => {
       if (OS.boot.state !== 'desktop' || !OS.save.get(AUTO_KEY, false) || (win && !win.isClosed)) return;
+      if (OS.soft && !OS.soft.has('qianqian')) return;   // 卸掉了就不自动放
       open();
       OS.wm.minimize(win);
       playTrack(BGM);
@@ -537,7 +537,6 @@
   OS.on('desktop:reset', () => { commented.clear(); knockAt = 0; mini = false; desk = false; deskLocked = false; });
 
   OS.qianqian = {
-    uninstall: say('卸载 千千不听', 'warn', L.uninstall),
     // 我的文档 ▸ 我的音乐 里双击：打开千千不听放那一首
     play: i => { if (!TRACKS[i]) return; open(); showMain(); playTrack(i); },
     // 任务管理器：千千不听.exe 在不在、在不在放歌、结束它、改优先级、现在鼓点多响（0~1，CPU 跟着跳）

@@ -100,6 +100,7 @@
     const win = OS.wm.open({ title: title(), icon: 'paint', width: 452, height: 300, appId: app.id, content, center: true,
       beforeClose: () => { if (busy) return false; if (!dirty) return true; askSave(() => win.close()); return false; } });
     win.closed.then(() => { if (inst && inst.win === win) inst = null; stopSpray(); });
+    win.filePath = () => (file ? file.path : null);   // 磁盘清理（cleanup.js）删了这张画：窗口直接关掉
 
     function title() { return (file ? file.name : UNTITLED) + ' - ' + NAME; }
     function setDirty() { dirty = true; }

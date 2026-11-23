@@ -320,8 +320,11 @@
     homepage(ad) {
       ad.url = ad.url || OS.pick(HOME.urls);
       ad.text = HOME.lines[ad.step] + ad.url;
+      // 网址按下去就采集进 Internot Explorer 的地址栏（ie.js）；弹窗照样被拍
+      const url = el('div', { class: 'ph-url', text: ad.url });
+      url.addEventListener('pointerdown', e => { if ((e.button == null || e.button === 0) && OS.web) OS.web.collect(ad.url); });
       return shell(HOME.title, 'k-dlg k-home', [
-        el('div', { class: 'pd-row' }, [OS.iconEl('info', 'pd-ico'), el('div', { class: 'pd-text' }, [el('div', { text: HOME.lines[ad.step] }), el('div', { class: 'ph-url', text: ad.url })])]),
+        el('div', { class: 'pd-row' }, [OS.iconEl('info', 'pd-ico'), el('div', { class: 'pd-text' }, [el('div', { text: HOME.lines[ad.step] }), url])]),
         dbtns(['确定'])
       ]).node;
     },

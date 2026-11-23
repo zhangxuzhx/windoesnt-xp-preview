@@ -115,9 +115,14 @@
   // 开始菜单左栏：[程序, 粗体那行, 下面灰色小字]；再下面是常用程序
   const START_TOP = [['ie', 'Internot', 'Internot Explorer'], ['mail', '电子邮件', 'Outluck Excess']];
   const START_OFTEN = ['sweep', 'cmd', 'paint', 'calc'];
+  // 左栏里的程序被卸掉了就藏起来（addremove.js 发 soft:change）
+  const leftApps = [];
+  const syncLeft = () => leftApps.forEach(([n, id]) => { n.style.display = !OS.soft || OS.soft.appOk(id) ? '' : 'none'; });
+  OS.on('soft:change', syncLeft);
   function pinItem(id, title, sub) {
     const a = OS.apps.byId[id], run = closeThen(() => OS.apps.open(id));
     const n = el('div', { class: 'sm-item sm-pin' }, [OS.iconEl(a.icon, 'smi-ico'), el('div', { class: 'sm-pin-txt' }, [el('b', { text: title }), el('span', { text: sub })])]);
+    leftApps.push([n, id]);
     n.addEventListener('click', () => { OS.sound.play('click'); run(); });
     OS.ui.onContext(n, () => OS.menus.startItem(a, run));
     return n;
@@ -134,7 +139,8 @@
     leftCol = el('div', { class: 'sm-left' });
     START_TOP.forEach(([id, title, sub]) => leftCol.appendChild(pinItem(id, title, sub)));
     leftCol.appendChild(el('div', { class: 'sm-sep' }));
-    START_OFTEN.forEach(id => { const a = OS.apps.byId[id]; leftCol.appendChild(item(a.icon, a.name, closeThen(() => OS.apps.open(id)), '', appMenu(a))); });
+    START_OFTEN.forEach(id => { const a = OS.apps.byId[id], n = item(a.icon, a.name, closeThen(() => OS.apps.open(id)), '', appMenu(a)); leftApps.push([n, id]); leftCol.appendChild(n); });
+    syncLeft();
     leftCol.appendChild(el('div', { class: 'sm-sep' }));
 
     // 所有程序：点一下（鼠标停一会儿也行）往右弹出一层层的菜单
@@ -191,14 +197,18 @@
 
   /* ---------- 所有程序（照 XP：先文件夹，再软件） ---------- */
   function allPrograms() {
+    const has = id => !OS.soft || OS.soft.has(id);
     const appItem = id => {
+      if (OS.soft && !OS.soft.appOk(id)) return null;   // 卸掉了（addremove.js）
       const a = OS.apps.byId[id];
       const run = closeThen(() => OS.apps.open(id));
       return { label: a.name, icon: a.icon, fresh: !OS.apps.opened(id), action: run, context: () => OS.menus.startItem(a, run) };
     };
-    const folder = (label, sub) => {
+    const folder = (label, sub, icon) => {
+      sub = sub.filter(Boolean);
+      if (!sub.length) return null;   // 里面的都卸光了：文件夹也不显示
       const run = closeThen(() => OS.apps.placeholder({ name: label, icon: 'folder' }));
-      return { label, icon: 'folder', sub, fresh: sub.some(it => it && it.fresh), context: () => OS.menus.placeItem(run) };
+      return { label, icon: icon || 'folder', sub, fresh: sub.some(it => it && it.fresh), context: () => OS.menus.placeItem(run) };
     };
     const activated = !!OS.save.get('activated', false);   // 用激活器激活过：专业版的程序变彩色，能打开（暂时是施工中）
     const pro = (OS.apps.proList || []).map(name => {
@@ -209,16 +219,19 @@
     });
     // 其他程序以后再补
     return [
-      folder('附件', [appItem('cmd'), appItem('notepad'), appItem('wordpad'), appItem('paint'), appItem('calc')]),
+      // 附件 ▸ 系统工具 ▸ 磁盘清理（跟 XP 一样；cleanup.js）
+      folder('附件', [folder('系统工具', [{ label: '磁盘清理', icon: 'recycle', action: closeThen(() => OS.cleanup && OS.cleanup.open()) }]), appItem('cmd'), appItem('notepad'), appItem('wordpad'), appItem('paint'), appItem('calc')]),
       folder('启动', [appItem('restore')]),
       // 游戏：以后放 4 个仿 XP 的小游戏；装了光盘里的幻觉游戏，多一个文件夹
-      folder('游戏', [appItem('sweep')].concat(OS.hj && OS.hj.installed() ? [folder('幻觉游戏', OS.hj.games.map(g => ({ label: g.name, icon: 'game-' + g.id, action: closeThen(() => OS.hj.run(g)) })))] : [])),
+      folder('游戏', [appItem('hearts'), appItem('freecell'), appItem('pinball'), appItem('sweep'), appItem('spider'), appItem('solitaire')].concat(OS.hj && OS.hj.installed() ? [folder('幻觉游戏', OS.hj.games.map(g => ({ label: g.name, icon: 'game-' + g.id, action: closeThen(() => OS.hj.run(g)) })))] : [])),
       folder("Windoesn't XP 专业版", pro),
+      // Offense 2003 三件套（offense.js）
+      folder('Offense 2003', [appItem('wordy'), appItem('excuse'), appItem('ppt')], 'offense'),
       folder('实用小程序', [appItem('swatter'), appItem('coil'), appItem('bootcheck'), appItem('pulse'), appItem('lifespan'), appItem('activator')]),
-      // 照那几年装聊天软件的样子：一个文件夹，里面是软件本体 + 卸载（卸不掉）
-      folder('抠抠软件', [appItem('koukou'), { label: '卸载 抠抠2003', icon: 'exe', action: closeThen(() => OS.koukou && OS.koukou.uninstall()) }]),
-      folder('千千不听', [appItem('qianqian'), { label: '卸载 千千不听', icon: 'exe', action: closeThen(() => OS.qianqian && OS.qianqian.uninstall()) }]),
-      folder('ABCSee 大眼看图', [appItem('abcsee'), { label: 'ABCSee 帮助', icon: 'help', action: closeThen(() => OS.abcsee && OS.abcsee.help()) }, { label: '卸载 ABCSee', icon: 'exe', action: closeThen(() => OS.abcsee && OS.abcsee.uninstall()) }])
+      // 照那几年装聊天软件的样子：一个文件夹，里面是软件本体 + 卸载（走 添加或删除程序 那一套，addremove.js）；卸掉了整个文件夹不显示
+      has('koukou') ? folder('抠抠软件', [appItem('koukou'), { label: '卸载 抠抠2003', icon: 'exe', action: closeThen(() => OS.soft.uninstall('koukou')) }]) : null,
+      has('qianqian') ? folder('千千不听', [appItem('qianqian'), { label: '卸载 千千不听', icon: 'exe', action: closeThen(() => OS.soft.uninstall('qianqian')) }]) : null,
+      has('abcsee') ? folder('ABCSee 大眼看图', [appItem('abcsee'), { label: 'ABCSee 帮助', icon: 'help', action: closeThen(() => OS.abcsee && OS.abcsee.help()) }, { label: '卸载 ABCSee', icon: 'exe', action: closeThen(() => OS.soft.uninstall('abcsee')) }]) : null
     ];
   }
 
