@@ -3,7 +3,8 @@
    - 左键点开：空格没事，雷格照原版炸；右键（手机长按）：插旗 → 问号 → 恢复（游戏 ▸ 标记(?) 关掉就没有问号）
    - 空格全点开就赢，旗没插完也算；点左边 ／ 上边的数字：这一行的旗插够了，剩下的一次全点开（插错了照样炸）
    - 一行的空格都点开了，那一行的数字变灰
-   - 初级 9×9 24 颗 ／ 中级 16×16 102 颗 ／ 高级 30×16 216 颗，各 100 题（paile-data.js，电脑先算好：唯一解、一行一列就能推出来），
+   - 初级 9×9 24 颗 ／ 中级 15×10 60 颗 ／ 高级 20×12 108 颗，各 100 题（paile-data.js，电脑先算好：唯一解、一行一列就能推出来），
+     （2026-11-24 作者：中级、高级原来 16×16 ／ 30×16，放大了也难点 → 不照原版，主要往横里加：格子大、窗口也合屏幕）
      同一档里越往后越难；游戏 ▸ 选关…；雷数按数织最难、最有意思的比例定的（30% ／ 40% ／ 45%），不照搬原版
    - 自定义：现场出题，"正在埋雷……"
    - 表情脸：按下去张嘴、赢了戴墨镜、炸了晕；玩着点 ／ 炸了点 = 重开这一题，赢了点 = 下一题
@@ -11,7 +12,11 @@
    - 蓝屏：10 秒内狂点表情脸 20 下 → 脸笑僵了 → SMILEY_FACE_STUCK
    - 放大（照 NDS、手机上的数织；游戏 ▸ 放大镜 打勾才有，手机默认开、电脑默认关）：雷区大、格子小得点不准时（中级、高级），看全图时点哪里就放大哪一块（这一下不点开格子）；
      放大后格子跟原版一样大，按住拖着看，左边、上边的数字贴着边跟着走；左上角放大镜：放大 ／ 缩小；
-     电脑：滚轮、+ −；手机：两根手指捏开捏拢 */
+     电脑：滚轮、+ −；手机：两根手指捏开捏拢
+   - 单键模式（2026-11-24 作者加；游戏 ▸ 单键模式，手机默认开）：雷区左边一竖条小工具栏：指针 ／ 旗子 ／ 问号，挑一个，点格子就是它
+     （放左边不放表情脸下面：竖着本来就不够放，横着有富余）
+   - 按住拖：一路拖过去的格子一起点开 ／ 插旗 ／ 打问号（单键模式按选的那个；电脑上左键拖点开、右键拖插旗）；锁在开头那一行或那一列上
+     放大着的时候：从格子上拖是点格子，从左边、上边的数字上拖（或者两根手指）是挪着看 */
 (function () {
   'use strict';
   const el = OS.el;
@@ -23,9 +28,10 @@
   const L = {
     menus: ['游戏(G)', '帮助(H)'],
     newGame: '开局　F2', levels: { easy: '初级', mid: '中级', hard: '高级', custom: '自定义…' }, pick: '选关…',
-    marks: '标记(?)', color: '颜色', sound: '声音', zoom: '放大镜', best: '排雷英雄榜…', quit: '退出',
+    marks: '标记(?)', color: '颜色', sound: '声音', zoom: '放大镜', oneKey: '单键模式', best: '排雷英雄榜…', quit: '退出',
+    tools: [['open', '指针'], ['flag', '旗子'], ['q', '问号']],
     help: '目录', about: '关于排雷',
-    helpText: '排雷\n\n雷已经替你找出来了，你只管排。\n\n左边的数字说的是这一行，上边的数字说的是这一列：里面一段段连着的雷，每段几颗，按顺序排好。比如"2 1"：先是两颗连着的雷，隔开至少一格，再一颗。\n\n左键点开空格，点到雷就炸。右键插旗。\n这一行的旗插够了，点它的数字，剩下的格子一次全点开。\n空格全点开就赢。',
+    helpText: '排雷\n\n雷已经替你找出来了，你只管排。\n\n左边的数字说的是这一行，上边的数字说的是这一列：里面一段段连着的雷，每段几颗，按顺序排好。比如"2 1"：先是两颗连着的雷，隔开至少一格，再一颗。\n\n左键点开空格，点到雷就炸。右键插旗。\n这一行的旗插够了，点它的数字，剩下的格子一次全点开。\n空格全点开就赢。\n\n单键模式（游戏 ▸ 单键模式）：雷区左边挑指针、旗子或问号，点格子就是它。\n按住拖过一排格子，可以一起点开或者一起插旗。',
     aboutText: '排雷\n版本 2003\n雷已经替你找出来了。\n(C) ' + OS.YEAR + ' 无聊科技',
     // 选关
     pickTitle: n => '选关 - ' + n, pickTip: '打勾的是排过的。',
@@ -40,13 +46,23 @@
   const LV = ['easy', 'mid', 'hard'];
   // 题库：paile-data.js（没有就现场出）
   const DATA = OS.paileData || {};
-  const FALLBACK = { easy: [9, 9, 24], mid: [16, 16, 102], hard: [30, 16, 216] };
+  const FALLBACK = { easy: [9, 9, 24], mid: [15, 10, 60], hard: [20, 12, 108] };
 
   /* ================= 存档 ================= */
   const KEY = 'paile';
   const S = Object.assign({ level: 'easy', idx: { easy: 0, mid: 0, hard: 0 }, solved: { easy: [], mid: [], hard: [] }, marks: true, color: true, sound: true,
-    best: {}, custom: { w: 12, h: 12, m: 58 } }, OS.save.get(KEY, {}));
+    best: {}, custom: { w: 12, h: 12, m: 58 }, tool: 'open' }, OS.save.get(KEY, {}));
+  // 单键模式：手机上默认开，电脑上默认关
+  const oneKey = () => S.oneKey == null ? !!OS.stage.touch : !!S.oneKey;
+  const tool = () => (oneKey() ? (S.tool === 'q' && !S.marks ? 'open' : S.tool || 'open') : 'open');
   const persist = () => OS.save.set(KEY, S);
+  // 题库换过（2026-11-24 中级、高级换了尺寸，题全是新的）：中级、高级的进度、做过的题、英雄榜清掉，初级留着
+  const DATA_V = 2;
+  if ((S.dataV || 1) < DATA_V) {
+    ['mid', 'hard'].forEach(k => { S.idx[k] = 0; S.solved[k] = []; delete S.best[k]; });
+    S.dataV = DATA_V;
+    persist();
+  }
 
   /* ================= 数织：线索、一行一行地推、出题 ================= */
   const decode = (hex, n) => { const g = []; for (const ch of hex) { const v = parseInt(ch, 16); g.push(v >> 3 & 1, v >> 2 & 1, v >> 1 & 1, v & 1); } return g.slice(0, n); };
@@ -234,9 +250,10 @@
     const leftW = Math.ceil(Math.max(...G.rows.map(c => (c.length ? c : [0]).reduce((s, n) => s + numW(n), 0))) + 6);
     const topH = Math.max(...G.cols.map(c => Math.max(1, c.length))) * (cf + 1) + 4;
     const chromeH = 22 + 18 + 10 + 34 + 8;
-    const cs = z || Math.max(8, Math.min(csMax || 16, Math.floor((Math.min(470, Wk.w - 6) - 36 - leftW) / W), Math.floor((Wk.h - 4 - chromeH - topH) / H)));
+    const tbW = oneKey() ? 34 : 0;   // 单键模式的工具栏竖在雷区左边，占宽不占高
+    const cs = z || Math.max(8, Math.min(csMax || 16, Math.floor((Math.min(470, Wk.w - 6) - 36 - leftW - tbW) / W), Math.floor((Wk.h - 4 - chromeH - topH) / H)));
     if (!z) ui.fitCs = cs;
-    const compact = cs < 12 || !!z;
+    const compact = cs < 14 || !!z;   // 高级（格子 12–14）：上面那一条收紧，省下的高度给格子
     ui.cells = []; ui.rowClue = []; ui.colClue = [];
     const field = el('div', { class: 'pa-field' + (cs < 12 ? ' small' : ''), style: { gridTemplateColumns: leftW + 'px repeat(' + W + ', ' + cs + 'px)', gridTemplateRows: topH + 'px repeat(' + H + ', ' + cs + 'px)' } });
     field.style.setProperty('--cs', cs + 'px');
@@ -270,6 +287,7 @@
     OS.ui.onContext(field, e => {
       if (!ui || !G) return null;
       if (pinch || Date.now() - pinchEnd < 600) return null; // 两根手指捏着，有一根不动也会算成长按，不理它
+      if (Date.now() - (ui.skipCtx || 0) < 500) return null;   // 右键刚拖着插过一串旗
       if (overview()) { zoomAt(OS.stage.toLocal(e.clientX, e.clientY), ZOOM_TAP); return null; }
       const n = e.target.closest && e.target.closest('.pa-c');
       if (n) mark(+n.dataset.i);
@@ -279,25 +297,27 @@
     ui.face.addEventListener('click', () => { OS.sound.play('click'); faceAction(); });
     ui.left = el('div', { class: 'pa-led' });
     ui.clock = el('div', { class: 'pa-led' });
-    const panel = el('div', { class: 'pa' + (S.color ? '' : ' bw') + (compact ? ' compact' : '') }, [el('div', { class: 'pa-top' }, [ui.left, ui.face, ui.clock]), view]);
+    const kids = [el('div', { class: 'pa-top' }, [ui.left, ui.face, ui.clock])];
+    kids.push(oneKey() ? el('div', { class: 'pa-mid' }, [toolBar(), view]) : view);
+    const panel = el('div', { class: 'pa' + (S.color ? '' : ' bw') + (compact ? ' compact' : '') }, kids);
     ui.panel = panel; ui.view = view;
     ui.geom = { z, cs, leftW, topH };
     ui.body.textContent = '';
     ui.body.appendChild(panel);
     const extra = compact ? 28 : 34;
     if (!z) {
-      const ww = leftW + W * cs + extra;
+      const ww = leftW + W * cs + extra + tbW;
       win.opts.width = ww;
       OS.wm.setWidth(win, ww);
       if (win.el.offsetHeight > Wk.h - 2 && cs > 8) { build(cs - 1); return; }
     } else {
       // 放大了：窗口能多大就多大，雷区在里面拖着看
       const fullW = leftW + W * cs, fullH = topH + H * cs;
-      const vw = Math.min(fullW, Math.min(470, Wk.w - 6) - extra);
+      const vw = Math.min(fullW, Math.min(470, Wk.w - 6) - extra - tbW);
       view.style.width = vw + 'px';
       view.style.height = fullH + 'px';
-      win.opts.width = vw + extra;
-      OS.wm.setWidth(win, vw + extra);
+      win.opts.width = vw + extra + tbW;
+      OS.wm.setWidth(win, vw + extra + tbW);
       const over = win.el.offsetHeight - (Wk.h - 2);
       const vh = over > 0 ? Math.max(topH + 2 * cs, fullH - over) : fullH;
       view.style.height = vh + 'px';
@@ -313,6 +333,49 @@
     OS.wm.keepInside(win);
     paintAll();
     win.setTitle(NAME + (G.level === 'custom' ? '' : ' - ' + L.levels[G.level] + ' 第 ' + (G.idx + 1) + ' 题'));
+  }
+
+  // 单键模式的小工具栏（竖在雷区左边）：指针 ／ 旗子 ／ 问号（游戏 ▸ 标记(?) 关了就没有问号）
+  const TOOL_ICON = { open: '<svg viewBox="0 0 16 16"><path d="M4 2 L4 13 L6.8 10.4 L8.8 14.6 L10.6 13.8 L8.6 9.7 L12.2 9.6 Z" fill="#fff" stroke="#000" stroke-width="1" stroke-linejoin="round"/></svg>', flag: FLAG, q: '<b class="pa-q">?</b>' };
+  function toolBar() {
+    const bar = el('div', { class: 'pa-tools' });
+    L.tools.forEach(([k, label]) => {
+      if (k === 'q' && !S.marks) return;
+      const b = el('div', { class: 'pa-tool' + (tool() === k ? ' on' : ''), title: label }, [el('span', { class: 'pa-ti', html: TOOL_ICON[k] }), el('span', { text: label })]);
+      b.addEventListener('click', e => { e.stopPropagation(); OS.sound.play('click'); S.tool = k; persist(); bar.querySelectorAll('.pa-tool').forEach(x => x.classList.toggle('on', x === b)); });
+      bar.appendChild(b);
+    });
+    return bar;
+  }
+  // 一格按工具点：open 点开 ／ flag 插旗（set：插还是拔，拖的时候整串一样）／ q 打问号
+  function useTool(t, i, set) {
+    if (!G || G.over || G.st[i] === 1) return;
+    if (t === 'open') { if (G.st[i] !== 2) open(i); return; }
+    const v = t === 'flag' ? 2 : 3;
+    const want = set == null ? G.st[i] !== v : set;
+    if (want && G.st[i] === v) return;
+    if (!want && G.st[i] !== v) return;
+    G.st[i] = want ? v : 0;
+    paintCell(i);
+    paintLed(ui.left, G.mines - G.st.filter(x => x === 2).length);
+  }
+  // 按住拖：从开头那格到现在这格，锁在同一行或同一列上，路过的格子一起点
+  function dragTo(pr, p) {
+    const g = ui.geom, v = ui.view, vp = viewPt(p);
+    const gx = vp.x + (g.z ? v.scrollLeft : 0) - g.leftW, gy = vp.y + (g.z ? v.scrollTop : 0) - g.topH;
+    const c = Math.floor(gx / g.cs), r = Math.floor(gy / g.cs);
+    const r0 = Math.floor(pr.cell / G.W), c0 = pr.cell % G.W;
+    if (!pr.axis && (r !== r0 || c !== c0)) pr.axis = Math.abs(c - c0) >= Math.abs(r - r0) ? 'row' : 'col';
+    if (!pr.axis) return;
+    const k = pr.axis === 'row' ? OS.clamp(c, 0, G.W - 1) : OS.clamp(r, 0, G.H - 1);
+    const from = pr.axis === 'row' ? c0 : r0, step = k >= from ? 1 : -1;
+    for (let x = from; x !== k + step; x += step) {
+      const i = pr.axis === 'row' ? r0 * G.W + x : x * G.W + c0;
+      if (pr.done.has(i)) continue;
+      pr.done.add(i);
+      useTool(pr.tool, i, pr.set);
+      if (G.over) return;
+    }
   }
 
   /* ---------- 放大 ／ 缩小、拖着看 ---------- */
@@ -379,18 +442,24 @@
       if (zoomable() && touches.size === 2) { const [a, b] = [...touches.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) }; }
       return;
     }
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const right = e.pointerType === 'mouse' && e.button === 2;
+    if (e.pointerType === 'mouse' && e.button !== 0 && !right) return;
     const n = e.target.closest('.pa-c');
-    press = { id: e.pointerId, p0: p, sl: ui.view.scrollLeft, st: ui.view.scrollTop, moved: false, target: e.target, node: n, cell: n ? +n.dataset.i : -1, down: false };
-    if (n && !overview() && !G.over && G.st[press.cell] !== 1 && G.st[press.cell] !== 2) { n.classList.add('down'); setFace('oh'); press.down = true; }
+    press = { id: e.pointerId, p0: p, sl: ui.view.scrollLeft, st: ui.view.scrollTop, moved: false, target: e.target, node: n, cell: n ? +n.dataset.i : -1, down: false,
+      tool: right ? 'flag' : tool(), right, batch: !!(n && !overview() && !G.over), done: new Set(), axis: null, set: null };
+    if (press.batch && press.tool !== 'open') press.set = G.st[press.cell] !== (press.tool === 'flag' ? 2 : 3);   // 开头那格决定这一串是插还是拔
+    if (right) return;
+    if (n && !overview() && !G.over && press.tool === 'open' && G.st[press.cell] !== 1 && G.st[press.cell] !== 2) { n.classList.add('down'); setFace('oh'); press.down = true; }
   }
   function onMove(e) {
     if (!ui || !G) return;
     if (touches.has(e.pointerId)) touches.set(e.pointerId, stagePt(e));
     if (pinch) {
       if (touches.size < 2) return;
-      const [a, b] = [...touches.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
-      if (d > pinch.d * 1.3 || d < pinch.d / 1.3) { const grow = d > pinch.d; pinch.d = d; zoomStep(grow ? 1 : -1, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }); }
+      const [a, b] = [...touches.values()], d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      if (ui.zoom && pinch.mx != null) { ui.view.scrollLeft -= mx - pinch.mx; ui.view.scrollTop -= my - pinch.my; }   // 两根手指一起挪：挪着看
+      pinch.mx = mx; pinch.my = my;
+      if (d > pinch.d * 1.3 || d < pinch.d / 1.3) { const grow = d > pinch.d; pinch.d = d; pinch.mx = null; zoomStep(grow ? 1 : -1, { x: mx, y: my }); }
       return;
     }
     if (!press || e.pointerId !== press.id) return;
@@ -399,6 +468,7 @@
       press.moved = true;
       if (press.down) { press.node.classList.remove('down'); press.down = false; if (!G.over) setFace('smile'); }
     }
+    if (press.moved && press.batch) { if (!press.done.size) { press.done.add(press.cell); useTool(press.tool, press.cell, press.set); } dragTo(press, p); if (press.right) ui.skipCtx = Date.now(); return; }
     if (press.moved && ui.zoom) { ui.view.scrollLeft = press.sl - dx; ui.view.scrollTop = press.st - dy; }
   }
   function onUp(e) {
@@ -407,11 +477,12 @@
     if (!press || e.pointerId !== press.id) return;
     const pr = press;
     endPress();
+    if (pr.right) { if (pr.moved) ui.skipCtx = Date.now(); return; }   // 右键：不拖照旧走右键菜单那条（插旗）；拖过了就别再插一次
     if (!ui || !G || e.type !== 'pointerup' || pr.moved || OS.ui.longPressed(e.pointerId)) return;
     const t = pr.target;
     if (t.closest('.pa-zoom')) { OS.sound.play('click'); toggleZoom(); return; }
     if (overview()) { zoomAt(stagePt(e), ZOOM_TAP); return; }
-    if (pr.cell >= 0) { open(pr.cell); return; }
+    if (pr.cell >= 0) { useTool(pr.tool, pr.cell); return; }
     const lc = t.closest('.pa-lc'), tc = t.closest('.pa-tc');
     if (lc) chord('r', +lc.dataset.r);
     else if (tc) chord('c', +tc.dataset.c);
@@ -544,10 +615,11 @@
       { label: L.levels.custom, checked: S.level === 'custom', action: customDialog },
       { label: L.pick, disabled: S.level === 'custom', action: pickDialog },
       '-',
-      { label: L.marks, checked: S.marks, action: () => { S.marks = !S.marks; persist(); } },
+      { label: L.marks, checked: S.marks, action: () => { S.marks = !S.marks; persist(); if (ui && G && oneKey()) build(); } },
       { label: L.color, checked: S.color, action: () => { S.color = !S.color; persist(); if (ui) ui.panel.classList.toggle('bw', !S.color); } },
       { label: L.sound, checked: S.sound, action: () => { S.sound = !S.sound; persist(); } },
       { label: L.zoom, checked: zoomOn(), action: () => { S.zoom = !zoomOn(); persist(); if (ui && G) { if (!S.zoom) ui.zoom = 0; build(); } } },
+      { label: L.oneKey, checked: oneKey(), action: () => { S.oneKey = !oneKey(); persist(); if (ui && G) build(); } },
       '-',
       { label: L.best, action: bestDialog },
       '-',

@@ -1,7 +1,7 @@
 /* 电脑里的文件“总清单”：我的电脑、我的文档、记事本另存为……都照这张清单显示
    - 每个文件 / 文件夹一行：在哪（路径）、叫什么、什么类型、双击干嘛。我们一开始放好的用 FS.add 挂上去；
      会变的（桌面上有什么、收集到哪些蓝屏、装没装游戏）用 FS.provide 现算。
-   - 玩家自己弄出来的（记事本存的、复制出来的、欠条图片、新建文件夹）记在存档里；全电脑最多 80 个（见 player-file-cap）。
+   - 玩家自己弄出来的（记事本存的、复制出来的、欠条图片、新建文件夹）记在存档里；全电脑最多 200 个（2026-11-24 作者：云存档没想的那么紧，80 → 200）。
      新建文件夹重启就没了（套娃蓝屏用），别的重启还在。
    - 以后主线加东西：往清单上 FS.add 一行就行，所有地方自动都有。 */
 (function () {
@@ -17,9 +17,9 @@
   FS.ROOT = '我的电脑';   // 我的电脑本身（里面是几个盘）
 
   /* ---------- 文案 ---------- */
-  const CAP = 80;
+  const CAP = 200;   // 2026-11-24 作者：80 → 200
   const CAP_TITLE = '提示';
-  const CAP_TEXT = '由于性能限制，不能创建80个以上的自定义文件，您可以先删除您创建的老文件再创建新文件，谢谢支持！';
+  const CAP_TEXT = '由于性能限制，不能创建' + CAP + '个以上的自定义文件，您可以先删除您创建的老文件再创建新文件，谢谢支持！';
   // 类型：图标、类型名
   const KINDS = {
     folder: ['folder', '文件夹'], txt: ['txt', '文本文档'], doc: ['doc', 'Word 文档'], jpg: ['abcpic', 'ABCSee JPEG 图像'], bmp: ['abcpic', 'ABCSee BMP 图像'],
@@ -45,6 +45,11 @@
   // o: { kind, icon, text, open(node, ctx), gate(node, ctx, go), hidden, noDelete, size, date, when(), writable, label, props, menu(node, ctx) }
   FS.add = function (path, o) { fixed.set(path, make(path, o || {})); return fixed.get(path); };
   FS.provide = function (dir, fn) { providers.set(dir, fn); };
+  // 这个程序的 .exe 在哪（快捷方式 ▸ 属性 ▸ 目标）：卸掉了不显示也照样找得到
+  FS.findApp = function (appId) {
+    for (const n of fixed.values()) if (n.kind === 'exe' && n.app === appId) return n.path;
+    return null;
+  };
 
   /* ---------- 玩家自己弄出来的 ---------- */
   // 存档 fsUser：[{ path, kind, text, slip, at }]；新建文件夹只放在内存里（重启就没）
@@ -85,10 +90,12 @@
     return false;
   };
 
-  /* ---------- 名额：全电脑最多 80 个玩家自己弄出来的 ---------- */
+  /* ---------- 名额：全电脑最多 200 个玩家自己弄出来的 ---------- */
+  FS.CAP = CAP;
   FS.userCount = function () {
     const desk = OS.desktop && OS.desktop.tempFiles ? OS.desktop.tempFiles().length + OS.desktop.tempFiles(true).length : 0;
-    return user.length + temp.length + desk;
+    const links = OS.desktop && OS.desktop.linkCount ? OS.desktop.linkCount() : 0;   // 玩家自己加的桌面快捷方式也算（2026-11-24）
+    return user.length + temp.length + desk + links;
   };
   FS.room = () => FS.userCount() < CAP;
   // 满了：多一个［磁盘清理］，点了直接打开（cleanup.js）
@@ -107,7 +114,7 @@
     for (let n = 2; n < 999; n++) { const c = base + ' (' + n + ')' + ext; if (!exists(FS.join(dir, c))) return c; }
     return name;
   };
-  // 新建一个文件：返回节点；满 80 个返回 null（quiet = 不弹框，调用的自己处理）
+  // 新建一个文件：返回节点；满 200 个返回 null（quiet = 不弹框，调用的自己处理）
   FS.createFile = function (dir, name, kind, data, quiet) {
     if (!FS.room()) { if (!quiet) FS.capFail(); return null; }
     const path = FS.join(dir, FS.freeName(dir, name));

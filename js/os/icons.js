@@ -71,6 +71,14 @@
   // 瑞鑫杀毒：Codex 画的（盾牌上一个豹子头）；海葵：被感染的桌面图标、托盘
   RAW.ruixin = '<svg viewBox="0 0 48 48"><image href="assets/ruixin/icon.webp" x="0" y="0" width="48" height="48"/></svg>';
   RAW.haikui = '<svg viewBox="0 0 48 48"><image href="assets/ruixin/icon-haikui.webp" x="0" y="0" width="48" height="48"/></svg>';
+  // 银山打字通：戴圆眼镜的银色小仓鼠（Codex 画的，assets/yinshan/）
+  RAW.yinshan = '<svg viewBox="0 0 48 48"><image href="assets/yinshan/icon.webp" x="0" y="0" width="48" height="48"/></svg>';
+  // 慢播：背着播放键壳的蜗牛（Codex 画的，assets/manbo/）
+  RAW.manbo = '<svg viewBox="0 0 48 48"><image href="assets/manbo/icon.webp" x="0" y="0" width="48" height="48"/></svg>';
+  // 超级秃子：戴兔耳朵发箍的光头大叔（Codex 画的，assets/baldy/）；五个功能图标在 tools.webp 一排 5 格
+  RAW.baldy = '<svg viewBox="0 0 48 48"><image href="assets/baldy/icon.webp" x="0" y="0" width="48" height="48"/></svg>';
+  const tzCell = i => '<svg viewBox="0 0 48 48"><image href="assets/baldy/tools.webp" x="' + (-i * 48) + '" y="0" width="240" height="48" preserveAspectRatio="none"/></svg>';
+  Object.assign(RAW, { tzClean: tzCell(0), tzMagic: tzCell(1), tzNet: tzCell(2), tzSys: tzCell(3), tzMem: tzCell(4) });
   OS.icon = function (name) {
     const raw = RAW[name] || RAW.exe;
     const u = ++uid;
@@ -79,7 +87,18 @@
   OS.iconEl = function (name, cls) {
     const s = document.createElement('span');
     s.className = 'ico' + (cls ? ' ' + cls : '');
+    s.dataset.icon = name;
     s.innerHTML = OS.icon(name);
     return s;
   };
+  // 开始按钮这种 16–24 像素的小地方用小号标志（线粗、细节少，2026-11-24 作者定）：Codex 的 logo-small.webp 来了就换上，已经画出来的也一起换
+  RAW['logo-sm'] = RAW.logo;
+  (() => {
+    const i = new Image();
+    i.onload = () => {
+      RAW['logo-sm'] = '<svg viewBox="0 0 48 48"><image href="assets/logo/logo-small.webp" x="0" y="0" width="48" height="48"/></svg>';
+      document.querySelectorAll('[data-icon="logo-sm"]').forEach(s => { s.innerHTML = OS.icon('logo-sm'); });
+    };
+    i.src = 'assets/logo/logo-small.webp';
+  })();
 })();

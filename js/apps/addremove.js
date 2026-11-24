@@ -13,7 +13,7 @@
   /* ================= 文案 ================= */
   const T = '添加或删除程序';
   const L = {
-    tabs: [['更改或删除程序', 'control'], ['添加新程序', 'cd'], ['添加/删除 Windows 组件', 'logo']],
+    tabs: [['更改或删除程序', 'control'], ['添加新程序', 'cd'], ['添加/删除 Windows 组件', 'logo-sm']],
     // 更改或删除程序
     cur: '当前安装的程序：', showUpd: '显示更新', sortBy: '排序方式：', sorts: ['名称', '大小', '使用频率', '上次使用日期'],
     size: '大小', freq: '使用频率', last: '上次使用日期', freqs: ['很少', '偶尔', '经常'], never: '从未',
@@ -76,6 +76,18 @@
     // 瑞鑫：豹哥跳上来抱住卸载那个窗口不撒手
     { id: 'ruixin', name: '瑞鑫杀毒软件 2003', icon: 'ruixin', size: 36.5, apps: ['ruixin'], dir: '瑞鑫杀毒',
       pleadFn: () => OS.ruixin.plead(), after: '瑞鑫已卸载。\n豹哥走了。', stop: () => OS.ruixin && OS.ruixin.quit() },
+    // 超级秃子：卸了桌面上就没了；魔法设置里改过的（开始按钮、浏览器标题、开机启动）留着，锁主页不管用了
+    { id: 'baldy', name: '超级秃子魔法设置 2003', icon: 'baldy', size: 6.8, apps: ['baldy'], dir: '超级秃子',
+      plead: ['卸载以后，流氓插件就没人管了。', '卸载', '再想想'], after: '超级秃子已卸载。\n头发也没长回来。',
+      stop: () => OS.baldy && OS.baldy.close() },
+    // 银山打字通：卸了桌面上就没了，成绩、最高分留着（装回来接着用）
+    { id: 'yinshan', name: '银山打字通 2003', icon: 'yinshan', size: 18.6, apps: ['yinshan'], dir: '银山打字通',
+      plead: ['卸载以后，你的打字速度就停在现在了。', '卸载', '再练练'], after: '银山打字通已卸载。\n键盘松了一口气。',
+      stop: () => OS.yinshan && OS.yinshan.closeAll() },
+    // 慢播：卸了以后所有视频都报"格式不支持，请安装播放器"（作者定 23A）
+    { id: 'manbo', name: '慢播', icon: 'manbo', size: 12.3, apps: ['manbo'], dir: '慢播',
+      plead: ['卸载以后，这些片子就都放不了了。', '卸载', '再想想'], after: '慢播已卸载。\n它慢慢地走了。',
+      stop: () => OS.manbo && OS.manbo.close() },
     // 办公三件套：一整行，［更改］勾要哪几个（offense.js）；三个各自算"组件"，存在 softRemoved 里
     { id: 'offense', name: 'Offense 2003', icon: 'offense', size: 345, dir: 'Offense 2003',
       comps: [['wordy', 'Wordy 2003', 112], ['excuse', 'Excuse 2003', 156], ['ppt', 'PowerPointless 2003', 77]] },
@@ -449,7 +461,7 @@
     // 最下面：系统本身（去掉勾 → 蓝屏）
     const sys = el('input', { type: 'checkbox' });
     sys.checked = true;
-    list.appendChild(el('label', { class: 'arp-crow arp-grp' }, [sys, OS.iconEl('logo', 'arp-cico'), el('span', { class: 'arp-cname', text: L.sysName }), el('span', { class: 'arp-csize', text: L.sysSize })]));
+    list.appendChild(el('label', { class: 'arp-crow arp-grp' }, [sys, OS.iconEl('logo-sm', 'arp-cico'), el('span', { class: 'arp-cname', text: L.sysName }), el('span', { class: 'arp-csize', text: L.sysSize })]));
     OS.ui.scrollable(list);
     const next = el('button', { class: 'xpbtn', text: L.next });
     next.addEventListener('click', () => { OS.sound.play('click'); applyComps(boxes, sys); });

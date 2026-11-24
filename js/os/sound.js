@@ -201,6 +201,35 @@
     pbDrain(t) { osc('sawtooth', 320, t, 0.9, 0.1, 60); },                                                // 掉球"呜——"
     // 瑞鑫 ／ 海葵
     rxAlarm(t) { for (let i = 0; i < 4; i++) { osc('square', 880, t + i * 0.32, 0.15, 0.07); osc('square', 660, t + i * 0.32 + 0.16, 0.15, 0.07); } },   // 警报"嘀嘟嘀嘟"
+    // 银山打字通（yinshan.js）：敲键、打错、打对一个词、拍醒、鸡蛋碎、激光、下课铃、玻璃碎
+    ysKey(t) { osc('square', 1400 + Math.random() * 300, t, 0.025, 0.05); noise(t, 0.02, 0.05, 6000); },
+    ysErr(t) { osc('square', 180, t, 0.18, 0.09); },
+    ysDing(t) { osc('sine', 1568, t, 0.25, 0.12); osc('sine', 2093, t + 0.06, 0.3, 0.09); },
+    ysSlap(t) { noise(t, 0.12, 0.3, 2600); osc('sine', 220, t, 0.1, 0.18, 80); },
+    ysCrack(t) { noise(t, 0.18, 0.22, 1800); osc('triangle', 500, t, 0.12, 0.08, 150); },
+    ysLaser(t) { osc('sawtooth', 1800, t, 0.18, 0.06, 300); },
+    ysBell(t) { for (let i = 0; i < 10; i++) osc('square', 1050, t + i * 0.09, 0.06, 0.06); },
+    ysGlass(t) { noise(t, 0.6, 0.3, 6000); for (let i = 0; i < 6; i++) osc('triangle', 2400 + i * 330, t + i * 0.04, 0.25, 0.05); },
+    ysSplash(t) { noise(t, 0.4, 0.18, 1200); },
+    // 班主任在门口咳嗽：两声闷闷的"咳"
+    ysCough(t) { [0, 0.26].forEach(d => { noise(t + d, 0.16, 0.45, 900); osc('sawtooth', 160, t + d, 0.12, 0.08, 110); }); },
+    ysWin(t) { [659, 784, 988, 1318].forEach((f, i) => osc('square', f, t + i * 0.1, 0.14, 0.06)); },
+    ysLose(t) { [392, 330, 262].forEach((f, i) => osc('square', f, t + i * 0.16, 0.18, 0.06)); },
+    // 慢播（manbo.js）：片子里的声音（2026-11-24 作者：要更响亮、更像，调大了一倍多）
+    mbBeep(t) { osc('sine', 1000, t, 0.7, 0.14); },                                          // 听力考试"嘟——"
+    mbClang(t) { osc('square', 1900, t, 0.14, 0.12, 900); osc('triangle', 2700, t, 0.45, 0.12, 2300); osc('sine', 3600, t, 0.6, 0.07); noise(t, 0.1, 0.16, 5000); },   // 锵！刀剑相碰
+    mbWhoosh(t) { noise(t, 0.45, 0.22, 2400); osc('sine', 900, t, 0.4, 0.06, 180); },        // 嗖——
+    mbRing(t) { for (let i = 0; i < 8; i++) osc('square', i % 2 ? 1320 : 1760, t + i * 0.11, 0.1, 0.07); },   // 观众手机铃铃铃
+    mbShh(t) { noise(t, 1, 0.13, 6000); },                                                   // 嘘——
+    mbStatic(t) { noise(t, 0.35, 0.2, 4000); },                                              // 雪花、花屏
+    mbBoom(t) { osc('sine', 95, t, 1.1, 0.3, 30); osc('triangle', 60, t, 0.9, 0.18, 28); noise(t, 0.9, 0.22, 400); },   // 轰！陨石、大浪
+    mbWind(t) { noise(t, 2.5, 0.06, 700); },                                                 // 夜风
+    mbCharge(t) { osc('sine', 260, t, 1.8, 0.1, 1400); osc('sawtooth', 130, t, 1.8, 0.03, 700); },   // 嗡——运气
+    mbPunch(t) { osc('sine', 180, t, 0.18, 0.28, 60); noise(t, 0.12, 0.22, 2500); },          // 啊打！啪！
+    mbScratch(t) { noise(t, 0.5, 0.22, 3000); osc('sawtooth', 700, t, 0.45, 0.08, 120); },   // 嘶啦——唱片一刮
+    tzWhoosh(t) { noise(t, 0.32, 0.12, 2600); osc('sine', 1100, t, 0.3, 0.05, 220); },          // 超级秃子：清掉一个流氓插件
+    tzFlush(t) { noise(t, 0.7, 0.1, 500); osc('sine', 320, t, 0.6, 0.06, 70); },             // 超级秃子：内存哗地一下放出来
+    tzPop(t) { osc('square', 760, t, 0.05, 0.05, 280); },                                    // 深度清理：图标一个个没了
     rxRoar(t) { osc('sawtooth', 160, t, 0.55, 0.12, 90); noise(t, 0.5, 0.08, 900); osc('sawtooth', 240, t + 0.05, 0.45, 0.05, 120); },          // 豹哥"嗷呜"
     rxShield(t) { osc('triangle', 520, t, 0.08, 0.16, 980); noise(t, 0.04, 0.12, 3000); },                                                        // 盾牌挡回去
     rxHit(t) { osc('sine', 300, t, 0.16, 0.22, 90); osc('square', 140, t, 0.1, 0.06); },                                                          // 打中病毒
@@ -213,11 +242,69 @@
 
   S.play = function (name, arg) {
     if (!ctx || S.muted) return;
+    if (OS.boot && OS.boot.state === 'bsod' && name !== 'bsod') return;   // 蓝屏的时候系统停了，只有蓝屏那一声
     try {
       if (ctx.state === 'suspended') ctx.resume();
       const fn = SOUNDS[name];
       if (fn) fn(ctx.currentTime + 0.01, arg);
     } catch (e) { /* ignore */ }
+  };
+
+  /* ---------- 背景音乐（慢播的片子用）：一个音一个音往后排着放，全是代码合成的 ----------
+     S.note(乐器, 频率, 几秒后响, 响多久, 音量)；S.musicStop() 把排好了还没响完的全掐掉（暂停、缓冲、花屏时用）
+     乐器：pluck 古筝拨弦 ／ pad 弦乐铺底 ／ brass 铜管顿音 ／ lead 方波主旋律 ／ bass 贝斯 ／ flute 长笛 ／ drum 大鼓 ／ snare 小鼓 ／ gong 锣 ／ scratch 唱片刮擦 ／ tv tvbass 电视里闷闷的音乐 */
+  const musicNodes = new Set();
+  S.note = function (inst, f, at, dur, vol) {
+    if (!ctx || S.muted) return;
+    try {
+      if (ctx.state === 'suspended') ctx.resume();
+      const t0 = ctx.currentTime + 0.02 + Math.max(0, at || 0), end = t0 + dur;
+      const g = ctx.createGain();
+      g.connect(master);
+      const keep = n => { musicNodes.add(n); n.onended = () => musicNodes.delete(n); return n; };
+      const env = (atk, hold) => {
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(vol, t0 + atk);
+        if (hold) g.gain.setValueAtTime(vol, t0 + Math.max(atk, dur * hold));
+        g.gain.exponentialRampToValueAtTime(0.0001, end);
+      };
+      const tone = (type, freq, to, cutoff) => {
+        const o = keep(ctx.createOscillator());
+        o.type = type;
+        o.frequency.setValueAtTime(freq, t0);
+        if (to) o.frequency.exponentialRampToValueAtTime(to, end);
+        if (cutoff) { const flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = cutoff; o.connect(flt); flt.connect(g); } else o.connect(g);
+        o.start(t0); o.stop(end + 0.05);
+        return o;
+      };
+      const hiss = (type, cutoff) => {
+        if (!noiseBuf) { noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+        const src = keep(ctx.createBufferSource()), flt = ctx.createBiquadFilter();
+        src.buffer = noiseBuf; flt.type = type; flt.frequency.setValueAtTime(cutoff, t0);
+        src.connect(flt); flt.connect(g); src.start(t0); src.stop(end + 0.05);
+        return flt;
+      };
+      switch (inst) {
+        case 'pluck': env(0.005); tone('triangle', f * 1.012, f); tone('sine', f * 2, f * 2); break;
+        case 'pad': env(Math.min(0.3, dur * 0.3), 0.7); tone('sawtooth', f, 0, Math.min(2200, f * 4)); tone('sawtooth', f * 1.006, 0, Math.min(2200, f * 4)); break;
+        case 'brass': env(0.02, 0.5); tone('sawtooth', f, 0, Math.min(2600, f * 6)); break;
+        case 'lead': env(0.01, 0.6); tone('square', f, 0, 2600); break;
+        case 'bass': env(0.01, 0.6); tone('triangle', f); break;
+        case 'flute': env(0.06, 0.7); tone('sine', f); break;
+        case 'drum': env(0.004); tone('sine', f, f * 0.4); hiss('lowpass', 300); break;
+        case 'snare': env(0.003); hiss('bandpass', 1800); tone('triangle', 190, 140); break;
+        case 'gong': env(0.01); tone('sine', f, f * 0.97); tone('sine', f * 2.76, f * 2.7); hiss('bandpass', 900); break;
+        case 'scratch': { env(0.01); const flt = hiss('bandpass', 3000); flt.frequency.exponentialRampToValueAtTime(300, end); tone('sawtooth', 600, 120, 1500); break; }
+        case 'voice': env(0.008, 0.4); tone('square', f, f * 0.86, 1500); tone('triangle', f * 2, f * 1.7); break;   // 片子里有人说话：嘀嘀嘀
+        case 'tv': env(0.01, 0.5); tone('square', f, 0, 900); break;
+        case 'tvbass': env(0.01, 0.5); tone('triangle', f, 0, 500); break;
+        default: env(0.01); tone('sine', f);
+      }
+    } catch (e) { /* ignore */ }
+  };
+  S.musicStop = function () {
+    musicNodes.forEach(n => { try { n.stop(); } catch (e) { /* ignore */ } });
+    musicNodes.clear();
   };
 
   /* ---------- 录好的声音（计算器的真人发音）：一个文件里排着很多小段，按名字念 ----------

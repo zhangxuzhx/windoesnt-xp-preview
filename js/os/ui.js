@@ -63,6 +63,7 @@
   const queue = [];
   let showing = null;
   ui.notify = function (o) {
+    if (OS.boot && OS.boot.state === 'bsod') return;   // 蓝屏的时候系统停了，不冒提示
     o = Object.assign({ title: '', text: '', icon: 'info', timeout: 6000 }, o);
     if (o.replace) { queue.length = 0; if (showing) showing.hideNow(); }
     queue.push(o);
@@ -108,9 +109,16 @@
 
   /* ---------- 蓝屏 ----------
      OS.ui.bsod({ id, name, text }) —— 自动记进蓝屏图鉴，点一下重启 */
-  OS.BSOD_TOTAL = 12;
+  // 蓝屏图鉴：总数 = 游戏里一共有多少种蓝屏（boot.js 里每种蓝屏都有一行开机修复，OS.BSOD_IDS 就从那里数；以后加蓝屏会自己算进去）
+  //   激活器的［自动输入］还是集齐 12 个就亮（OS.BSOD_NEED），跟总数没关系（2026-11-24 作者：图鉴改成实际总数）
+  OS.BSOD_NEED = 12;
+  OS.bsodTotal = () => (OS.BSOD_IDS ? OS.BSOD_IDS.length : 12);
+  // 收集了几个：只算真有的那些（开发用的测试蓝屏不算）
+  OS.bsodSeen = () => { const all = OS.BSOD_IDS; return OS.save.get('bsods', []).filter(id => !all || all.indexOf(id) >= 0).length; };
   ui.bsod = function (o) {
     o = Object.assign({ id: 'generic', name: 'SOMETHING_WENT_WRONG', text: '' }, o);
+    if (OS.boot.state === 'bsod') return;   // 已经蓝着了
+    if (OS.boot.halt) OS.boot.halt();       // 系统停下：后面该跑的都别跑了
     const seen = OS.save.get('bsods', []);
     const isNew = seen.indexOf(o.id) < 0;
     if (isNew) { seen.push(o.id); OS.save.set('bsods', seen); }
@@ -132,7 +140,7 @@
       o.name + '\n\n' +
       (o.text ? o.text + '\n\n' : '') +
       '如果这是你第一次看到蓝屏，恭喜你，\n说明你之前没看到过。\n\n' +
-      '蓝屏图鉴：已收集 ' + seen.length + ' / ' + OS.BSOD_TOTAL + (isNew ? '　（新！）' : '') + '\n\n' +
+      '蓝屏图鉴：已收集 ' + OS.bsodSeen() + ' / ' + OS.bsodTotal() + (isNew ? '　（新！）' : '') + '\n\n' +
       '技术信息：\n*** STOP: 0x' + code + ' (0x00000000, 0xDEADBEEF, 0x0000CAFE, 0x00000000)\n\n' +
       '点一下屏幕重新启动……';
     const node = el('div', { class: 'bsod' }, [el('div', { class: 'bs-title', text: "Windoesn't XP" }), el('div', { text })]);

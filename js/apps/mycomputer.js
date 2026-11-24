@@ -138,10 +138,10 @@
     if (!root) return out;
     root.querySelectorAll('.dicon:not(.binned)').forEach(n => {
       const id = n.getAttribute('data-app'), a = OS.apps.byId[id];
-      if (!a || ['mycomputer', 'network', 'recycle', 'mydocs', 'folder2'].indexOf(id) >= 0) return;   // 新建文件夹(2) 是真文件夹，folder2.js 自己登记
+      if (!a || ['mycomputer', 'network', 'recycle', 'mydocs', 'ie', 'folder2'].indexOf(id) >= 0) return;   // 系统图标不算；新建文件夹(2) 是真文件夹，folder2.js 自己登记
       const isFile = /^file-/.test(id);
       out.push({ path: FS.DESKTOP + '\\' + a.name + (isFile ? '' : '.lnk'), name: a.name + (isFile ? '' : '.lnk'), label: a.name, kind: isFile ? 'txt' : 'lnk', icon: a.icon, folder: false,
-        open: () => OS.apps.open(id), noDelete: '要删桌面上的东西，去桌面删。', noRename: '要改名，去桌面改。', noCopy: '复制失败：桌面上的东西舍不得离开桌面。' });
+        open: () => OS.desktop.openIcon(id), app: isFile ? null : OS.desktop.targetOf(id), noDelete: '要删桌面上的东西，去桌面删。', noRename: '要改名，去桌面改。', noCopy: '复制失败：桌面上的东西舍不得离开桌面。' });
     });
     return out;
   });
@@ -173,6 +173,10 @@
   prog('解压专家 2003', [['解压专家.exe', 'rich']], '解压专家 2003 使用说明\n\n本软件为 40 天试用版。\n试用期已经过了 40 天。');
   prog('Internot Explorer', [['iexplore.exe', 'ie']], 'Internot Explorer 使用说明\n\n56K 上网，请耐心。\n家里有人打电话时请勿上网。');
   prog('Outluck Excess', [['outluck.exe', 'mail']], 'Outluck Excess 使用说明\n\n收件箱里有 0 封新邮件。\n以后也不一定有。');
+  // 2026-11-24 解放桌面：快捷方式 ▸ 属性 ▸ 查找目标要找得到它们
+  prog('慢播', [['慢播.exe', 'manbo']], '慢播 使用说明\n\n电脑里的 .rmvb .avi 都用它放。\n缓冲到 99% 是正常现象，请耐心。');
+  prog('超级秃子', [['超级秃子.exe', 'baldy']], '超级秃子魔法设置 2003 使用说明\n\n魔法设置：让电脑更快、更稳。\n清理王：清理垃圾，顺便清理头发。');
+  prog('瑞鑫杀毒', [['瑞鑫杀毒.exe', 'ruixin']], '瑞鑫杀毒软件 2003 使用说明\n\n豹哥守护你的电脑。\n病毒库每天升级，升不升得动看网速。');
   FS.add(PF + '\\幻觉游戏', { kind: 'folder', when: () => installed() || (OS.soft && OS.soft.got('hj')), noDelete: '删不掉：要卸载软件，去 添加/删除程序。' });
   GAMES.forEach(g => FS.add(PF + '\\幻觉游戏\\' + g.name + '.exe', { kind: 'exe', icon: 'game-' + g.id, when: installed, open: () => runGame(g) }));
   FS.add(PF + '\\幻觉游戏\\卸载.exe', { kind: 'exe', when: installed, open: () => OS.soft && OS.soft.uninstall('hj') });
@@ -192,6 +196,12 @@
     const vip = n === '很重要.dll';
     FS.add(W + '\\system32\\' + n, { size: (60 + i * 7) + ' KB', noRename: '重命名失败：改了名字系统就找不到它了。', noCut: L.sysNoDelete,
       cantOpen: '打不开：这个文件只有电脑看得懂。', del: vip ? delVip : null, noDelete: vip ? null : L.sysNoDelete });
+  });
+  // 系统自带的程序：快捷方式 ▸ 属性 ▸ 查找目标找得到它们（2026-11-24 解放桌面）
+  [['记事本.exe', 'notepad'], ['写字板.exe', 'wordpad'], ['画图 AI版.exe', 'paint'], ['计算器.exe', 'calc'], ['命令提示符.exe', 'cmd'], ['控制面板.exe', 'control'], ['任务管理器.exe', 'taskmgr'],
+    ['排雷.exe', 'sweep'], ['接牌.exe', 'solitaire'], ['空当算24.exe', 'freecell'], ['蜘蛛合牌.exe', 'spider'], ['黑心大战.exe', 'hearts'], ['二维弹球.exe', 'pinball']].forEach(([n, id]) => {
+    if (!OS.apps.byId[id]) return;
+    FS.add(W + '\\system32\\' + n, { kind: 'exe', icon: OS.apps.byId[id].icon, app: id, when: () => !OS.soft || OS.soft.present(id), noDelete: L.sysNoDelete, noRename: '重命名失败：改了名字系统就找不到它了。', noCut: L.sysNoDelete });
   });
   // 删很重要.dll：一路问五次，然后蓝屏
   function delVip() {
@@ -364,7 +374,7 @@
   }
 
   /* ================= 共享文档：邻居借地方放的东西 ================= */
-  FS.add(FS.SHARED + '\\武侠大片（枪版）.rmvb', { kind: 'rmvb', icon: 'video', size: '701,234 KB', open: say('武侠大片（枪版）.rmvb', 'info', L.movie), noDelete: '删不掉：隔壁大学生说这是他的命。' });
+  FS.add(FS.SHARED + '\\武侠大片（枪版）.rmvb', { kind: 'rmvb', icon: 'video', size: '701,234 KB', open: () => (OS.manbo ? OS.manbo.play('wuxia', { local: true }) : say('武侠大片（枪版）.rmvb', 'info', L.movie)()), noDelete: '删不掉：隔壁大学生说这是他的命。' });
   FS.add(FS.SHARED + '\\转发给10个人就能长寿.doc', { kind: 'doc', open: () => OS.netShared && OS.netShared.longevity(), noDelete: '删不掉：王阿姨说删了会折寿。' });
   FS.add(FS.SHARED + '\\便利贴.txt', { text: L.stickyShared, roMsg: '保存失败：这是楼上熊孩子的，人家只给你看。', noDelete: '删不掉：熊孩子说了，别动他东西。' });
 

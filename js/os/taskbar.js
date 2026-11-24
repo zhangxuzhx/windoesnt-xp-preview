@@ -7,7 +7,7 @@
   const btnFor = new Map();
 
   TB.init = function (parent) {
-    startBtn = el('button', { id: 'start-btn' }, [OS.iconEl('logo', 'sb-logo'), el('span', { text: '开始' })]);
+    startBtn = el('button', { id: 'start-btn' }, [OS.iconEl('logo-sm', 'sb-logo'), el('span', { class: 'sb-label', text: OS.save.get('startText', '') || '开始' })]);
     tasks = el('div', { id: 'tasks' });
     const shield = el('span', { class: 'tray-btn', title: '未激活' }, [OS.iconEl('shieldWarn', 'tray-ico')]);
     if (OS.save.get('activated', false)) shield.style.display = 'none';
@@ -229,6 +229,10 @@
       folder('Offense 2003', [appItem('wordy'), appItem('excuse'), appItem('ppt')], 'offense'),
       folder('实用小程序', [appItem('swatter'), appItem('coil'), appItem('bootcheck'), appItem('pulse'), appItem('lifespan'), appItem('activator')]),
       // 照那几年装聊天软件的样子：一个文件夹，里面是软件本体 + 卸载（走 添加或删除程序 那一套，addremove.js）；卸掉了整个文件夹不显示
+      // 超级秃子（baldy.js）：魔法设置 ／ 清理王 ／ 卸载
+      has('baldy') ? folder('超级秃子', [{ label: '超级秃子魔法设置', icon: 'baldy', action: closeThen(() => OS.baldy && OS.baldy.open('magic')) }, { label: '超级秃子清理王', icon: 'baldy', action: closeThen(() => OS.baldy && OS.baldy.open('clean')) }, { label: '卸载超级秃子', icon: 'baldy', action: closeThen(() => OS.soft.uninstall('baldy')) }]) : null,
+      has('yinshan') ? folder('银山打字通', [appItem('yinshan'), { label: '卸载银山打字通', icon: 'yinshan', action: closeThen(() => OS.soft.uninstall('yinshan')) }]) : null,
+      has('manbo') ? folder('慢播', [appItem('manbo'), { label: '卸载慢播', icon: 'manbo', action: closeThen(() => OS.soft.uninstall('manbo')) }]) : null,
       has('ruixin') ? folder('瑞鑫杀毒', [appItem('ruixin'), { label: '瑞鑫升级程序', icon: 'ruixin', action: closeThen(() => OS.ruixin && OS.ruixin.open('up')) }, { label: '卸载瑞鑫', icon: 'ruixin', action: closeThen(() => OS.soft.uninstall('ruixin')) }]) : null,
       has('koukou') ? folder('抠抠软件', [appItem('koukou'), { label: '卸载 抠抠2003', icon: 'exe', action: closeThen(() => OS.soft.uninstall('koukou')) }]) : null,
       has('qianqian') ? folder('千千不听', [appItem('qianqian'), { label: '卸载 千千不听', icon: 'exe', action: closeThen(() => OS.soft.uninstall('qianqian')) }]) : null,
@@ -305,6 +309,13 @@
   // 开始按钮的字（null = 变回“开始”）
   TB.setStartLabel = t => { const sp = startBtn && startBtn.querySelector('span:last-child'); if (sp) sp.textContent = t || '开始'; };
 
+  // 超级秃子 ▸ 魔法设置 ▸ 开始按钮：换字（空 = 变回开始）
+  TB.setStartText = function (t) {
+    t = String(t || '').trim().slice(0, 4);
+    if (t && t !== '开始') OS.save.set('startText', t); else OS.save.remove('startText');
+    const sp = startBtn && startBtn.querySelector('.sb-label');
+    if (sp) sp.textContent = t || '开始';
+  };
   TB.toggleMenu = function (open) {
     if (!menu) return;
     const willOpen = open == null ? !menu.classList.contains('open') : !!open;

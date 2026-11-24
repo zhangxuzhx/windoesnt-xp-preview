@@ -196,7 +196,7 @@
     return win;
   };
 
-  OS.controlPanel = { dateProps: () => dateProps(), soundProps: () => soundProps() };
+  OS.controlPanel = { dateProps: () => dateProps(), soundProps: () => soundProps(), displayProps: start => displayProps(start || '桌面') };
 
   /* ================= 小工具 ================= */
   const btn = (text, cls) => el('button', { class: 'xpbtn' + (cls ? ' ' + cls : ''), text });
@@ -275,9 +275,11 @@
         ['桌面', () => {
           const browse = btn('浏览…');
           browse.addEventListener('click', () => { OS.sound.play('click'); OS.ui.dialog({ title: '显示 属性', icon: 'info', text: L.wallpaper }); });
+          const custom = btn('自定义桌面…');
+          custom.addEventListener('click', () => { OS.sound.play('click'); deskItems(); });
           return el('div', { class: 'cp-pane' }, [monitor(el('div', { class: 'cp-wall' })),
             el('div', { class: 'cp-row' }, [el('span', { text: '背景：' })]), el('div', { class: 'cp-list' }, [el('div', { class: 'cp-li on', text: '羊和草地' })]),
-            el('div', { class: 'cp-row right' }, [browse])]);
+            el('div', { class: 'cp-row two' }, [custom, browse])]);
         }],
         ['屏幕保护程序', () => {
           const pv = btn('预览');
@@ -304,6 +306,26 @@
         });
       }
     });
+  }
+  // 显示属性 ▸ 桌面 ▸［自定义桌面…］：照 XP 的"桌面项目"，勾哪几个系统图标显示在桌面上（2026-11-24 解放桌面）
+  function deskItems() {
+    const D = OS.desktop, IDS = [['mydocs', '我的文档'], ['mycomputer', '我的电脑'], ['network', '网上邻居'], ['ie', 'Internot Explorer']];
+    const want = {};
+    IDS.forEach(([id]) => { want[id] = D.sysShown(id); });
+    const ok = btn('确定', 'default'), no = btn('取消');
+    const w = OS.wm.open({ title: '桌面项目', icon: 'theme', width: 250, modal: true, taskbar: false, minimizable: false, maximizable: false, className: 'is-dialog',
+      content: el('div', { class: 'cp-pane' }, [
+        group('桌面图标', [el('div', { class: 'cp-deskitems' }, IDS.map(([id, label]) => chk(label, want[id], v => { want[id] = v; })))]),
+        el('div', { class: 'dlg-btns' }, [ok, no])
+      ]) });
+    ok.addEventListener('click', () => {
+      OS.sound.play('click');
+      w.close();
+      // 先藏再显示：藏掉的腾出格子；显示的时候桌面满了就挤爆
+      IDS.forEach(([id]) => { if (!want[id]) D.setSysShown(id, false); });
+      IDS.forEach(([id]) => { if (want[id]) D.setSysShown(id, true); });
+    });
+    no.addEventListener('click', () => { OS.sound.play('click'); w.close(); });
   }
   // 改完屏幕必弹的那个框：15 秒不点“是”就自己还原
   function keepDialog() {

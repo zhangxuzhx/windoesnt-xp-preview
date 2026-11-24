@@ -1152,6 +1152,7 @@
     setTimeout(() => {
       if (OS.boot.state !== 'desktop' || S.logged || alive(S.login)) return;
       if (OS.soft && !OS.soft.has('koukou')) return;   // 卸掉了就不弹
+      if (OS.save.get('kkBoot', true) === false) return;   // 超级秃子 ▸ 魔法设置 ▸ 启动程序 里不勾：开机什么都不弹
       if (autoOn()) { ensureTray(); login(false); } else openLogin();
     }, 2600);
   });
@@ -1207,6 +1208,8 @@
     // 别的软件往聊天记录里补一句（瑞鑫查杀小游戏里被传染的好友说的话）
     logLine: (id, text) => { if (F[id] && !S.deleted.has(id)) push(id, { who: id, text }); },
     // 海葵工具条装没装（Internot Explorer 看这个决定要不要冒出那一条）
-    toolbar: () => !!OS.save.get(TOOLBAR_KEY, false)
+    toolbar: () => !!OS.save.get(TOOLBAR_KEY, false),
+    // 超级秃子 ▸ 清理王 清掉了（再装一次补丁、没去掉那个勾，才又来）
+    dropToolbar: () => OS.save.remove(TOOLBAR_KEY)
   };
 })();

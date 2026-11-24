@@ -5,7 +5,7 @@
      加上游戏里别处出现过的 5 个网址：在出现的地方点一下就"采集"进地址栏的下拉框（OS.web.collect）
    - 别的网址、导航里没做的链接：一律"该页无法显示"
    - 三个流氓网站（暴富2027、阳寿网、中医把脉网）一进去就把主页改成它，重启变回 huai123
-   - 收藏 ▸ 添加到收藏夹：收藏夹文件夹里真多一个 .url（算进 80 个文件的上限）
+   - 收藏 ▸ 添加到收藏夹：收藏夹文件夹里真多一个 .url（算进 200 个文件的上限）
    - 装海葵补丁时勾了工具条：地址栏下面多一条海葵工具条，关不掉
    - 蓝屏：在拾度搜"怎么让电脑蓝屏" → SEARCH_RESULT_APPLIED */
 (function () {
@@ -16,6 +16,8 @@
 
   /* ================= 文案（浏览器本身） ================= */
   const NAME = 'Internot Explorer';
+  // 标题栏后面那段：超级秃子 ▸ 魔法设置 ▸ 浏览器标题 能改（存在 ieTitle，重启还在）
+  const brand = () => OS.save.get('ieTitle', '') || NAME;
   const HOME = 'www.huai123.com';
   const L = {
     menus: ['文件(F)', '编辑(E)', '查看(V)', '收藏(A)', '工具(T)', '帮助(H)'],
@@ -32,6 +34,7 @@
     already: u => '地址栏里已经有了：' + u,
     // 主页被改
     homeTitle: '主页设置', homeSet: u => '您的主页已被设为：\n' + u,
+    lockTitle: '超级秃子', homeLocked: '有网页想改你的主页，被超级秃子拦下了。',
     homeFix: '正在把浏览器主页改回 huai123',
     // 菜单
     print: '打印…', props: '属性', close: '关闭',
@@ -157,7 +160,7 @@
     }
     ui = build();
     win = OS.wm.open({
-      title: NAME, icon: 'ie', width: 476, height: 306, appId: app.id, content: ui.box, maximizable: false, center: true,
+      title: brand(), icon: 'ie', width: 476, height: 306, appId: app.id, content: ui.box, maximizable: false, center: true,
       onClose: () => { win = null; ui = null; tok++; loading = false; back = []; fwd = []; cur = ''; curTitle = ''; }
     });
     nav(u || home);
@@ -253,7 +256,7 @@
     ui.page.scrollTop = 0;
     ui.page.appendChild(el('div', { class: 'ie-doc' + (r.cls ? ' ' + r.cls : ''), style: { zoom: ZOOMS[zoom] } }, [r.node]));
     curTitle = r.title;
-    win.setTitle(r.title + ' - ' + NAME);
+    win.setTitle(r.title + ' - ' + brand());
     ui.throb.classList.remove('busy');
     setStatus(L.done);
     syncTools();
@@ -302,6 +305,12 @@
   }
   function hijack(u) {
     if (home === u) return;
+    // 超级秃子 ▸ 上网修复 ▸ 锁定主页（超级秃子卸掉了就不管用了）
+    if (OS.save.get('ieHomeLock', false) && (!OS.soft || OS.soft.has('baldy'))) {
+      const my = tok;
+      setTimeout(() => { if (alive(my)) OS.ui.dialog({ title: L.lockTitle, icon: 'baldy', text: L.homeLocked }); }, 700);
+      return;
+    }
     setHome(u);
     const my = tok;
     setTimeout(() => { if (alive(my)) OS.ui.dialog({ title: L.homeTitle, icon: 'info', text: L.homeSet(u) }); }, 700);
@@ -369,7 +378,7 @@
       ];
       case '查看(V)': return [
         { label: L.toolbars, sub: [{ label: L.stdBtns, checked: true }, { label: L.addrBar, checked: true }]
-          .concat(ui && ui.hk ? [{ label: L.hkBar, checked: true, action: hkClose }] : []) },
+          .concat(ui && ui.hk ? [{ label: L.hkBar, checked: !ui.hkOff, action: hkClose }] : []) },
         { label: L.statusBar, checked: true },
         '-',
         { label: L.textSize, sub: L.sizes.map((s, i) => ({ label: s, checked: zoom === i, action: () => setZoom(i) })) },
@@ -436,7 +445,8 @@
   }
 
   /* ---------- 海葵工具条 ---------- */
-  const hkClose = say(L.hkBar, 'error', L.hkNoClose);
+  // × ／ 查看 ▸ 工具栏 里那一项：这个窗口里关掉（再点一次又打开）；下次打开浏览器又出来了（2026-11-24 作者改：原来是关不掉）
+  const hkClose = () => { if (!ui || !ui.hk) return; ui.hkOff = !ui.hkOff; ui.hk.style.display = ui.hkOff ? 'none' : ''; };
   function hkBar() {
     const q = el('input', { class: 'ie-hkin', type: 'text', spellcheck: 'false', autocomplete: 'off' });
     q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); q.blur(); OS.ui.dialog({ title: L.hkName, icon: 'info', text: L.hkDown }); } });
@@ -835,5 +845,16 @@
   } };
 
   /* ================= 给别的软件用 ================= */
-  OS.ie = { open: u => openWin(u), options, home: () => home, setHome };
+  OS.ie = { open: u => openWin(u), options, home: () => home, setHome, HOME,
+    // 超级秃子用的：清历史 ／ 主页改回 huai123 ／ 标题栏换字 ／ 开着的浏览器里把海葵工具条当场拆掉
+    clearHistory: () => { hist = []; },
+    fixHome: () => { if (home === HOME) return false; setHome(HOME); return true; },
+    retitle: () => { if (win && !win.isClosed) win.setTitle((curTitle ? curTitle + ' - ' : '') + brand()); },
+    dropToolbar: () => {
+      if (!ui || !ui.hk) return;
+      const bar = ui.hk;
+      ui.hk = null; ui.hkOff = false;
+      bar.classList.add('ie-hk-gone');
+      setTimeout(() => bar.remove(), 450);
+    } };
 })();

@@ -76,16 +76,17 @@
   }
 
   /* ---------- 反锁 / 敲门 ---------- */
-  let locked = false, knocks = 0, rampaging = false;
-  OS.on('desktop:reset', () => { locked = false; knocks = 0; });   // 重新开机，门就开了
+  let locked = false, knocks = 0, rampaging = false, allKnocks = 0;   // allKnocks：这次开机一共敲了几下（慢播 ▸ 门口.avi 里那个人就敲几下）
+  OS.on('desktop:reset', () => { locked = false; knocks = 0; allKnocks = 0; });   // 重新开机，门就开了
   const stats = () => Object.assign({ visits: 0, deepest: 0, roofs: 0, knocks: 0 }, OS.save.get('folder2', {}));
   const saveStats = s => OS.save.set('folder2', s);
   // 给网上邻居用：门反锁了没（反锁了，“家”那台电脑也连不上）；敲门、掀屋顶的次数（物业的投诉记录）
-  OS.folder2 = { locked: () => locked, stats };
+  OS.folder2 = { locked: () => locked, stats, knocks: () => allKnocks };
 
   function knock() {
     const s = stats(); s.knocks++; saveStats(s);
-    knocks++;
+    knocks++; allKnocks++;
+    OS.emit('folder2:knock');
     OS.sound.play('thud');
     setTimeout(() => OS.sound.play('thud'), 170);
     if (knocks >= KNOCKS.length + 1) { setTimeout(() => OS.ui.bsod(BSOD), 600); return; }
@@ -149,6 +150,8 @@
     if (i === HOME) {
       ctx.doorKnocks = (ctx.doorKnocks || 0) + 1;
       if (ctx.doorKnocks < DOOR_KNOCKS) {   // 前几次只有“咚咚”、文件夹在抖（越敲抖得越厉害），敲够了门才开
+        allKnocks++;
+        OS.emit('folder2:knock');
         OS.sound.play('thud');
         setTimeout(() => OS.sound.play('thud'), 170);
         const it = ctx.win.el.querySelector('.ex-item.sel');
@@ -223,6 +226,7 @@
     const homeBox = D.iconBox('folder2');
     if (!homeBox) {   // 图标都藏起来了：只反锁
       locked = true;
+      OS.emit('folder2:locked');
       OS.bootFix.add('folder2-lock', LOCK_FIX);
       OS.ui.notify({ title: '新建文件夹(2)', text: LOCK_NOTE, icon: 'warn', timeout: 4000 });
       return;
@@ -256,6 +260,7 @@
     man.remove();
     rampaging = false;
     locked = true;
+    OS.emit('folder2:locked');
     OS.bootFix.add('folder2-lock', LOCK_FIX);
     OS.sound.play('slap');
     D.iconSay('folder2', LOCK_LINE, 3200);

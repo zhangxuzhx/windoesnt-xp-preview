@@ -15,7 +15,7 @@
 
   const KEY = 'YQWQY-YTVTY-YXWXY-Y8V8Y-Y7W7Y';          // 编的，不是真的密钥：5 组颜文字（YQWQY、YTVTY……）
   const CHARS = 'BCDFGHJKMPQRTVWXY2346789';              // XP 密钥只用这 24 个字（没有 0 O 1 I S 这些容易看错的）
-  const NEED = () => OS.BSOD_TOTAL || 12;                // 集齐几个蓝屏才能自动输入
+  const NEED = () => OS.BSOD_NEED || 12;                 // 集齐几个蓝屏才能自动输入（还是 12 个，跟图鉴总数没关系）
   const HEAD = "激活 Windoesn't XP";
   const SUB = '让我们开始吧';
   const ASK = '请输入 25 位产品密钥：';
@@ -45,7 +45,7 @@
   const NEWS = "本台消息：一名用户成功激活了 Windoesn't XP，本系统的开发者表示也很意外。";
 
   const activated = () => !!OS.save.get('activated', false);
-  const bsodCount = () => OS.save.get('bsods', []).length;
+  const bsodCount = () => (OS.bsodSeen ? OS.bsodSeen() : OS.save.get('bsods', []).length);
 
   app.open = function () {
     const body = el('div', { class: 'av-body' });

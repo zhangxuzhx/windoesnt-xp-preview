@@ -122,6 +122,14 @@
     petLeave();
     OS.emit('ruixin:stop');
   }
+  // 开机：本来不自己启动；超级秃子 ▸ 魔法设置 ▸ 启动程序 里勾上了（rxBoot）才自己跑起来
+  OS.on('desktop:ready', () => {
+    setTimeout(() => {
+      if (OS.boot.state !== 'desktop' || R.running || !OS.save.get('rxBoot', false)) return;
+      if (OS.soft && !OS.soft.has('ruixin')) return;
+      start();
+    }, 2000);
+  });
   // 重启：豹哥不在了（开机不自己启动）
   OS.on('desktop:reset', () => {
     stopScan();
@@ -140,7 +148,10 @@
   /* ================= 豹哥 ================= */
   // baoge.webp：6 列 × 4 行，每格 112；脚底在格子里 y 104；画面朝左，往右走就翻过来
   const F = { sit: [0, 1], lick: [2, 3], yawn: 4, stretch: 5, sleep: [6, 7], mask: 8, walk: [9, 10], antenna: 11, bristle: 12, hips: 13, dangle: [14, 15], run: [16, 17], shield: 18, fall: 21, hug: 22, wave: 23 };
-  const SIZE = 40, FOOT = SIZE * 104 / 112;
+  const SIZE = 58, FOOT = SIZE * 104 / 112;   // 2026-11-24 作者：太小了，放大
+  // 每一格单独缩放（以脚底为中心），让豹哥各个姿势看着一样大（2026-11-24 作者：各个动作大小不统一）
+  //   趴着睡（6–8）、炸毛（12）原图占满格子显得大 → 缩一点；跑（16/17）、被拎着（14/15）、抱大腿（22）显得小 → 放大一点
+  const FK = [1, 1, 1, 1, 1, 1.02, .93, .93, .93, 1, 1, .97, .93, 1.05, 1.1, 1.1, 1.12, 1.12, 1, 1, 1.03, .98, 1.06, 1];
   const P = { el: null, img: null, x: 0, foot: 0, flip: false, state: 'idle', t: 0, act: null, actT: 0, nextAct: 4, poke: 0, timer: 0, goal: null, onArrive: null, down: null, clickT: 0, clickTimer: 0, bubble: null, zz: null };
   let layer = null;
   function ensureLayer() {
@@ -149,7 +160,7 @@
     OS.stage.el.appendChild(layer);
     return layer;
   }
-  const home = () => { const st = OS.stage; return { x: st.W - st.insets.r - 74, foot: st.H - st.TASKBAR_H + 1 }; };
+  const home = () => { const st = OS.stage; return { x: st.W - st.insets.r - 86, foot: st.H - st.TASKBAR_H + 1 }; };
   function petCreate() {
     ensureLayer();
     petRemove();
@@ -193,6 +204,7 @@
   function frame(i) {
     if (!P.img) return;
     P.img.style.backgroundPosition = ((i % 6) * 20) + '% ' + (Math.floor(i / 6) * 100 / 3) + '%';
+    P.img.style.scale = String(FK[i] || 1);
     P.el.classList.toggle('flip', P.flip);
   }
   function setState(s) {
@@ -255,15 +267,29 @@
   }
   function runTo(x, foot, speed, then) { setState('run'); P.goal = { x, foot, speed }; P.onArrive = then; }
   // 扑过去追羊：羊吓跑出桌面，豹哥跟着追出去，10 秒后自己溜达回来
+  // 2026-11-24 作者：原来豹哥先冲出屏幕、羊才跑，莫名其妙。改成：看见羊 → 悄悄摸到羊左边 → 炸毛一吼、往前一扑 → 羊吓得往右跑 → 豹哥跟在羊屁股后面追出去
+  //   羊逃跑的动画：先蹦一下、转身（大约 0.35 秒），再往右跑 260 像素（大约 1.15 秒）；豹哥比它稍慢一点，跟在后面
   function chaseSheep() {
     const r = OS.desktop.sheepRect && OS.desktop.sheepRect();
     if (!r || !P.el) return;
     R.chased = true;
     sayOff();
-    OS.sound.play('rxRoar');
-    runTo(r.x + r.w * 0.75, r.y + r.h * 0.9, 170, () => {
+    const fx = r.x - SIZE * 0.28, ff = r.y + r.h * 0.95;
+    runTo(fx, ff, 110, async () => {
+      if (!P.el) return;
+      P.flip = true;                       // 脸朝羊
+      setState('alarm'); P.flip = true; frame(F.bristle);
+      OS.sound.play('rxRoar');
+      await new Promise(res => setTimeout(res, 550));
+      if (!P.el) return;
+      P.el.classList.add('pounce');        // 往前一扑
+      setState('run'); P.flip = true;
+      await new Promise(res => setTimeout(res, 180));
       if (OS.desktop.scareSheep) OS.desktop.scareSheep();
-      runTo(OS.stage.W + 40, P.foot, 200, () => {
+      await new Promise(res => setTimeout(res, 420));
+      if (!P.el) return;
+      P.el.classList.remove('pounce');
+      runTo(OS.stage.W + SIZE, P.foot, 170, () => {
         if (!P.el) return;
         P.el.style.display = 'none';
         setTimeout(() => {

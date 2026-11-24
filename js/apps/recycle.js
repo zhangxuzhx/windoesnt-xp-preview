@@ -1,5 +1,5 @@
 /* 回收站
-   - 只收桌面上的东西：把图标拖到回收站上（或者右键 ▸ 删除）。「我的电脑」「新建文件夹(2)」塞不进去。
+   - 只收桌面上的东西：把图标拖到回收站上（或者右键 ▸ 移入回收站）。「新建文件夹(2)」塞不进去；「我的电脑」这些系统图标能塞进去，但删不掉（2026-11-24 解放桌面）。
    - 双击打开是 XP 的回收站窗口：选中能看原位置、删除日期；右键能还原、删除、看属性。
    - 还原：图标从回收站飞回原来的位置（被占了就落到最近的空格）。
    - 在里面删除（永久删除）：回收站不敢删，“呸”一声把它吐回桌面。
@@ -15,9 +15,9 @@
   const NAME = '回收站';
   const BURST_AT = 8;
   const REFUSE = {
-    mycomputer: '删不掉：删了「我的电脑」，你就没有电脑了。',
     folder2: '删不掉：里面有人不能删。'
   };
+  const SPIT_SAY = { mycomputer: '删了「我的电脑」，你就没有电脑了。呸！' };   // 在回收站里永久删除时，吐出来说一句
   const FULL_SAY = { 6: '有点撑……', 7: '别塞了！进不去！\n怎么想都进不去吧？！' };   // 塞到第几个时回收站自己说一句
   const SPIT = '呸！不好吃！';
   const DUMP_DONE = '倒干净了。';
@@ -223,7 +223,7 @@
       setTimeout(() => node.classList.remove('shake'), 450);
       OS.sound.play('burst');
       D.fromBin(id, { from: binCenter(), spin: true });
-      setTimeout(() => D.iconSay('recycle', SPIT, 3000), 300);
+      setTimeout(() => D.iconSay('recycle', SPIT_SAY[id] || SPIT, 3000), 300);
     });
   }
 
@@ -282,7 +282,7 @@
       node.classList.add('bin-gone');
       OS.sound.play('burst');
       D.burstAt(c.x, c.y, 1.3, 'paper');
-      items().forEach((b, i) => setTimeout(() => D.fromBin(b.id, { from: c, spin: true }), i * 70));
+      items().forEach((b, i) => setTimeout(() => D.fromBin(b.id, { from: c, spin: true, noCrowd: true }), i * 70));
       setTimeout(() => OS.ui.bsod(BSOD), 1700);
     }, 1100);
   }

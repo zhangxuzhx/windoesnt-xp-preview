@@ -548,7 +548,7 @@
             let nd;
             if (old) { FS.setImg(path, url); nd = FS.get(path); }
             else nd = FS.createFile(FS.PICS, name, 'bmp', { img: url });
-            if (!nd) return;   // 满 80 个（createFile 自己弹框）
+            if (!nd) return;   // 满 200 个（createFile 自己弹框）
             file = { name: nd.name, path: nd.path, own: true };
             dirty = false;
             win.setTitle(title());

@@ -100,7 +100,7 @@
     bootcheck: '开机检测器.exe', lifespan: '阳寿查询.exe', rich: '解压专家.exe', pulse: '赛博把脉.exe', debt: 'EXCUSE.EXE',
     swatter: '弹窗杀手.exe', coil: '电子蚊香.exe', calc: 'calc.exe', paint: 'mspaint.exe', ie: 'Internot.exe', mail: 'outluck.exe', wordy: 'WORDY.EXE', excuse: 'EXCUSE.EXE', ppt: 'POWERPOINTLESS.EXE',
     sweep: 'sweep.exe', solitaire: 'sol.exe', freecell: 'freecell.exe', spider: 'spider.exe', hearts: 'mshearts.exe', pinball: 'PINBALL.EXE', cmd: 'cmd.exe', abcsee: 'ABCSee.exe', notepad: 'notepad.exe', wordpad: 'wordpad.exe',
-    activator: '激活器.exe', restore: '一键还原.exe'
+    activator: '激活器.exe', restore: '一键还原.exe', baldy: 'MagicSet.exe', manbo: '慢播.exe', yinshan: '打字通.exe'
   };
   // 文件夹窗口都算 explorer.exe 的（结束 explorer.exe 它们也跟着关）
   const SHELL_APPS = new Set(['mydocs', 'mycomputer', 'network', 'recycle', 'folder2', 'control']);

@@ -90,9 +90,12 @@
     g.clearRect(0, 0, view.width, view.height);
     g.setTransform(k, 0, 0, k, 0, 0);
     if (paint && strokes) g.drawImage(paint, t.ox, t.oy, 1600 * t.s, 900 * t.s);
-    if (extra) g.drawImage(extra, t.ox, t.oy, 1600 * t.s, 900 * t.s);
+    if (extra) { g.globalAlpha = ALPHA; g.drawImage(extra, t.ox, t.oy, 1600 * t.s, 900 * t.s); g.globalAlpha = 1; }
   }
   OS.on('stage:resize', () => drawView());
+  // 刷上去：95% 不透明（作者要的：透一点点草）
+  const ALPHA = 0.95;
+  function commit(st) { const g = paint.getContext('2d'); g.globalAlpha = ALPHA; g.drawImage(strokeCanvas(st, 1), 0, 0); g.globalAlpha = 1; strokes++; }
   // 一道漆：先画在一张半大的画布上，再只留草地的部分
   function strokeCanvas(st, upto) {
     const c = el('canvas'); c.width = PW; c.height = PH;
@@ -105,6 +108,7 @@
     const im = IMG['paint-strokes'];
     if (im) g.drawImage(im, 0, st.v * 72, 320, 72, -w / 2, -h / 2, w, h);
     else drawStrokeByCode(g, w, h, st.v);
+    if (st.tint) { g.globalCompositeOperation = 'source-atop'; g.fillStyle = st.tint; g.fillRect(-w / 2 - 4, -h, w + 8, h * 2.5); g.globalCompositeOperation = 'source-over'; }
     g.restore();
     g.globalCompositeOperation = 'destination-in';
     g.drawImage(ensureMask(), 0, 0);
@@ -136,21 +140,36 @@
     }
     return grass ? done / grass : 0;
   }
+  // 一道漆多长多宽、最多斜多少度（调到大约刷新 30 次刷满）
+  const TUNE = { w0: 440, wr: 160, h0: 80, hr: 24, rot: 120, tries: 16 };
   // 下一道刷在哪：专挑还没刷过的草（作者定 12A）
   function pickStroke() {
     const m = ensureMask();
     if (!m) return null;
     const box = visibleBox();
     const md = m.getContext('2d').getImageData(0, 0, PW, PH).data, pd = paint ? paint.getContext('2d').getImageData(0, 0, PW, PH).data : null;
+    const at = (x, y) => (Math.floor(y * K) * PW + Math.floor(x * K)) * 4 + 3;
+    const freeAt = (x, y) => { if (x < box.x0 || x >= box.x1 || y < box.y0 || y >= box.y1) return false; const i = at(x, y); return md[i] >= 128 && !(pd && pd[i] > 100); };
     const free = [];
-    for (let y = box.y0 + 5; y < box.y1; y += 10) for (let x = box.x0 + 5; x < box.x1; x += 10) {
-      const i = (Math.floor(y * K) * PW + Math.floor(x * K)) * 4 + 3;
-      if (md[i] >= 128 && !(pd && pd[i] > 100)) free.push([x, y]);
-    }
+    for (let y = box.y0 + 5; y < box.y1; y += 10) for (let x = box.x0 + 5; x < box.x1; x += 10) if (freeAt(x, y)) free.push([x, y]);
     if (!free.length) return null;
-    const [cx, cy] = free[Math.floor(Math.random() * free.length)];
-    const w = 270 + Math.random() * 100, h = 48 + Math.random() * 16;
-    return { x: Math.max(box.x0 - 20, Math.min(box.x1 - w + 20, cx - w / 2)), y: cy, w, h, rot: (Math.random() - 0.5) * 14, v: Math.floor(Math.random() * 3) };
+    // 师傅挑地方：随便看几处还没刷的草，比一比哪一道能盖住最多没刷过的草，就刷那道（专挑没刷过的，作者定 12A）
+    let best = null, bestN = -1;
+    for (let k = 0; k < TUNE.tries; k++) {
+      const [cx, cy] = free[Math.floor(Math.random() * free.length)];
+      const w = TUNE.w0 + Math.random() * TUNE.wr, h = TUNE.h0 + Math.random() * TUNE.hr;
+      // 2026-11-23 作者：别都横着，角度随机、像涂鸦；每道绿得不太一样
+      const rot = (Math.random() - 0.5) * TUNE.rot, ca = Math.cos(rot * Math.PI / 180), sa = Math.sin(rot * Math.PI / 180);
+      const x = Math.max(box.x0 - 20, Math.min(box.x1 - w + 20, cx - w / 2)), mx = x + w / 2;
+      let n = 0;
+      for (let u = -0.45; u <= 0.45; u += 0.075) for (let v = -0.3; v <= 0.3; v += 0.15) {
+        if (freeAt(mx + ca * u * w - sa * v * h, cy + sa * u * w + ca * v * h)) n++;
+      }
+      if (n > bestN) { bestN = n; best = { x, y: cy, w, h, rot }; }
+    }
+    best.tint = 'hsla(' + Math.round(118 + (Math.random() - 0.5) * 40) + ',' + Math.round(70 + Math.random() * 25) + '%,' + Math.round(36 + Math.random() * 18) + '%,0.38)';
+    best.v = Math.floor(Math.random() * 3);
+    return best;
   }
 
   /* ================= 干活的人 ================= */
@@ -283,8 +302,11 @@
     const s0 = pickStroke();
     if (!s0) return;
     const left = Math.random() < 0.5;
-    const a = wpToStage(s0.x, s0.y), b = wpToStage(s0.x + s0.w, s0.y);
-    const foot = Math.min(base(), a.y + 8);
+    // 这道漆的两头（斜的）：师傅从一头推到另一头
+    const cx = s0.x + s0.w / 2, ca = Math.cos(s0.rot * Math.PI / 180), sa = Math.sin(s0.rot * Math.PI / 180);
+    const a = wpToStage(cx - ca * s0.w / 2, s0.y - sa * s0.w / 2), b = wpToStage(cx + ca * s0.w / 2, s0.y + sa * s0.w / 2);
+    const footOf = y => Math.min(base(), y + 8);
+    const foot = footOf(a.y);
     const w = busy = spawn('painter', left ? -30 : st().W + 30, base());
     await walkTo(w, a.x - 6, foot, PF.walk);
     if (!w.el.isConnected) return;
@@ -293,15 +315,14 @@
     // 一边推滚筒一边往右走，漆一截截露出来
     const N = 16;
     for (let i = 1; i <= N && w.el.isConnected; i++) {
-      w.x = a.x - 6 + (b.x - a.x) * i / N; place(w);
+      w.x = a.x - 6 + (b.x - a.x) * i / N; w.foot = footOf(a.y + (b.y - a.y) * i / N); place(w);
       frame(w, PF.roll[i % 2]);
       if (i % 4 === 1) OS.sound.play('squish');
       drawView(strokeCanvas(s0, i / N));
       await wait(85);
     }
     if (!w.el.isConnected) return;
-    paint.getContext('2d').drawImage(strokeCanvas(s0, 1), 0, 0);
-    strokes++;
+    commit(s0);
     OS.bootFix.add('bsod-greenpaint', FIX);   // 跟蓝屏那条同一个，重启时只显示一行
     drawView();
     say(w, OS.pick(L.paint));
@@ -343,7 +364,7 @@
   OS.workers = {
     refresh, busy: () => !!(busy && busy.el.isConnected),
     // 测试用：不走路，直接刷一道 ／ 现在刷了多少
-    paintNow: () => { if (!ensureMask()) return -1; ensurePaint(); const s0 = pickStroke(); if (!s0) return coverage(); paint.getContext('2d').drawImage(strokeCanvas(s0, 1), 0, 0); strokes++; drawView(); return coverage(); },
-    coverage
+    paintNow: () => { if (!ensureMask()) return -1; ensurePaint(); const s0 = pickStroke(); if (!s0) return coverage(); commit(s0); drawView(); return coverage(); },
+    coverage, tune: TUNE
   };
 })();

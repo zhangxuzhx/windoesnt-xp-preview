@@ -55,7 +55,7 @@
   Object.keys(SAMPLES).forEach(n => FS.add(PICS + '\\示例图片\\' + n, { kind: 'jpg', draw: SAMPLES[n], src: 'assets/pics/' + SRC[n], noDelete: '删不掉：这是系统送的。' }));
   // 暴富秘籍解压过：多一张“想得美”
   FS.add(PICS + '\\想得美.jpg', { kind: 'jpg', when: () => (OS.save.get('rich', {}).done || 0) > 0, canvas: () => OS.richPic(), noDelete: '删不掉：这是你暴富的唯一证据。' });
-  // 每打一张欠条，我的图片里多一张 欠条.jpg（算玩家自己的，占 80 个名额；满了就只打印不存）
+  // 每打一张欠条，我的图片里多一张 欠条.jpg（算玩家自己的，占 200 个名额；满了就只打印不存）
   const print = OS.printSlip;
   if (print) OS.printSlip = function (info, done) {
     print(info, done);

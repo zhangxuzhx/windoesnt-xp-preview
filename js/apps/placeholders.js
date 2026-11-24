@@ -45,16 +45,25 @@
     { id: 'ie', name: 'Internot Explorer', icon: 'ie' },
     // 开机检测器 Pro：桌面上那一格让给了 Internot Explorer，只留在 开始 ▸ 实用小程序 里
     { id: 'bootcheck', name: '开机检测器 Pro', icon: 'detector', desktop: false },
-    { id: 'lifespan', name: '阳寿余额查询', icon: 'hourglass' },
+    // 阳寿余额查询：桌面上那一格让给了超级秃子（2026-11-24），只留在 开始 ▸ 实用小程序 里
+    { id: 'lifespan', name: '阳寿余额查询', icon: 'hourglass', desktop: false },
+    // 超级秃子（baldy.js）：照那几年的超级兔子做的系统小工具；清理王能清掉海葵工具条
+    { id: 'baldy', name: '超级秃子', icon: 'baldy' },
     // 暴富秘籍、欠条收在「新建文件夹(2)」最外面那层里（folder2.js），不在桌面上
     { id: 'rich', name: '2027暴富秘籍.rar', icon: 'rar', desktop: false, inFolder: 'folder2' },
     { id: 'ruixin', name: '瑞鑫杀毒', icon: 'ruixin' },
     // 赛博把脉：桌面上那一格让给了瑞鑫（2026-11-23），只留在 开始 ▸ 实用小程序 里
     { id: 'pulse', name: '赛博把脉', icon: 'pulse', desktop: false },
     { id: 'debt', name: '欠条打印专家 2003.xls', icon: 'sheet', desktop: false, inFolder: 'folder2' },
-    { id: 'swatter', name: '弹窗杀手', icon: 'swatter' },
+    // 弹窗杀手：桌面上那一格让给了银山打字通（2026-11-24），只留在 开始 ▸ 实用小程序 里
+    { id: 'swatter', name: '弹窗杀手', icon: 'swatter', desktop: false },
+    // 银山打字通（yinshan.js ／ yinshan-games.js）：照那几年的打字练习软件做的；打字练习 + 二笔测试 + 五个打字小游戏
+    { id: 'yinshan', name: '银山打字通', icon: 'yinshan' },
     { id: 'folder2', name: '新建文件夹(2)', icon: 'folder' },
-    { id: 'coil', name: '电子蚊香', icon: 'coil' },
+    // 电子蚊香：桌面上那一格让给了慢播（2026-11-24），只留在 开始 ▸ 实用小程序 里
+    { id: 'coil', name: '电子蚊香', icon: 'coil', desktop: false },
+    // 慢播（manbo.js）：照那几年的快播做的播放器；桌面一个，开始 ▸ 所有程序 ▸ 慢播 一个；电脑里的 .rmvb .avi 都用它放
+    { id: 'manbo', name: '慢播', icon: 'manbo' },
     // 抠抠2003（koukou.js）：桌面上一个，开始 ▸ 所有程序 ▸ 抠抠软件 里一个
     { id: 'koukou', name: '抠抠2003', icon: 'koukou' },
     // 千千不听（qianqian.js）：音乐播放器，也是全游戏的背景音乐；桌面一个，开始 ▸ 所有程序 ▸ 千千不听 里一个

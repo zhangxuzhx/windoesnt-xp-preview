@@ -6,7 +6,7 @@
   const F = OS.filler = {};
 
   const ITEMS = ['floppy', 'disc', 'flipphone', 'brickphone', 'pager', 'cassette', 'mp3', 'eggpet',
-    'ballmouse', 'modem', 'gamepad', 'computer', 'folder', 'smiley', 'recycle', 'logo'];
+    'ballmouse', 'modem', 'gamepad', 'computer', 'folder', 'smiley', 'recycle', 'logo-sm'];
 
   // 老网页上那种 88×31 的小徽章
   const BADGES = [

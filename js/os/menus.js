@@ -44,7 +44,8 @@
         ]
       },
       '-',
-      { label: '属性', action: say('显示 属性', 'info', "主题：Windoesn't XP\n屏幕分辨率：480×360（高清到你能看到每个像素点）\n颜色质量：彩色吧（大概）\n屏幕保护程序：黑屏时屏幕里那张美丽的脸") }
+      // 2026-11-24：打开控制面板里做好的「显示 属性」（跟 XP 一样）；控制面板被删了才用原来那句
+      { label: '属性', action: () => (OS.controlPanel && OS.controlPanel.displayProps && (!OS.soft || OS.soft.appOk('control')) ? OS.controlPanel.displayProps() : say('显示 属性', 'info', "主题：Windoesn't XP\n屏幕分辨率：480×360（高清到你能看到每个像素点）\n颜色质量：彩色吧（大概）\n屏幕保护程序：黑屏时屏幕里那张美丽的脸")()) },
     ];
   };
 
@@ -69,6 +70,11 @@
     return () => OS.ui.dialog({ title: '确认删除', icon: 'help', text: '确实要把「' + app.name + '」放入回收站吗？', buttons: ['是', '否'] })
       .then(v => { if (v === '是') OS.emit('icon:drop', { app, target: OS.apps.byId.recycle }); });
   }
+  // 快捷方式 ▸ 彻底删除（2026-11-24 作者定：回收站照旧什么都删不掉，想删快捷方式就彻底删除）
+  function askPurge(app) {
+    return () => OS.ui.dialog({ title: '确认删除快捷方式', icon: 'warn', text: '确实要彻底删除「' + app.name + '」吗？\n彻底删除不进回收站，删了就真没了。', buttons: ['是', '否'] })
+      .then(v => { if (v === '是') OS.desktop.purge(app.id); });
+  }
 
   // 普通图标菜单里的那几项，给有自己专属菜单的软件拿去拼（比如压缩包）
   M.iconParts = function (app) {
@@ -87,7 +93,7 @@
       cut: { label: '剪切', action: () => { OS.clipboard = { mode: 'cut', id: app.id }; OS.desktop.setCut(app.id); } },
       copy: { label: '复制', action: () => { OS.clipboard = { mode: 'copy', id: app.id }; OS.desktop.setCut(null); } },
       shortcut: { label: '创建快捷方式', action: NO_SHORTCUT },
-      del: { label: '删除', action: askDelete(app) },
+      del: { label: '移入回收站', action: askDelete(app) },
       rename: { label: '重命名', action: NO_RENAME },
       props: { label: '属性', action: props(app) }
     };
@@ -95,7 +101,10 @@
 
   M.icon = function (app) {
     if (app.menu) return app.menu();   // 软件自己定了右键菜单
-    const open = { label: '打开', bold: true, action: () => OS.apps.open(app.id) };
+    const D = OS.desktop;
+    const open = { label: '打开', bold: true, action: () => D.openIcon(app.id) };
+    const toBin = { label: '移入回收站', action: askDelete(app) };
+    const hide = { label: '隐藏', action: () => D.setSysShown(app.id, false) };
     if (app.id === 'mycomputer') {
       return [
         open,
@@ -108,7 +117,8 @@
         { label: '断开网络驱动器…', action: say('断开网络驱动器', 'info', '已成功断开一条并不存在的网络驱动器。') },
         '-',
         { label: '创建快捷方式', action: NO_SHORTCUT },
-        { label: '删除', action: say('删除', 'error', '删不掉：删了「我的电脑」，你就没有电脑了。') },
+        toBin,   // 2026-11-24 解放桌面：我的电脑也能丢回收站（倒出来、删不掉）
+        hide,
         { label: '重命名', action: NO_RENAME },
         '-',
         { label: '属性', action: M.systemProps }
@@ -126,18 +136,30 @@
         { label: '属性', action: say('回收站 属性', 'info', '最大容量：无限\n当前存货：0\n挑食程度：严重') }
       ];
     }
+    const cut = { label: '剪切', action: () => { OS.clipboard = { mode: 'cut', id: app.id }; OS.desktop.setCut(app.id); } };
+    const copy = { label: '复制', action: () => { OS.clipboard = { mode: 'copy', id: app.id }; OS.desktop.setCut(null); } };
+    // 快捷方式：能再复制一个、移入回收站、彻底删除、看属性（目标在哪）
+    if (D.isLink(app.id)) {
+      return [
+        open, '-', cut, copy, '-',
+        { label: '创建快捷方式', action: () => D.addLink(D.targetOf(app.id), { copy: true }) },
+        toBin,
+        { label: '彻底删除', action: askPurge(app) },
+        { label: '重命名', action: NO_RENAME },
+        '-',
+        { label: '属性', action: () => D.linkProps(app.id) }
+      ];
+    }
+    // 系统图标（我的文档、网上邻居、Internot Explorer）和别的
     return [
-      open,
-      '-',
-      { label: '剪切', action: () => { OS.clipboard = { mode: 'cut', id: app.id }; OS.desktop.setCut(app.id); } },
-      { label: '复制', action: () => { OS.clipboard = { mode: 'copy', id: app.id }; OS.desktop.setCut(null); } },
-      '-',
+      open, '-', cut, copy, '-',
       { label: '创建快捷方式', action: NO_SHORTCUT },
-      { label: '删除', action: askDelete(app) },
+      toBin,
+      D.canHide(app.id) ? hide : null,
       { label: '重命名', action: NO_RENAME },
       '-',
       { label: '属性', action: props(app) }
-    ];
+    ].filter(Boolean);
   };
 
   M.systemProps = () => OS.ui.dialog({
@@ -205,11 +227,14 @@
 
   // 开始菜单里的软件
   M.startItem = function (app, run) {
+    const D = OS.desktop, close = fn => () => { OS.taskbar.toggleMenu(false); fn(); };
+    const extra = D && D.canHide(app.id)
+      ? [{ label: '在桌面上显示', checked: D.sysShown(app.id), action: close(() => D.setSysShown(app.id, !D.sysShown(app.id))) }, '-']
+      : D && D.canLink(app.id) ? [{ label: '发送到', sub: [{ label: '桌面快捷方式', action: close(() => D.addLink(app.id)) }] }, '-'] : [];
     return [
       { label: '打开', bold: true, action: run },
-      '-',
-      { label: '属性', action: () => { OS.taskbar.toggleMenu(false); props(app)(); } }
-    ];
+      '-'
+    ].concat(extra, [{ label: '属性', action: close(() => props(app)()) }]);
   };
   // 开始菜单里灰色的专业版软件
   M.proItem = function (run) {

@@ -39,8 +39,12 @@
     haikui: '正在给硬盘排水，顺便把海葵送回海里',
     greenpaint: '正在开窗通风，把绿漆从草地上铲下来',   // 桌面刷新刷满绿漆（workers.js）；id 别用 paint，那是画图的
     ruixin: '正在给两个杀毒软件劝架',
+    baldy: '正在把清掉的系统文件捡回来',
+    manbo: '正在把多缓冲的 1% 退回去',
+    yinshan: '修理工正在给窗户装玻璃',   // 银山打字通 ▸ 班主任抓逃课 改课文作弊，火箭把窗口撞碎（yinshan-games.js）   // 慢播 ▸ ［加速］连点 10 下（manbo.js）   // 超级秃子 ▸ 清理王 ▸ 深度清理（baldy.js）
     swatter: '正在给不奔腾泼凉水降温',
     recycle: '清洁部门正在换上新垃圾桶',
+    overcrowd: '正在把炸飞的图标一个个捡回来',   // 桌面摆满了还往上挤（desktop.js，2026-11-24 解放桌面）
     coil: '正在开窗给电脑通风',
     activator: '电信师傅正在给你家重新接网线',
     debt: '正在帮你和欠款人重归于好',
@@ -72,6 +76,7 @@
     hearts: '正在把桌子扶起来',
     pinball: '正在把球从桌子底下捡回来'
   };
+  OS.BSOD_IDS = Object.keys(BSOD_FIX);   // 蓝屏图鉴的总数就数这张表（每种蓝屏都要有一行，见 ui.js）
   OS.on('bsod', o => { if (BSOD_FIX[o.id]) OS.bootFix.add('bsod-' + o.id, BSOD_FIX[o.id]); });
 
   B.init = function (layer) { screens = layer; };
@@ -164,6 +169,18 @@
     const ov = document.getElementById('overlay');
     if (ov) ov.innerHTML = '';
   }
+
+  /* ---------- 蓝屏：系统停了 ----------
+     2026-11-24 作者：蓝屏的时候，背后系统里该运行的还在运行（抠抠来消息、右下角冒提示、响声音）
+     蓝屏一出来就进"蓝屏"状态：正在走的开关机流程作废、滚动快讯停、提示清掉、音乐停；
+     声音和右下角提示在 sound.js ／ ui.js 里看这个状态，蓝屏期间一律不响不冒（除了蓝屏那一声）；点一下重启才回来 */
+  B.halt = function () {
+    ++runId;
+    B.state = 'bsod';
+    OS.ticker.stop();
+    OS.ui.clearNotify();
+    if (OS.sound.musicStop) OS.sound.musicStop();
+  };
 
   /* ---------- 开机 ---------- */
   B.start = async function (o) {

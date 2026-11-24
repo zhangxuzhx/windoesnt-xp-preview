@@ -137,6 +137,7 @@
         const thumb = viewMode === '缩略图' && (nd.kind === 'jpg' || nd.kind === 'bmp') && OS.abcsee && OS.abcsee.registered && OS.abcsee.registered();
         node = el('div', { class: 'ex-item' + (nd.hidden ? ' fx-hidden' : '') + (thumb ? ' ex-thumbi' : '') }, [thumb ? el('div', { class: 'ex-thumb' }, [OS.abcsee.thumb(nd, 44, 33)]) : OS.iconEl(nd.icon, 'ex-iico'), el('div', { class: 'ex-ilabel', text: labelOf(nd) })]);
       }
+      node._path = nd.path;   // 打开时选中某个文件用（快捷方式 ▸ 属性 ▸ 查找目标）
       node.addEventListener('click', e => {
         e.stopPropagation();
         if (busy) return;
@@ -227,7 +228,11 @@
       const base = [
         { label: '打开', bold: true, action: () => openNode(nd) },
         '-',
-        ...(nd.folder ? [] : [{ label: '发送到', sub: [{ label: '邮件收件人', action: () => OS.mail && OS.mail.compose({ name: nd.name, icon: nd.icon, path: nd.path }) }] }, '-']),
+        // 发送到 ▸ 桌面快捷方式：程序的 .exe（还有开始菜单文件夹里的 .lnk）能发到桌面（2026-11-24 解放桌面）
+        ...(nd.folder ? [] : [{ label: '发送到', sub: [
+          nd.app && OS.desktop && OS.desktop.canLink(nd.app) ? { label: '桌面快捷方式', action: () => OS.desktop.addLink(nd.app) } : null,
+          { label: '邮件收件人', action: () => OS.mail && OS.mail.compose({ name: nd.name, icon: nd.icon, path: nd.path }) }
+        ].filter(Boolean) }, '-']),
         { label: '剪切', action: () => cut(nd) },
         { label: '复制', action: () => copy(nd) },
         '-',
@@ -356,6 +361,12 @@
     function folderOptions() { EX.folderOptions(); }
 
     go(path || FS.ROOT);
+    // o.select：打开以后选中这个文件（跟 XP 的"查找目标"一样，蓝色高亮、滚到看得见）
+    if (o.select) {
+      const it = Array.from(viewEl.querySelectorAll('.ex-item')).find(x => x._path === o.select);
+      const nd = it && FS.get(o.select);
+      if (it && nd) { pick(it, nd); setTimeout(() => it.scrollIntoView({ block: 'nearest' }), 30); }
+    }
     if (!cur) { cur = FS.ROOT; render(); }
     return win;
   };

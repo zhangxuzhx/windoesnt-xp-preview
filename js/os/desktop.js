@@ -54,7 +54,10 @@
     initClouds();
     initSign();
     initSheep();
-    OS.apps.list.filter(a => a.desktop && !(OS.soft && !OS.soft.appOk(a.id))).forEach(addIcon);   // 卸掉的不摆
+    links.forEach(regLink);   // 玩家自己加的快捷方式先登记上（存档 deskLinks）
+    // 2026-11-24 解放桌面：卸掉的程序快捷方式照样摆（图没了、只剩箭头）；彻底删除了的、藏起来的系统图标不摆
+    OS.apps.list.filter(a => a.desktop && gone().indexOf(a.id) < 0 && hidden().indexOf(a.id) < 0).forEach(addIcon);
+    OS.on('soft:change', paintAll);
     OS.on('stage:resize', relayout);
     relayout();
   };
@@ -487,6 +490,7 @@
   };
   // o: { name, icon, open, menu(id), poop }
   D.addFile = function (o) {
+    if (!hasRoom()) { D.overflow(); return null; }   // 桌面满了：挤爆
     const id = 'file-' + (++fileSeq);
     const app = OS.apps.register({ id, name: o.name, icon: o.icon || 'txt', desktop: true, singleton: false, temp: true, poop: o.poop || 0, sheepInside: !!o.sheepInside, open: o.open, menu: o.menu ? () => o.menu(id) : null });
     addIcon(app);
@@ -799,6 +803,7 @@
     o = o || {};
     const ic = icons[id];
     if (!ic || !ic.binned) return false;
+    if (!hasRoom(ic) && !o.noCrowd) { D.overflow(); return false; }   // 桌面满了：挤爆（回收站自己撑爆时不算）
     const entry = binList().find(b => b.id === id) || {};
     let cell = null;
     if (o.home && entry.col != null && entry.col >= 0) {
@@ -832,47 +837,37 @@
     if (img) img.innerHTML = OS.icon(name);
   };
   D.placeIcon = id => { if (icons[id] && !icons[id].binned) position(icons[id]); };
-  // 添加或删除程序（addremove.js）：卸了 = 图标收走，记住原来的格子（存档 softPos）；在回收站里的也一并拿掉
-  D.dropApp = function (id) {
-    const ic = icons[id];
-    if (!ic) return;
-    const pos = OS.save.get('softPos', {});
-    const b = binList().find(x => x.id === id);
-    pos[id] = ic.binned ? (b ? [b.col, b.row] : null) : [ic.col, ic.row];
-    OS.save.set('softPos', pos);
-    if (ic.binned) saveBin(binList().filter(x => x.id !== id));
-    ic.el.remove();
-    selected.delete(ic);
-    delete icons[id];
-    savePositions();
-  };
-  // 装回来 = 图标回原来的格子；被别的占了就放到下一个空格
+  // 添加或删除程序（addremove.js）：卸了 = 快捷方式还在，图没了（2026-11-24 作者定 12B）；装回来 = 图回来
+  //   老存档里卸载时被收走的图标：装回来时摆回原来的格子（存档 softPos）
+  D.dropApp = function () { paintAll(); };
   D.bringApp = function (id) {
     const app = OS.apps.byId[id];
-    if (!app || !app.desktop || icons[id]) return;
-    addIcon(app);
-    const ic = icons[id];
-    const pos = OS.save.get('softPos', {}), p = pos[id];
-    const cell = p && p[0] >= 0 && valid(p[0], p[1]) && !occupant(p[0], p[1], ic) ? p : firstFree(ic);
-    ic.col = cell[0]; ic.row = cell[1];
-    position(ic);
-    ic.el.classList.add('restored');
-    setTimeout(() => ic.el.classList.remove('restored'), 400);
-    delete pos[id];
-    OS.save.set('softPos', pos);
-    savePositions();
+    if (app && app.desktop && !icons[id] && gone().indexOf(id) < 0 && hidden().indexOf(id) < 0) {
+      addIcon(app);
+      const ic = icons[id];
+      const pos = OS.save.get('softPos', {}), p = pos[id];
+      const cell = p && p[0] >= 0 && valid(p[0], p[1]) && !occupant(p[0], p[1], ic) ? p : firstFree(ic);
+      ic.col = cell[0]; ic.row = cell[1];
+      position(ic);
+      delete pos[id];
+      OS.save.set('softPos', pos);
+      savePositions();
+    }
+    paintAll();
   };
   D.burstAt = (cx, cy, k, kind) => burst(cx, cy, k, kind);
 
   function addIcon(app) {
     const node = el('div', { class: 'dicon', 'data-app': app.id }, [
       OS.iconEl(app.icon, 'di-img'),
+      el('i', { class: 'di-arrow' }),   // 快捷方式的小箭头
       el('div', { class: 'di-label', text: app.name })
     ]);
     const ic = { app, el: node, col: -1, row: -1, binned: binList().some(b => b.id === app.id) };
     if (ic.binned) node.classList.add('binned');
     icons[app.id] = ic;
     iconLayer.appendChild(node);
+    paintIcon(ic);
     bindIcon(ic);
     OS.ui.onContext(node, () => {
       if (!selected.has(ic)) setSelection([ic]);
@@ -880,6 +875,193 @@
       return OS.menus.icon(app);
     });
   }
+
+  /* ---------- 快捷方式（2026-11-24 作者定：解放桌面；创意稿「桌面解放-创意.md」） ----------
+     - 系统图标：我的文档、我的电脑、网上邻居、回收站、Internot Explorer——能丢回收站（倒出来、删不掉），
+       除了回收站都能隐藏 ／ 显示（右键 ▸ 隐藏；显示属性 ▸ 桌面 ▸ 自定义桌面；开始菜单里右键 ▸ 在桌面上显示）
+     - 新建文件夹(2)：照旧丢不进回收站、删不掉
+     - 别的程序图标都是快捷方式（左下角小箭头）：默认那几个就是程序自己的图标；玩家另外加的存在 deskLinks
+       加：开始菜单里 ／ 我的电脑里的 .exe 右键 ▸ 发送到 ▸ 桌面快捷方式；桌面上的快捷方式右键 ▸ 创建快捷方式（"快捷方式 到 X"）
+       删：右键 ▸ 移入回收站（回收站照旧什么都删不掉）；右键 ▸ 彻底删除（真没了）
+       指向的程序被卸了：图标的图没了（只剩箭头和名字），双击弹"快捷方式存在问题"
+     - 桌面摆满了还往上挤（加快捷方式、还原、倒回来、新建文本文档、显示系统图标……）：切回桌面，图标挤着抖，炸开，蓝屏；
+       重启以后桌面还是那么多，最后挤上来的那个没加上（作者定：不然卸了软件的默认图标、藏得深的程序不好找回来）
+     - 以后主线：快捷方式是个真文件（桌面文件夹里的 .lnk），记着指向哪；有人要你发文件你发了快捷方式 → 对方教你找原文件、打压缩包 */
+  const SYS_ICONS = ['mydocs', 'mycomputer', 'network', 'recycle', 'ie'];
+  const HIDEABLE = ['mydocs', 'mycomputer', 'network', 'ie'];
+  const L_LNK = {
+    brokenTitle: '快捷方式存在问题',
+    broken: name => '「' + name + '」指向的程序已经被你卸载了。\n快捷方式还在，人已经走了。',
+    brokenBtns: ['删除它', '留着当纪念'],
+    copyName: name => '快捷方式 到 ' + name,
+    propsTitle: name => name + ' 属性',
+    note: '它只是个快捷方式，真身在别处。',
+    find: '查找目标(F)…', ok: '确定',
+    rows: ['目标类型：', '目标位置：', '目标(T)：', '起始位置(S)：', '快捷键(K)：', '运行方式(R)：', '备注(O)：'],
+    app: '应用程序', none: '无', normal: '常规窗口'
+  };
+  const BSOD_CROWD = { id: 'overcrowd', name: 'DESKTOP_OVERCROWDED', text: '额滴神啊！表酱紫再挤了！' };
+  const isSys = id => SYS_ICONS.indexOf(id) >= 0;
+  // 这个图标是不是快捷方式：默认的程序图标 + 玩家加的（文本文档、收在文件夹里的、系统图标、新建文件夹(2) 不是）
+  const isLink = app => !!app && !isSys(app.id) && app.id !== 'folder2' && !app.temp && !app.inFolder;
+  const targetOf = app => (app && app.lnkTo) || (app && app.id);
+  const brokenApp = app => isLink(app) && !!OS.soft && !OS.soft.appOk(targetOf(app));
+  D.isLink = id => isLink(OS.apps.byId[id]);
+  D.isSys = isSys;
+  D.canHide = id => HIDEABLE.indexOf(id) >= 0;
+  D.targetOf = id => targetOf(OS.apps.byId[id]);
+  // 能发到桌面的程序（开始菜单、我的电脑里的 .exe 右键用）
+  D.canLink = id => { const a = OS.apps.byId[id]; return !!a && !isSys(id) && id !== 'folder2' && !a.temp && !a.inFolder && !a.lnkTo; };
+  let links = OS.save.get('deskLinks', []);   // 玩家加的：[{ id, to, name }]
+  const saveLinks = () => { OS.save.set('deskLinks', links); OS.emit('fs:change'); };
+  D.linkCount = () => links.length;   // 算进全电脑 200 个的名额（fs.js）
+  const gone = () => OS.save.get('deskGone', []);       // 彻底删除了的默认程序图标
+  const hidden = () => OS.save.get('deskHidden', []);   // 藏起来的系统图标
+  function regLink(l) {
+    const t = OS.apps.byId[l.to];
+    return OS.apps.register({ id: l.id, name: l.name, icon: t ? t.icon : 'exe', desktop: true, singleton: false, lnkTo: l.to, open: () => OS.apps.open(l.to) });
+  }
+  function paintIcon(ic) {
+    ic.el.classList.toggle('lnk', isLink(ic.app));
+    ic.el.classList.toggle('broken', brokenApp(ic.app));
+  }
+  const paintAll = () => Object.keys(icons).forEach(k => paintIcon(icons[k]));
+  // 桌面上还有没有空格子
+  function hasRoom(except) {
+    for (let c = 0; c < grid.cols; c++) for (let r = 0; r < grid.rows; r++) if (valid(c, r) && !occupant(c, r, except)) return true;
+    return false;
+  }
+  D.hasRoom = () => hasRoom();
+  function dropIcon(ic) {
+    if (ic.binned) saveBin(binList().filter(b => b.id !== ic.app.id));
+    ic.el.remove();
+    selected.delete(ic);
+    delete icons[ic.app.id];
+    savePositions();
+  }
+  // 双击：指向的程序被卸了就弹"快捷方式存在问题"
+  D.openIcon = function (id) {
+    const app = OS.apps.byId[id];
+    if (!app) return;
+    if (brokenApp(app)) {
+      OS.ui.dialog({ title: L_LNK.brokenTitle, icon: 'warn', text: L_LNK.broken(app.name), buttons: L_LNK.brokenBtns })
+        .then(v => { if (v === L_LNK.brokenBtns[0]) D.purge(id); });
+      return;
+    }
+    OS.apps.open(id);
+  };
+  // 发送到 ▸ 桌面快捷方式（copy：桌面上的快捷方式 ▸ 创建快捷方式，名字叫"快捷方式 到 X"）
+  D.addLink = function (to, o) {
+    o = o || {};
+    const t = OS.apps.byId[to];
+    if (!t || !D.canLink(to)) return null;
+    if (OS.fs && !OS.fs.room()) { OS.fs.capFail(); return null; }
+    if (!hasRoom()) { D.overflow(); return null; }
+    const names = new Set(Object.keys(icons).map(k => icons[k].app.name));
+    const base = o.copy ? L_LNK.copyName(t.name) : t.name;
+    let name = base;
+    for (let n = 2; names.has(name); n++) name = base + ' (' + n + ')';
+    const l = { id: 'lnk-' + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36), to, name };
+    links.push(l);
+    saveLinks();
+    const app = regLink(l);
+    addIcon(app);
+    const ic = icons[app.id];
+    const f = firstFree(ic);
+    ic.col = f[0]; ic.row = f[1];
+    position(ic);
+    ic.el.classList.add('restored');
+    setTimeout(() => ic.el.classList.remove('restored'), 400);
+    savePositions();
+    OS.sound.play('pop');
+    return app.id;
+  };
+  // 右键 ▸ 彻底删除：不进回收站，真没了
+  D.purge = function (id) {
+    const ic = icons[id];
+    if (!ic || !isLink(ic.app)) return false;
+    dropIcon(ic);
+    if (ic.app.lnkTo) {
+      links = links.filter(l => l.id !== id);
+      saveLinks();
+      const i = OS.apps.list.indexOf(ic.app);
+      if (i >= 0) OS.apps.list.splice(i, 1);
+      delete OS.apps.byId[id];
+    } else {
+      const g = gone();
+      if (g.indexOf(id) < 0) g.push(id);
+      OS.save.set('deskGone', g);
+      OS.emit('fs:change');
+    }
+    OS.sound.play('thud');
+    return true;
+  };
+  // 系统图标：隐藏 ／ 显示（显示的时候桌面满了：挤爆）
+  D.sysShown = id => hidden().indexOf(id) < 0;
+  D.setSysShown = function (id, on) {
+    if (!D.canHide(id)) return;
+    if (!on) {
+      if (!D.sysShown(id)) return;
+      OS.save.set('deskHidden', hidden().concat(id));
+      if (icons[id]) dropIcon(icons[id]);
+      OS.emit('fs:change');
+      return;
+    }
+    if (D.sysShown(id) && icons[id]) return;
+    if (!hasRoom()) { D.overflow(); return; }
+    OS.save.set('deskHidden', hidden().filter(x => x !== id));
+    const app = OS.apps.byId[id];
+    if (!app || icons[id]) return;
+    addIcon(app);
+    const ic = icons[id], f = firstFree(ic);
+    ic.col = f[0]; ic.row = f[1];
+    position(ic);
+    ic.el.classList.add('restored');
+    setTimeout(() => ic.el.classList.remove('restored'), 400);
+    savePositions();
+    OS.emit('fs:change');
+  };
+  // 快捷方式右键 ▸ 属性：照 XP（目标、起始位置……［查找目标］打开它所在的文件夹）
+  D.linkProps = function (id) {
+    const app = OS.apps.byId[id];
+    if (!app) return;
+    const to = targetOf(app), t = OS.apps.byId[to] || app;
+    const path = (OS.fs && OS.fs.findApp && OS.fs.findApp(to)) || ('C:\\Program Files\\' + t.name + '\\' + t.name + '.exe');
+    const dir = path.slice(0, path.lastIndexOf('\\'));
+    const vals = [L_LNK.app, dir.slice(dir.lastIndexOf('\\') + 1), path, dir, L_LNK.none, L_LNK.normal, L_LNK.note];
+    const find = el('button', { class: 'xpbtn', text: L_LNK.find }), ok = el('button', { class: 'xpbtn default', text: L_LNK.ok });
+    const content = el('div', { class: 'lp' }, [
+      el('div', { class: 'lp-head' + (brokenApp(app) ? ' broken' : '') }, [OS.iconEl(app.icon, 'lp-ico'), el('i', { class: 'di-arrow' }), el('span', { text: app.name })]),
+      el('div', { class: 'lp-rows' }, L_LNK.rows.map((k, i) => el('div', { class: 'lp-row' }, [el('span', { class: 'lp-k', text: k }), el('span', { class: 'lp-v', text: vals[i] })]))),
+      el('div', { class: 'lp-find' }, [find]),
+      el('div', { class: 'dlg-btns' }, [ok])
+    ]);
+    const w = OS.wm.open({ title: L_LNK.propsTitle(app.name), icon: app.icon, width: 300, content, minimizable: false, maximizable: false, className: 'is-dialog' });
+    find.addEventListener('click', () => { OS.sound.play('click'); w.close(); if (OS.explorer) OS.explorer.open(dir, { select: path }); });
+    ok.addEventListener('click', () => { OS.sound.play('click'); w.close(); });
+  };
+  // 挤爆：切回桌面 → 图标挤着抖 → 全炸开 → 蓝屏
+  let crowding = false;
+  D.overflow = function () {
+    if (crowding || OS.boot.state !== 'desktop') return;
+    crowding = true;
+    OS.ui.closeMenus();
+    OS.taskbar.toggleMenu(false);
+    if (!OS.wm.desktopShown()) OS.wm.showDesktop();
+    if (!iconsShown) D.toggleIcons();
+    setSelection([]);
+    const list = Object.keys(icons).map(k => icons[k]).filter(ic => !ic.binned);
+    list.forEach((ic, i) => { ic.el.style.setProperty('--d', ((i * 37) % 9) * -0.013 + 's'); ic.el.classList.add('crowd'); });
+    OS.sound.play('mbCharge');
+    setTimeout(() => OS.sound.play('thud'), 500);
+    setTimeout(() => OS.sound.play('thud'), 900);
+    setTimeout(() => {
+      list.forEach(ic => { burst(parseFloat(ic.el.style.left) + ICON_W / 2, parseFloat(ic.el.style.top) + 20, 0.55, 'paper'); ic.el.classList.add('blown'); });
+      OS.sound.play('mbBoom');
+    }, 1500);
+    setTimeout(() => { crowding = false; OS.ui.bsod(BSOD_CROWD); }, 2500);
+  };
+  OS.on('desktop:reset', () => { crowding = false; Object.keys(icons).forEach(k => icons[k].el.classList.remove('crowd', 'blown')); });
 
   /* ---------- 网格 ---------- */
   function computeGrid() {
@@ -1023,7 +1205,7 @@
     if (lastTap && lastTap.ic === ic && now - lastTap.t < OS.dblMs()) {
       lastTap = null;
       OS.sound.play('click');
-      OS.apps.open(ic.app.id);
+      D.openIcon(ic.app.id);
     } else {
       lastTap = { ic, t: now };
     }

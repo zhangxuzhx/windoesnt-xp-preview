@@ -133,7 +133,8 @@
       if (e.target.closest('.np-cmd')) return;
       const p = OS.stage.toLocal(e.clientX, e.clientY);
       let picked = false;
-      OS.ui.contextMenu(LINES.map(t => ({ label: t, action: () => { picked = true; write(t); } }))
+      const own = (f.lines || []).map(l => ({ label: l.label, action: () => { picked = true; if (l.replace) replaceAll(l.text); else write(l.text); } }));
+      OS.ui.contextMenu(own.concat(own.length ? ['-'] : [], LINES.map(t => ({ label: t, action: () => { picked = true; write(t); } })))
         .concat(['-', { label: SELF_TYPE, action: () => { picked = true; startTyping(); } }]), p.x, p.y, false,
         { onClose: () => setTimeout(() => { if (!picked) menuClosedAt = Date.now(); }, 0) });
     });
@@ -153,6 +154,18 @@
       }
       setDirty();
       busy = false;
+    }
+    // 整篇换掉（课文.txt 的"全部改成 AAAA…"）：一下子刷刷刷写满
+    async function replaceAll(t) {
+      busy = true; sel = false; text = '';
+      for (let i = 0; i < t.length; i += 12) {
+        if (win.isClosed) return;
+        text = t.slice(0, i + 12);
+        render();
+        OS.sound.play('key');
+        await OS.wait(30);
+      }
+      text = t; render(); setDirty(); busy = false;
     }
     // 自己输入：白纸换成真能打字的框，点别处就停
     function startTyping() {

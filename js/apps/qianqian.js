@@ -542,6 +542,9 @@
     // 任务管理器：千千不听.exe 在不在、在不在放歌、结束它、改优先级、现在鼓点多响（0~1，CPU 跟着跳）
     running: () => !!(win && !win.isClosed),
     playing: () => playing,
+    // 慢播放片子：hold 停一下（返回刚才是不是在放）；resume 接着刚才那首放
+    hold: () => { if (!playing) return false; pause(); return true; },
+    resume: () => { if (win && !win.isClosed && !playing) playTrack(cur); },
     kill: () => { if (win && !win.isClosed) win.close(); },
     setRate: r => { rate = r || 1; applyRate(); },
     level: () => {

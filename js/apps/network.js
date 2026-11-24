@@ -1,10 +1,10 @@
 /* 网上邻居（桌面）：你家这栋楼的局域网 —— 工作组「幸福小区 3 号楼」，全楼的电脑都能互相翻共享文件夹（2003 年小区宽带 / 宿舍局域网）
    - 打开是 XP 的文件夹窗口，一排邻居的电脑；双击先“正在连接……”，然后进去。
    - 每家共享了一个文件夹，里面的文件各有笑点，好几个跟别的软件联动：
-     熊孩子的便利贴（物业电脑的密码）、王阿姨的“转发长寿”（发给抠抠好友）、大学生的电影（全下到 99%）、
+     熊孩子的便利贴（物业电脑的密码）、王阿姨的“转发长寿”（发给抠抠好友）、大学生的电影（用慢播放，manbo.js）、
      小卖部老板的账本（反过来是你欠老板的，能打欠条）、物业的投诉记录（你在新建文件夹(2) 敲门、掀屋顶的真实次数）、
      大学生的千万别点.exe（60 秒关机倒计时）和物业电脑里教你解除的转帖（学会 shutdown -a，见 cmd.js）、
-     新建文件夹(2) 那户人家的“监控”（拍的是你的桌面）、你自己的电脑。
+     新建文件夹(2) 那户人家的“监控”（三个视频都用慢播放；你.avi 拍的是你的桌面）、你自己的电脑。
    - 物业的电脑要密码：屏幕上的数字键盘输入（也能直接敲键盘），密码是熊孩子便利贴上的物业手机号。
    - 蓝屏彩蛋：列表里有两台“你”。双击第二台：IP 地址冲突气泡 → 再点两台电脑打起来 → 第三次蓝屏 IP_ADDRESS_CONFLICT。 */
 (function () {
@@ -86,12 +86,13 @@
   const OVERNIGHT_PREVIEW = '隔夜水致癌，隔夜茶致癌，隔夜的电脑也致癌……';
   const OVERNIGHT_REPLIES = [['roommate', '那我床底下那桶隔夜泡面……'], ['boss', '隔夜的冰棍不致癌，买不买？'], ['faxiao', '你妈说隔夜不睡觉的人也致癌']];
   // 监控：新建文件夹(2) 那户人家装的，拍的是你
-  const CCTV_SAY = { title: '家', text: '老公快看，那个人又在翻别人电脑了！' };
   // IP 地址冲突 → 蓝屏
   const IP_TITLE = 'IP 地址冲突';
   const IP_TEXT = '系统检测到网络上另一台计算机\n与你的 IP 地址相同。';
   const BSOD = { id: 'network', name: 'IP_ADDRESS_CONFLICT', text: '网上出现了另一个你，你们俩只能留一个。' };
   const MOVIE = '下载到 99% 卡住了。\n预计剩余时间：等全楼都睡了再说。';
+  // 视频都用慢播放（manbo.js）；慢播卸了，慢播自己报"格式不支持，请安装播放器"
+  const vid = id => () => (OS.manbo ? OS.manbo.play(id) : OS.ui.dialog({ title: NAME, icon: 'info', text: MOVIE }));
 
   /* ================= 楼里的电脑 =================
      note：计算机注释（左边“详细信息”、属性里显示）；share：共享的文件夹；files：里面的文件 */
@@ -105,9 +106,9 @@
       { name: '隔夜水致癌.txt', icon: 'txt', open: overnight }
     ] },
     { id: 'student', name: '隔壁大学生', note: '求种子', share: '电影', files: [
-      { name: '武侠大片（枪版）.rmvb', icon: 'video', text: MOVIE },
-      { name: '英语听力（其实是电影）.rmvb', icon: 'video', text: MOVIE },
-      { name: '高数网课（其实也是电影）.rmvb', icon: 'video', text: MOVIE },
+      { name: '武侠大片（枪版）.rmvb', icon: 'video', open: vid('wuxia') },
+      { name: '英语听力.rmvb', icon: 'video', open: vid('film') },
+      { name: '高数网课.rmvb', icon: 'video', open: vid('math') },
       { name: '千万别点.exe', icon: 'exe', open: dontClick },
       { name: 'ABCSee3.1注册机.exe', icon: 'keygen', open: () => OS.abcsee && OS.abcsee.keygen() },
       // 海葵抠抠补丁（koukou.js）：装上能看见谁把你拉黑了；自己带病毒，这次不发作
@@ -122,9 +123,9 @@
       { name: POST_NAME, icon: 'txt', open: blasterPost }
     ] },
     { id: 'home', name: '家', note: '请勿敲门', share: '监控', files: [
-      { name: '客厅.avi', icon: 'video', text: '画面：沙发、电视、一盘瓜子。\n电视在放天气预报。' },
-      { name: '门口.avi', icon: 'video', text: '画面：门口。\n有个人一直在敲门。（好像是你）' },
-      { name: '你.avi', icon: 'video', open: cctv }
+      { name: '客厅.avi', icon: 'video', open: vid('room') },
+      { name: '门口.avi', icon: 'video', open: vid('door') },
+      { name: '你.avi', icon: 'video', open: vid('you') }
     ] },
     { id: 'me', name: '你', note: '这是你的电脑', open: () => { OS.ui.notify({ title: NAME, text: L.me, icon: 'info', replace: true }); OS.explorer.open(OS.fs.SHARED); } },
     { id: 'me2', name: '你 (2)', note: '这也是你？', open: ipConflict }
@@ -501,26 +502,7 @@
       foot: '处理结果：已登记，暂不处理。'
     });
   }
-  // 监控：新建文件夹(2) 那户人家装的摄像头，拍的是……你的桌面
-  function cctv() {
-    const src = OS.desktop.root();
-    const shot = src.cloneNode(true);
-    shot.removeAttribute('id');
-    shot.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
-    shot.classList.add('net-cctv-desk');
-    const stamp = el('span', { class: 'net-cctv-time' });
-    const tick = () => { const d = OS.clock.now(); stamp.textContent = OS.YEAR + '-' + OS.pad2(d.getMonth() + 1) + '-' + OS.pad2(d.getDate()) + ' ' + OS.pad2(d.getHours()) + ':' + OS.pad2(d.getMinutes()) + ':' + OS.pad2(d.getSeconds()); };
-    tick();
-    const t = setInterval(tick, 1000);
-    const screen = el('div', { class: 'net-cctv' }, [
-      el('div', { class: 'net-cctv-view' }, [shot]),
-      el('div', { class: 'net-cctv-rec' }, [el('i'), el('span', { text: 'REC' })]),
-      el('span', { class: 'net-cctv-cam', text: 'CAM 03' }),
-      stamp
-    ]);
-    OS.wm.open({ title: '你.avi - 监控', icon: 'video', width: 236, content: screen, maximizable: false, onClose: () => clearInterval(t) });
-    setTimeout(() => OS.ui.notify({ title: CCTV_SAY.title, text: CCTV_SAY.text, icon: 'warn', replace: true }), 900);
-  }
+  // 监控：家 ▸ 监控 里的三个视频都在慢播里放（manbo.js）；你.avi 拍的是你的桌面
   // 你 (2)：IP 地址冲突 —— 第 1 次气泡；第 2 次两台“你”打起来；第 3 次蓝屏
   function ipConflict() {
     ipHits++;
