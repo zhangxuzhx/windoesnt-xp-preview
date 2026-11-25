@@ -293,14 +293,63 @@
   // 玩游戏：先转 3 秒，再弹“施工中”（以后一个个做）
   function runGame(g) {
     if (discOut) { OS.ui.dialog({ title: g.name, icon: 'warn', text: L.needDisc }); return; }
-    spin(3000, () => OS.apps.placeholder({ name: g.name, icon: 'game-' + g.id }));
+    // 做好了的接上（怪怪水煮箱 2026-11-24：tank.js），别的还是施工中
+    const real = { tank: OS.tank };
+    spin(3000, () => (real[g.id] ? real[g.id].open() : OS.apps.placeholder({ name: g.name, icon: 'game-' + g.id })));
   }
-  // 光盘的“自动运行”菜单（背景是 Codex 画的 assets/cd/autorun.webp）
+  /* 光盘菜单的背景音乐：那几年游戏合集光盘一放进去就响的 MIDI 小调，全是代码合成的（OS.sound.loop），窗口关了就停（2026-11-24）
+     C 大调，八小节一圈（约 13 秒）：方波主旋律 + 一上一下跳八度的贝斯 + 反拍的和弦 + 鼓机；最后一小节铃铛往上一扫，接回开头 */
+  const HJ_MUSIC = (() => {
+    const hz = m => 440 * Math.pow(2, (m - 69) / 12);   // MIDI 音高 → 频率（72 = 高音 C）
+    const E = 0.21;                                      // 一个八分音符几秒（每分钟约 143 拍）
+    const o = [];
+    // 一串音，每格一个八分音符；0 = 前一个音接着响
+    const line = (inst, t0, step, notes, vol, gate) => notes.forEach((m, i) => {
+      if (!m) return;
+      let k = 1;
+      while (notes[i + k] === 0) k++;
+      o.push([t0 + i * step, inst, hz(m), step * k * (gate || 0.85), vol]);
+    });
+    const MEL = [
+      72, 0, 76, 79, 84, 0, 83, 81,   // C
+      79, 0, 74, 79, 83, 0, 81, 79,   // G
+      76, 0, 72, 76, 81, 0, 79, 76,   // Am
+      77, 76, 74, 72, 74, 0, 79, 0,   // F
+      72, 0, 76, 79, 84, 0, 83, 81,   // C
+      79, 0, 83, 86, 88, 0, 86, 83,   // G
+      84, 81, 77, 81, 83, 79, 74, 79, // F → G
+      84, 0, 0, 79, 84, 0, 0, 0       // C
+    ];
+    line('lead', 0, E, MEL, 0.04);
+    line('bell', 0, E, MEL.map(m => m && m + 12), 0.012);   // 高八度叠一层铃铛，亮一点
+    // 和弦：每小节一个（第七小节前半 F 后半 G）
+    const ROOT = [36, 43, 45, 41, 36, 43, [41, 43], 36];
+    const TRI = { 36: [64, 67, 72], 43: [62, 67, 71], 45: [64, 69, 72], 41: [65, 69, 72] };
+    ROOT.forEach((r, bar) => {
+      for (let s = 0; s < 8; s++) {
+        const root = Array.isArray(r) ? r[s < 4 ? 0 : 1] : r, t = (bar * 8 + s) * E;
+        o.push([t, 'bass', hz(s % 2 ? root + 12 : root), E * 0.7, 0.11]);                         // 贝斯：跳八度
+        if (s % 2) TRI[root].forEach(m => o.push([t, 'brass', hz(m), E * 0.55, 0.012]));            // 反拍的和弦
+        o.push([t, 'hat', 8000, 0.05, s % 2 ? 0.03 : 0.018]);                                        // 踩镲
+        if (s === 0 || s === 4 || (s === 7 && bar % 2)) o.push([t, 'drum', hz(36), 0.3, 0.2]);      // 大鼓
+        if (s === 2 || s === 6) o.push([t, 'snare', 0, 0.14, 0.07]);                                 // 小鼓
+      }
+    });
+    // 最后半小节：小鼓加花 + 铃铛往上扫，接回开头
+    [60, 61, 62, 63].forEach(s => o.push([s * E + E / 2, 'snare', 0, 0.1, 0.05]));
+    [84, 88, 91, 96, 100].forEach((m, i) => o.push([(62 + i * 0.4) * E, 'bell', hz(m), 0.3, 0.03]));
+    return { notes: o, len: 64 * E };
+  })();
+
+  // 光盘的“自动运行”菜单（背景是 Codex 画的 assets/cd/autorun.webp）；只开一个，不然两段音乐叠在一起
+  let hjWin = null;
   function autorun() {
+    if (hjWin && !hjWin.isClosed) { OS.wm.focus(hjWin); return; }
     const btns = L.hjBtns.map(t => el('button', { class: 'hj-btn', text: t }));
     const games = el('div', { class: 'hj-games' }, GAMES.map(g => {
       const b = el('div', { class: 'hj-game' }, [OS.iconEl('game-' + g.id, 'hj-gico'), el('div', { text: g.name })]);
-      b.addEventListener('click', () => { OS.sound.play('click'); runGame(g); });
+      // 点了游戏：光盘菜单自己关掉（2026-11-24 作者）；光驱弹出来了就不关，留着弹"请插入光盘"
+      b.addEventListener('click', () => { OS.sound.play('click'); if (!discOut) w.close(); runGame(g); });
       return b;
     }));
     const content = el('div', { class: 'hj' }, [
@@ -308,7 +357,10 @@
       el('div', { class: 'hj-menu' }, btns),
       games
     ]);
-    const w = OS.wm.open({ title: L.hjTitle, icon: 'cd', width: 320, content, maximizable: false, center: true, className: 'hj-win' });
+    const music = OS.sound.loop ? OS.sound.loop(HJ_MUSIC.notes, HJ_MUSIC.len) : null;
+    const w = OS.wm.open({ title: L.hjTitle, icon: 'cd', width: 320, content, maximizable: false, center: true, className: 'hj-win',
+      onClose: () => { if (music) music.stop(); hjWin = null; } });
+    hjWin = w;
     btns[0].addEventListener('click', () => { OS.sound.play('click'); content.classList.toggle('show-games'); });
     btns[1].addEventListener('click', () => { OS.sound.play('click'); install(); });
     btns[2].addEventListener('click', () => { OS.sound.play('click'); w.close(); EX.open('D:'); });

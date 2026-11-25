@@ -252,16 +252,19 @@
 
   /* ---------- 背景音乐（慢播的片子用）：一个音一个音往后排着放，全是代码合成的 ----------
      S.note(乐器, 频率, 几秒后响, 响多久, 音量)；S.musicStop() 把排好了还没响完的全掐掉（暂停、缓冲、花屏时用）
-     乐器：pluck 古筝拨弦 ／ pad 弦乐铺底 ／ brass 铜管顿音 ／ lead 方波主旋律 ／ bass 贝斯 ／ flute 长笛 ／ drum 大鼓 ／ snare 小鼓 ／ gong 锣 ／ scratch 唱片刮擦 ／ tv tvbass 电视里闷闷的音乐 */
+     乐器：pluck 古筝拨弦 ／ pad 弦乐铺底 ／ brass 铜管顿音 ／ lead 方波主旋律 ／ bass 贝斯 ／ flute 长笛 ／ drum 大鼓 ／ snare 小鼓 ／ gong 锣 ／ scratch 唱片刮擦 ／ tv tvbass 电视里闷闷的音乐
+     ／ hat 踩镲 ／ bell 铃铛（光盘菜单的 MIDI 小调用）
+     最后一个参数 bag（可以不给）：这个音记在 bag 里，不记在全局；S.loop 用它只掐自己的音 */
   const musicNodes = new Set();
-  S.note = function (inst, f, at, dur, vol) {
+  S.note = function (inst, f, at, dur, vol, bag) {
     if (!ctx || S.muted) return;
     try {
       if (ctx.state === 'suspended') ctx.resume();
       const t0 = ctx.currentTime + 0.02 + Math.max(0, at || 0), end = t0 + dur;
       const g = ctx.createGain();
       g.connect(master);
-      const keep = n => { musicNodes.add(n); n.onended = () => musicNodes.delete(n); return n; };
+      const box = bag || musicNodes;
+      const keep = n => { box.add(n); n.onended = () => box.delete(n); return n; };
       const env = (atk, hold) => {
         g.gain.setValueAtTime(0.0001, t0);
         g.gain.exponentialRampToValueAtTime(vol, t0 + atk);
@@ -298,6 +301,8 @@
         case 'voice': env(0.008, 0.4); tone('square', f, f * 0.86, 1500); tone('triangle', f * 2, f * 1.7); break;   // 片子里有人说话：嘀嘀嘀
         case 'tv': env(0.01, 0.5); tone('square', f, 0, 900); break;
         case 'tvbass': env(0.01, 0.5); tone('triangle', f, 0, 500); break;
+        case 'hat': env(0.002); hiss('highpass', 7000); break;
+        case 'bell': env(0.004); tone('triangle', f); tone('sine', f * 3.01, f * 3); break;
         default: env(0.01); tone('sine', f);
       }
     } catch (e) { /* ignore */ }
@@ -305,6 +310,28 @@
   S.musicStop = function () {
     musicNodes.forEach(n => { try { n.stop(); } catch (e) { /* ignore */ } });
     musicNodes.clear();
+  };
+  /* 一段音乐循环放（光盘自动运行菜单用）：S.loop(notes, 一圈几秒) → { stop() }
+     notes 跟慢播一样：[第几秒, 乐器, 频率, 响多久, 音量]。每 0.1 秒往后排 0.3 秒的音；
+     stop() 只掐自己排的音，不碰慢播的片子；不在桌面上（蓝屏、关机、注销）就不排 */
+  S.loop = function (notes, len) {
+    const bag = new Set();
+    let t0 = -1, done = 0, timer = 0;
+    const tick = () => {
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      if (t0 < 0) { t0 = now; done = -0.001; }
+      const pos = now - t0, to = pos + 0.3;
+      if ((OS.boot && OS.boot.state !== 'desktop') || pos - done > 1) { done = pos; return; }   // 页面切到后台计时器睡着了：落下的不补，接着往下放
+      for (let k = Math.floor(Math.max(0, done) / len); k <= Math.floor(to / len); k++) {
+        notes.forEach(n => { const nt = k * len + n[0]; if (nt > done && nt <= to) S.note(n[1], n[2], nt - pos, n[3], n[4], bag); });
+      }
+      done = to;
+    };
+    S.unlock();
+    tick();
+    timer = setInterval(tick, 100);
+    return { stop() { clearInterval(timer); bag.forEach(n => { try { n.stop(); } catch (e) { /* ignore */ } }); bag.clear(); } };
   };
 
   /* ---------- 录好的声音（计算器的真人发音）：一个文件里排着很多小段，按名字念 ----------

@@ -294,23 +294,33 @@
   /* ================= 托盘：铁公鸡头 ================= */
   function ensureTray() {
     if (S.tray) return;
-    S.tray = OS.taskbar.trayAdd(el('span', { class: 'tray-btn kk-tray off', title: SOFT }, [el('i', { class: 'tray-ico kk-tray-ico' })]));
+    S.tray = OS.taskbar.trayAdd(el('span', { class: 'tray-btn kk-tray off', title: SOFT }, [trayIco(null)]));
+    S.trayWho = null;
     S.tray.addEventListener('click', () => { OS.sound.play('click'); trayClick(); });
     OS.ui.onContext(S.tray, () => trayMenu());
     updateTray();
   }
+  // 下一条该看的：系统消息排最前，然后按来消息的先后（deliver 里新来的排到最后）
+  const nextUnread = () => (S.sysQueue.length ? 'sys' : Object.keys(S.unread).find(k => S.unread[k] > 0) || null);
+  // 有消息时托盘闪的是谁：谁来的消息闪谁的头像，系统消息闪小喇叭；没消息就是铁公鸡头（2026-11-24）
+  function trayIco(who) {
+    if (who === 'sys') return OS.iconEl('speaker', 'tray-ico kk-tray-ico sys');
+    if (who) return el('i', { class: 'tray-ico kk-tray-ico av', style: { backgroundPosition: cell(AV_IDX[who] || 0, AV_N) } });
+    return el('i', { class: 'tray-ico kk-tray-ico' });
+  }
   function updateTray() {
     if (!S.tray) return;
-    const unread = S.sysQueue.length > 0 || Object.keys(S.unread).some(k => S.unread[k] > 0);
+    const who = S.logged ? nextUnread() : null;
+    if (S.trayWho !== who) { S.trayWho = who; S.tray.replaceChildren(trayIco(who)); }
     S.tray.classList.toggle('off', !S.logged);
     S.tray.classList.toggle('away', S.logged && S.status === 'away');
     S.tray.classList.toggle('inv', S.logged && S.status === 'invisible');
-    S.tray.classList.toggle('flash', S.logged && unread);
+    S.tray.classList.toggle('flash', !!who);
   }
   function trayClick() {
     if (!S.logged) { openLogin(); return; }
     if (S.sysQueue.length) { openSys(); return; }
-    const id = Object.keys(S.unread).find(k => S.unread[k] > 0);
+    const id = nextUnread();
     if (id) { id === 'qun' ? openQun() : openChat(id); return; }
     // 没消息：主面板收在顶上就滑下来；不然点一下藏起主面板，再点一下叫出来
     if (alive(S.panel) && S.panel.kkDock && S.panel.kkDock.hidden()) { S.panel.kkDock.show(); OS.wm.focus(S.panel); return; }
@@ -726,7 +736,12 @@
     o = o || {};
     push(id, { who: o.from || id, text, emo: o.emo });
     const open = id === 'qun' ? alive(S.qun) : (S.chats[id] && alive(S.chats[id].win));
-    if (!open) { S.unread[id] = (S.unread[id] || 0) + 1; renderPanel(); updateTray(); }
+    if (!open) {
+      const n = S.unread[id] || 0;
+      if (!n) delete S.unread[id];   // 这个人头一条未读：排到最后，托盘按来消息的先后一个个闪
+      S.unread[id] = n + 1;
+      renderPanel(); updateTray();
+    }
     if (!o.quiet) OS.sound.play('kkMsg');
     // 离开状态：私聊自动回一句（每人一次）
     if (id !== 'qun' && S.status === 'away' && !S.autoReplied.has(id)) { S.autoReplied.add(id); push(id, { who: 'me', text: L.autoReply }); }

@@ -1286,21 +1286,34 @@
           return;
         }
 
-        // 放到格子上：整组平移，放不下的就近找空格
+        // 放到格子上：整组平移。
+        // 落到别的图标上 = 两个换位置（XP 里没有，作者要的：玩起来顺手，2026-11-24）；落到出界 ／ 挡住的格子才就近找空格
         const me = orig.get(ic);
         const c0 = OS.clamp(Math.floor((me.x + dx + ICON_W / 2 - grid.ox) / CELL_W), 0, grid.cols - 1);
         const r0 = OS.clamp(Math.floor((me.y + dy + 20 - grid.oy) / CELL_H), 0, grid.rows - 1);
         const dc = c0 - ic.col, dr = r0 - ic.row;
         const homes = new Map(group.map(g => [g, [g.col, g.row]]));
+        const moved = new Set();
         group.forEach(g => { g.col = -1; g.row = -1; });
         [ic].concat(group.filter(g => g !== ic)).forEach(g => {
           const h = homes.get(g);
           let tc = OS.clamp(h[0] + dc, 0, grid.cols - 1);
           let tr = OS.clamp(h[1] + dr, 0, grid.rows - 1);
-          if (!valid(tc, tr) || occupant(tc, tr)) { const f = nearestFree(tc, tr); tc = f[0]; tr = f[1]; }
+          const other = valid(tc, tr) ? occupant(tc, tr) : null;
+          if (other && !group.includes(other)) {
+            // 被压住的那个挪到拖过来的这个原来的位置（那儿已经被同组别的占了，就近找空格）
+            other.col = -1; other.row = -1;
+            g.col = tc; g.row = tr;
+            const f = valid(h[0], h[1]) && !occupant(h[0], h[1]) ? h : nearestFree(h[0], h[1]);
+            other.col = f[0]; other.row = f[1];
+            moved.add(other);
+            return;
+          }
+          if (!valid(tc, tr) || other) { const f = nearestFree(tc, tr); tc = f[0]; tr = f[1]; }
           g.col = tc; g.row = tr;
         });
         group.forEach(settle);
+        moved.forEach(settle);
         savePositions();
       };
       n.addEventListener('pointermove', move);

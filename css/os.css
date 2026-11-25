@@ -1295,6 +1295,11 @@ body {
 .kk-tray.away { position: relative; }
 .kk-tray.away::after { content: ''; position: absolute; right: 0; bottom: 4px; width: 6px; height: 6px; border-radius: 50%; background: #ffd23a; box-shadow: -2px -1px 0 0 #2a5ab8 inset; }
 .kk-tray.flash .kk-tray-ico { animation: kkFlash .8s steps(1) infinite; }
+/* 有消息：谁来的闪谁的头像，系统消息闪小喇叭（koukou.js updateTray）；隐身、离开时也是彩色的 */
+.kk-tray-ico.av { background: url(../assets/koukou/avatars.webp) 0 0 / 1500% 100% no-repeat; border-radius: 2px; }
+.kk-tray-ico.sys { background: none; }
+.kk-tray-ico.sys svg { display: block; width: 16px; height: 16px; }
+.kk-tray.flash .kk-tray-ico { filter: none; opacity: 1; }
 @keyframes kkFlash { 50% { opacity: 0; } }
 
 /* 登录框 */
@@ -3671,3 +3676,7 @@ body {
 .lp-v { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .lp-find { display: flex; justify-content: flex-start; margin: 8px 0 2px 86px; }
 .cp-deskitems { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; padding: 4px 2px; }
+
+/* ---------- 怪怪水煮箱（tank.js，2026-11-24）：画布 800×600 显示成 376×282，跟银山打字通的小游戏一样大 ---------- */
+.tk { position: relative; width: 376px; height: 282px; overflow: hidden; background: #000; user-select: none; -webkit-user-select: none; }
+.tk .tk-cv { display: block; width: 376px; height: 282px; touch-action: none; cursor: pointer; }
