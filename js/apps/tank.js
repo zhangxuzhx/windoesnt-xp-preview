@@ -304,7 +304,7 @@
     const S = g.S;
     const { F, cols, rows } = BAY.build(S.got);
     g.map = { F, cols, rows, chunks: {} };
-    g.floorC = {};
+    g.floorC = {}; g.seatC = {};
     const fl = (x, y) => floorY(g, x, y);
     g.pos = {
       things: {}, vents: BAY.VENTS.map(([x, y]) => [x, fl(x, y - 12)]), clams: BAY.CLAMS.map(([x, y]) => [x, fl(x, y - 12) - 4]),
@@ -813,16 +813,14 @@
     } else if (s.dashT <= 0) { s.vx *= Math.pow(0.4, dt); s.vy *= Math.pow(0.4, dt); }
     if (s.dashT > 0) s.dashT -= dt;
     // 水流：往左冲的有大脚蹼游得过去；往下冲的谁也顶不住
-    let inCur = false;
     BAY.CURRENTS.forEach(Q => {
       if (s.x < Q.x0 || s.x > Q.x1 || s.y < Q.y0 || s.y > Q.y1) return;
       if (Q.fins && has(S, 'fins')) return;
-      inCur = true;
       if (Q.vx < 0) s.vx = Math.min(s.vx, Q.vx); else if (Q.vx > 0) s.vx = Math.max(s.vx, Q.vx);
       if (Q.vy > 0) s.vy = Math.max(s.vy, Q.vy); else if (Q.vy < 0) s.vy = Math.min(s.vy, Q.vy);
-      if (Q.fins && !s.curSaid) { s.curSaid = true; flt(g, s.x, s.y - 14, L.current, '#e0f4ff', 1.6); }
+      if (Q.fins && !(s.curSaid > 0) && tx != null && (tx - s.x) * Q.vx < 0) { s.curSaid = 2.6; flt(g, s.x, s.y - 14, L.current, '#e0f4ff', 1.6); sfx(g, 'splash'); }   // 顶着水流游：隔一会儿说一次
     });
-    if (!inCur) s.curSaid = false;
+    if (s.curSaid > 0) s.curSaid -= dt;   // 在水流边上进进出出也不会一直冒字
     // 走两小步，撞墙推回来
     const n = Math.hypot(s.vx, s.vy) * dt > 4 ? 2 : 1;
     for (let k = 0; k < n; k++) { s.x += s.vx * dt / n; s.y += s.vy * dt / n; pushOut(g, s, SEAL_R); }
@@ -868,7 +866,7 @@
     const [, cx, cy, rx, ry] = K.shape;
     BAY.build(S.got, g.map.F, [cx - rx - 20, cy - ry - 20, cx + rx + 20, cy + ry + 20]);
     gradGrid(g, [cx - rx - 20, cy - ry - 20, cx + rx + 20, cy + ry + 20]);
-    clearChunks(g, [cx - rx - 20, cy - ry - 20, cx + rx + 20, cy + ry + 20]); g.floorC = {}; g.mapTerr = null;
+    clearChunks(g, [cx - rx - 20, cy - ry - 20, cx + rx + 20, cy + ry + 20]); g.floorC = {}; g.seatC = {}; g.mapTerr = null;
     flt(g, s.x, s.y - 16, L.crackBroke, '#fff6a0', 1.6);
     sfx(g, 'thud'); sfx(g, 'splash');
     g.shake = 0.35;
@@ -1772,7 +1770,7 @@
     const c = g.c, tm = g.anim, im = art('decor'), x0 = g.cam.x - 30, x1 = g.cam.x + VW + 30, y0 = g.cam.y - 30, y1 = g.cam.y + VH + 40;
     g.decor.forEach(d => {
       if (d.x < x0 || d.x > x1 || d.y < y0 || d.y > y1) return;
-      if (im) { const sz = 24 * d.s; c.save(); c.translate(d.x, d.y + 1.5 + sz * (128 - DECOR_FOOT[d.k]) / 128); c.rotate(Math.sin(tm * 1.2 + d.ph) * (d.k < 2 ? 0.06 : 0)); c.drawImage(im, d.k * 128, 0, 128, 128, -sz / 2, -sz, sz, sz); c.restore(); return; }
+      if (im) { const sz = 24 * d.s; onGround(g, d.x, d.y, sz * 0.32, 1.5, cc => { cc.translate(0, sz * (128 - DECOR_FOOT[d.k]) / 128); cc.rotate(Math.sin(tm * 1.2 + d.ph) * (d.k < 2 ? 0.06 : 0)); cc.drawImage(im, d.k * 128, 0, 128, 128, -sz / 2, -sz, sz, sz); }); return; }
       const s = d.s, sw = Math.sin(tm * 1.3 + d.ph);
       if (d.k === 0 || d.k === 1) { c.strokeStyle = d.k ? '#4a9a52' : '#3a8a48'; c.lineWidth = 1.8; c.lineCap = 'round'; for (let j = -1; j <= 1; j++) { const h = (d.k ? 9 : 20) * s * (1 - Math.abs(j) * 0.2); c.beginPath(); c.moveTo(d.x + j * 2.5, d.y); c.quadraticCurveTo(d.x + j * 3 + sw * 3, d.y - h * 0.6, d.x + j * 4 + sw * 5, d.y - h); c.stroke(); } }
       else if (d.k === 2) { c.strokeStyle = '#e88aa8'; c.lineWidth = 1.2; for (let j = -2; j <= 2; j++) { c.beginPath(); c.moveTo(d.x, d.y); c.lineTo(d.x + j * 3.5 * s, d.y - 11 * s + Math.abs(j) * 2); c.stroke(); } }
@@ -1842,7 +1840,7 @@
     // 水流（11-25 作者：向下水流效果有点糙）：两边和两头都淡出去的一条软光带，里面一道道头亮尾淡、会晃的水线，带几个小气泡
     BAY.CURRENTS.forEach((Q, qi) => {
       if (Q.x1 < x0 || Q.x0 > x1 || Q.y1 < y0 || Q.y0 > y1) return;
-      drawCurrent(g, Q, qi, Q.fins && has(S, 'fins') ? 0.45 : 1);
+      drawCurrent(g, Q, qi, Q.fins && has(S, 'fins') ? 0.45 : 1, !(Q.fins && has(S, 'fins')));   // 还顶得住你的急流画得明显（作者：这里根本过不去——原来看不出有水流）
     });
     // 裂了缝的石头
     BAY.CRACKS.forEach(K => {
@@ -1857,7 +1855,7 @@
     g.pos.vents.forEach(([x, y]) => {
       if (x < x0 - 20 || x > x1 + 20 || y < y0 - 60 || y > y1 + 20) return;
       const gl = c.createRadialGradient(x, y - 4, 0, x, y - 4, 16); gl.addColorStop(0, 'rgba(190,250,255,.35)'); gl.addColorStop(1, 'rgba(190,250,255,0)'); c.fillStyle = gl; c.beginPath(); c.arc(x, y - 4, 16, 0, Math.PI * 2); c.fill();
-      if (vim) c.drawImage(vim, x - 16, y + 1.5 - 70 * 0.2, 32, 20); else { c.fillStyle = '#4a5a62'; c.beginPath(); c.ellipse(x, y, 8, 3.5, 0, Math.PI, 0); c.fill(); }
+      onGround(g, x, y, 13, 2, cc => { if (vim) cc.drawImage(vim, -16, -14, 32, 20); else { cc.fillStyle = '#4a5a62'; cc.beginPath(); cc.ellipse(0, 0, 8, 3.5, 0, Math.PI, 0); cc.fill(); } });
       c.strokeStyle = 'rgba(230,252,255,.8)'; c.lineWidth = 0.6;
       for (let i = 0; i < 8; i++) { const t = (tm * 0.8 + i / 8) % 1; c.beginPath(); c.arc(x + Math.sin(t * 9 + i * 2) * 3, y - 3 - t * 46, 0.7 + t * 1.8, 0, Math.PI * 2); c.stroke(); }
     });
@@ -1875,17 +1873,15 @@
       }
       if (x1 > RAIL) {
         const xa = Math.max(RAIL, x0);
-        if (rail) for (let x = Math.max(RAIL, Math.floor(x0 / 76.8) * 76.8); x < x1; x += 76.8) c.drawImage(rail, x, GY - 18, 77, 19.2);
+        if (rail) for (let x = RAIL + Math.floor(Math.max(0, x0 - RAIL) / 76.8) * 76.8; x < x1; x += 76.8) c.drawImage(rail, x, GY - 18, 77, 19.2);   // 一节节从栏杆起头那儿往右排（原来镜头一过某个地方整排跳一下，作者：栏杆在瞬移）
         else { c.strokeStyle = '#ece4d4'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(xa, GY - 14); c.lineTo(x1, GY - 14); c.moveTo(xa, GY - 7); c.lineTo(x1, GY - 7); c.stroke(); c.fillStyle = '#d8d0c0'; for (let x = Math.ceil(xa / 24) * 24; x < x1; x += 24) c.fillRect(x - 1.2, GY - 16, 2.4, 16); }
       }
       if (SPOT.gate - 40 < x1) {
-        if (gate) c.drawImage(gate, SPOT.gate - 36, GY - 70, 72, 72);
+        if (gate) c.drawImage(gate, SPOT.gate - 36, GY + 1.5 - 209 * 0.3, 72, 72);   // gate.webp 门柱脚底在图里第 209 行，对到栈道面（原来悬空，作者）
         else { c.fillStyle = '#c8402a'; c.fillRect(SPOT.gate - 18, GY - 44, 5, 44); c.fillRect(SPOT.gate + 13, GY - 44, 5, 44); c.fillRect(SPOT.gate - 22, GY - 48, 44, 7); c.fillStyle = '#f0d040'; c.fillRect(SPOT.gate - 14, GY - 18, 28, 3); }
       }
       if (SPOT.pipe > x0 - 10 && SPOT.pipe < x1 + 10) {
-        if (pipe) c.drawImage(pipe, SPOT.pipe - 9, GY - 16, 18, 42);
-        else { c.fillStyle = '#6a7078'; c.fillRect(SPOT.pipe - 4, GY - 12, 8, WY - GY + 24); c.fillStyle = '#8a9098'; rrect(c, SPOT.pipe - 6, GY - 15, 12, 5, 2); c.fill(); }
-        c.fillStyle = has(S, 'valve') ? '#2a8ad0' : '#2a2a2a'; c.beginPath(); c.ellipse(SPOT.pipe, GY - 13, 3.5, 1.4, 0, 0, Math.PI * 2); c.fill();
+        drawShorePipe(g, pipe, has(S, 'valve'));
       }
       c.fillStyle = 'rgba(255,255,255,.28)'; for (let x = Math.floor(x0 / 9) * 9; x < x1; x += 9) { const w = 3 + 3 * Math.abs(Math.sin(x * 0.37)); c.fillRect(x + Math.sin(tm * 1.6 + x * 0.21) * 3, WY - 0.4 + Math.sin(x * 0.13 + tm) * 0.5, w, 0.8); }
     }
@@ -1904,13 +1900,14 @@
     x.globalCompositeOperation = 'destination-in'; x.fillStyle = alo; x.fillRect(0, 0, cv.width, cv.height);
     return (cache[qi] = cv);
   }
-  function drawCurrent(g, Q, qi, dim) {
+  function drawCurrent(g, Q, qi, dim, strong) {
     const c = g.c, tm = g.anim, vert = !Q.vx, w = Q.x1 - Q.x0, h = Q.y1 - Q.y0;
     const L = vert ? h : w, A = vert ? w : h, dir = vert ? Math.sign(Q.vy) || 1 : Math.sign(Q.vx), speed = Math.abs(vert ? Q.vy : Q.vx) * 0.85;
     c.globalAlpha = dim;
     c.drawImage(currentBand(Q, qi), Q.x0, Q.y0, w, h);
+    if (strong) c.drawImage(currentBand(Q, qi), Q.x0, Q.y0, w, h);
     // 每道水线：横着的位置、起点、快慢、长短都固定随机（按编号算，不闪）
-    const n = Math.round(A * L / 480), P = (along, across) => (vert ? [Q.x0 + across, dir > 0 ? Q.y0 + along : Q.y1 - along] : [dir > 0 ? Q.x0 + along : Q.x1 - along, Q.y0 + across]);
+    const n = Math.round(A * L / (strong ? 260 : 480)), P = (along, across) => (vert ? [Q.x0 + across, dir > 0 ? Q.y0 + along : Q.y1 - along] : [dir > 0 ? Q.x0 + along : Q.x1 - along, Q.y0 + across]);
     const ends = a => clamp(a / 26, 0, 1) * clamp((L - a) / 26, 0, 1);
     c.lineCap = 'round';
     for (let i = 0; i < n; i++) {
@@ -1920,17 +1917,17 @@
       const wob = Math.sin(tm * 2.2 + i * 1.7) * 1.2, acr = A * u + wob;
       const a0 = Math.max(0, tail), a1 = Math.min(L, head);
       if (a1 <= a0) continue;
-      const al = 0.5 * Math.sin(u * Math.PI) * ends((a0 + a1) / 2);
+      const al = (strong ? 0.85 : 0.5) * Math.sin(u * Math.PI) * ends((a0 + a1) / 2);
       if (al < 0.02) continue;
       const [hx, hy] = P(a1, acr), [tx, ty] = P(a0, acr - wob * 0.6);
       const gr = c.createLinearGradient(tx, ty, hx, hy);
       gr.addColorStop(0, 'rgba(235,250,255,0)'); gr.addColorStop(1, 'rgba(235,250,255,' + al + ')');
-      c.strokeStyle = gr; c.lineWidth = 0.6 + 0.5 * r3;
+      c.strokeStyle = gr; c.lineWidth = (strong ? 0.9 : 0.6) + 0.5 * r3;
       c.beginPath(); c.moveTo(tx, ty); c.lineTo(hx, hy); c.stroke();
     }
     // 小气泡顺着水流冲走
     c.fillStyle = 'rgba(230,250,255,.7)';
-    for (let i = 0; i < Math.round(n / 3); i++) {
+    for (let i = 0; i < Math.round(n / (strong ? 2 : 3)); i++) {
       const r1 = (hash2(i, qi * 7 + 5) + 1) / 2, r2 = (hash2(i, qi * 7 + 6) + 1) / 2;
       const along = ((r2 * 613 + tm * speed * 1.1) % L + L) % L, acr = A * (0.2 + 0.6 * r1) + Math.sin(tm * 3 + i * 2.3) * 2.5;
       const e = ends(along) * Math.sin((0.2 + 0.6 * r1) * Math.PI);
@@ -1939,6 +1936,35 @@
       c.globalAlpha = dim * e; c.beginPath(); c.arc(bx, by, 0.6 + r2 * 0.6, 0, Math.PI * 2); c.fill();
     }
     c.globalAlpha = 1;
+  }
+  // 岸上的水管（11-25 作者：下去的口子就是画了个蓝椭圆？）：阀门没拧开，顶上的圆盖子扣着；拧开了，盖子被水顶掉、歪在栈道上，
+  // 管子口是一圈锈铁边，里面黑洞洞的，往下一点是晃着的水面，偶尔冒个泡
+  function drawShorePipe(g, pipe, open) {
+    const c = g.c, x = SPOT.pipe, tm = g.anim, k = 0.3, top = GY - 16;   // pipe-shore.webp 60×140，画成 18×42（一个点 0.3）
+    if (!pipe) { c.fillStyle = '#6a7078'; c.fillRect(x - 4, GY - 12, 8, WY - GY + 24); c.fillStyle = open ? '#10181e' : '#8a9098'; rrect(c, x - 6, GY - 15, 12, 5, 2); c.fill(); return; }
+    if (!open) { c.drawImage(pipe, x - 9, top, 18, 42); return; }
+    const cut = 17;   // 图里第 17 行往上是盖子
+    c.drawImage(pipe, 0, cut, 60, 140 - cut, x - 9, top + cut * k, 18, (140 - cut) * k);
+    const my = top + cut * k + 0.4, rx = 3.3, ry = 1.25;
+    // 管子口：外圈锈铁边、里面黑、往下一点有水面在晃
+    const rim = c.createLinearGradient(x - rx, 0, x + rx, 0); rim.addColorStop(0, '#6a4026'); rim.addColorStop(0.45, '#c8916a'); rim.addColorStop(1, '#5a3420');
+    c.fillStyle = rim; c.beginPath(); c.ellipse(x, my, rx + 0.7, ry + 0.45, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#0c1418'; c.beginPath(); c.ellipse(x, my, rx - 0.2, ry - 0.15, 0, 0, Math.PI * 2); c.fill();
+    c.save(); c.beginPath(); c.ellipse(x, my, rx - 0.2, ry - 0.15, 0, 0, Math.PI * 2); c.clip();
+    const wy = my + 0.55 + Math.sin(tm * 2.6) * 0.18;
+    const wg = c.createLinearGradient(0, wy - 0.6, 0, wy + 1.2); wg.addColorStop(0, '#3aa0c8'); wg.addColorStop(1, '#14506a');
+    c.fillStyle = wg; c.beginPath(); c.ellipse(x, wy + 0.5, rx - 0.5, ry, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(220,250,255,.75)'; c.lineWidth = 0.35; c.beginPath(); c.ellipse(x + Math.sin(tm * 1.7) * 0.6, wy + 0.3, 1.2, 0.3, 0, 0, Math.PI * 2); c.stroke();
+    c.restore();
+    c.strokeStyle = 'rgba(255,220,180,.5)'; c.lineWidth = 0.35; c.beginPath(); c.ellipse(x, my - 0.15, rx + 0.4, ry + 0.25, 0, Math.PI * 1.1, Math.PI * 1.9); c.stroke();   // 铁边上一道高光
+    // 偶尔冒上来一个泡
+    const q = (tm * 0.45) % 1;
+    if (q < 0.35) { const b = q / 0.35; c.globalAlpha = 1 - b; c.strokeStyle = 'rgba(230,250,255,.9)'; c.lineWidth = 0.35; c.beginPath(); c.arc(x - 0.8 + Math.sin(tm * 5) * 0.5, my - b * 6, 0.5 + b * 0.5, 0, Math.PI * 2); c.stroke(); c.globalAlpha = 1; }
+    // 盖子：歪倒在管子右边的栈道上
+    c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(x + 8.4, GY + 0.6, 3.6, 0.8, 0, 0, Math.PI * 2); c.fill();
+    c.save(); c.translate(x + 8.4, GY - 0.8); c.rotate(1.15);
+    c.drawImage(pipe, 14, 0, 32, cut + 1, -4.8, -2.7, 9.6, (cut + 1) * k);
+    c.restore();
   }
   // 沉船：外面一层船壳（海狗钻进去就变透明），里面是隔出来的船舱
   function drawBoatInside(g) {
@@ -2015,6 +2041,22 @@
     c.fillStyle = gl; c.beginPath(); c.arc(lx, ly, 64, 0, Math.PI * 2); c.fill();
     c.restore();
   }
+  // 放在海底的东西（气泡泉、海草珊瑚石头、海贝、破烂）：按脚下左右两边的地面歪一点，往地里沉一点，
+  // 再把这一截的石头盖回去——斜坡上不再一头悬空（11-25 作者：好多装饰跟地形融合不好）
+  function seatAt(g, x, y, half) {
+    const key = Math.round(x) + ',' + Math.round(y) + ',' + half, C = g.seatC || (g.seatC = {});
+    if (C[key]) return C[key];
+    const fy = xx => { const v = floorY(g, xx, y - half - 6); return Math.abs(v - y) > half * 1.2 + 6 ? y : v; };
+    const yl = fy(x - half), yr = fy(x + half);
+    return (C[key] = { ang: clamp(Math.atan2(yr - yl, half * 2), -0.45, 0.45), y: Math.max(y, (yl + yr) / 2) });
+  }
+  function onGround(g, x, y, half, sink, draw) {
+    const c = g.c, P = seatAt(g, x, y, half);
+    c.save(); c.translate(x, P.y + sink); c.rotate(P.ang); draw(c); c.restore();
+    const lift = Math.abs(Math.sin(P.ang)) * half;
+    rockOver(g, x - half - 4, P.y - lift - 3, half * 2 + 8, lift + sink + 12);
+    return P;
+  }
   // 把石头那一层的某一块（世界坐标）再画一遍，盖住沉到地里的东西
   function rockOver(g, wx, wy, ww, wh) {
     const L2 = g.rockL;
@@ -2080,8 +2122,8 @@
     c.save(); c.scale(Z, Z); c.translate(-g.cam.x, -g.cam.y);
     if (g.inBoat > 0 && art('boatin')) drawBoatInside(g);
     drawWorld(g);
-    P.clams.forEach(([x, y], i) => drawClam(c, x, y, clamOpen(g, i), S.world.clams[i].pearl));
-    S.world.junk.forEach(j => { if (!j.gone) drawSeabed(c, { shoe: 5, can: 6, tire: 7 }[j.k], j.x, floorAt(g, j.x) - 5, 14); });
+    P.clams.forEach(([x, y], i) => onGround(g, x, y + 4, 9, 1.5, cc => drawClam(cc, 0, -4, clamOpen(g, i), S.world.clams[i].pearl)));
+    S.world.junk.forEach(j => { if (!j.gone) onGround(g, j.x, floorAt(g, j.x), 6, 1.2, cc => drawSeabed(cc, { shoe: 5, can: 6, tire: 7 }[j.k], 0, -5, 14)); });
     if (S.world.bottle) drawSeabed(c, 4, S.world.bottle.x, Math.min(S.world.bottle.y || WY, floorAt(g, S.world.bottle.x) - 4), 13);
     TREASURE.forEach(k => { if (!has(S, k) && !hiddenByCover(S, P.things[k][0], P.things[k][1])) drawThing(g, k); });
     drawOctoShop(g);
@@ -2531,7 +2573,7 @@
     else if (im) c.drawImage(im, fr * 120, 0, 120, 90, -14, -10.5, 28, 21);
     else { if (!s.land) c.rotate(clamp(s.vy / 140, -0.6, 0.6)); emoji(c, '🦭', 0, 0, 16, true); }
     c.restore();
-    if (s.clamp) drawClam(c, s.clamp.x, s.clamp.y, false, false);   // 合上的贝壳压在海狗脑袋上
+    if (s.clamp) { const P = seatAt(g, s.clamp.x, s.clamp.y + 4, 9); c.save(); c.translate(s.clamp.x, P.y + 1.5); c.rotate(P.ang); drawClam(c, 0, -4, false, false); c.restore(); }   // 合上的贝壳压在海狗脑袋上（跟地上那只一样歪）
     if (!s.land && S.basket.length && !(s.biteT > 0.13) && !s.clamp) {
       const f = S.basket[0];
       if (f.sp) drawFish(g, f.sp, f.size, s.x + s.face * 11, s.y + 2, s.face, 0.55, tm);
