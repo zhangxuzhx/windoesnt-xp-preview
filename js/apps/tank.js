@@ -19,15 +19,38 @@
   const W = 320, H = 240, SC = 2.5;
   const FONT = '"Microsoft YaHei", SimHei, sans-serif';
 
-  /* ================= 浅水湾的地形：在 tank-bay.js 里（改地形去那边） ================= */
-  const BAY = OS.tankBay;
-  const WW = BAY.WW, WH = BAY.WH, GY = BAY.GY, WY = BAY.WY;
+  /* ================= 地形：浅水湾在 tank-bay.js、珊瑚礁在 tank-reef.js（改地形去那边） =================
+     两个展区分开两张图（作者 2B：过门画面黑一下切过去）。BAY 是"现在这个展区"的地形（名字沿用浅水湾那时候的），换展区的时候 setArea 换掉 */
+  const AREAS = { bay: OS.tankBay, reef: OS.tankReef, kelp: OS.tankKelp };
+  const AREA_ORDER = ['bay', 'reef', 'kelp'];   // 岸上的门一个接一个：浅水湾 → 珊瑚礁 → 海草林 →（深海沟还没做）
+  AREAS.bay.id = 'bay';
+  AREAS.bay.SHOP = AREAS.bay.SHOP || { at: AREAS.bay.OCTOPUS, mk: 'octopus', flag: 'octo' };   // 浅水湾水下的商人是章鱼
+  AREAS.bay.DEPTH = AREAS.bay.DEPTH || { y: AREAS.bay.DARK_Y, need: 'lamp', msg: 'tooDark' };   // 没头灯不敢往最黑的深海下
+  AREAS.bay.LOOK = AREAS.bay.LOOK || { light0: 280, far: [520, 760], zone: '浅水湾' };
+  let AREA = 'bay', BAY = AREAS.bay;
+  let WW = BAY.WW, WH = BAY.WH;
+  const GY = BAY.GY, WY = BAY.WY;
   const Z = 4 / 3, VW = W / Z, VH = H / Z;                 // 镜头推近：一屏看世界 240×180
-  const SPOT = { tent: 32, tank: 80, gong: 114, basin: 136, pot: 174, bin: 372, pipe: 400, mA: 436, mB: 492, mC: 548, gate: WW - 45 };   // 从左到右：帐篷、水族箱、锣、木盆、摊子 →（大胃王座位、一排游客）→ 垃圾桶、水管、两个商人；游客那段空出来，别被东西挡住
+  // 岸上从左到右：帐篷、水族箱、锣、木盆、摊子 →（大胃王座位、一排游客）→ 垃圾桶、水管、商人；游客那段空出来，别被东西挡住
+  // 珊瑚礁：最左头回浅水湾的门，挨着是水族箱（家里那缸架在推车上跟过来）；摊子、锣跟浅水湾一个位置（推车摊停在一样的地方）；帐篷在右边（没有水管）
+  const SPOTS = {
+    bay: { tent: 32, tank: 80, gong: 114, basin: 136, pot: 174, bin: 372, pipe: 400, mA: 436, mB: 492, mC: 548, gate: AREAS.bay.WW - 45 },
+    reef: { gateL: 22, tank: 76, gong: 114, basin: 136, pot: 174, bin: 362, tent: 402, mA: 448, mB: 504, mC: 560, gate: AREAS.reef.WW - 45 },   // 水族箱跟着推车过来，跟浅水湾一样挨着锣和摊子（11-26 作者：放远了大胃王点菜的时候来回取鱼太远）；帐篷挪到右边垃圾桶后面
+    kelp: { gateL: 22, tank: 76, gong: 114, basin: 136, pot: 174, bin: 362, tent: 402, mA: 448, mB: 504, mC: 560, gate: AREAS.kelp.WW - 45 }   // 跟珊瑚礁一样的摆法（推车摊）
+  };
+  // 每个展区自己的：pack 图包（assets/tank/<pack>/，名字前面加 pack/）；cart 推车摊（比浅水湾的柜台高）；lic 打服第三位拿到的那张许可证（开右边的门）；
+  // tentFoot、gongFoot 帐篷和锣在图里的脚底；music 音乐名后缀；page 菜谱 ／ 图鉴默认翻到第几页；sway 海底摆设哪几格会晃；shopIc 大地图上水下小铺的标记
+  const LOOKS = {
+    bay: { pack: null, lic: 'license', tentFoot: 104, gongFoot: 17.6, music: '', page: 0, sway: [0, 1], shopIc: null, pay: 1, crowd: 0 },
+    reef: { pack: 'reef', cart: true, lic: 'license2', tentFoot: 113, gongFoot: 17, music: 'R', page: 1, sway: [3], shopIc: { ic7: 7, e: '🐚' }, pay: 1, crowd: 0 },
+    kelp: { pack: 'kelp', cart: true, lic: 'license3', tentFoot: 110, gongFoot: 19.8, music: 'K', page: 2, sway: [0, 3], shopIc: { ic8: 6, e: '🐴' }, pay: 1.25, crowd: -1 }   // 海草林（作者零）：游客少一点，懂吃，给钱大方
+  };
+  let LOOK = LOOKS.bay;
+  let SPOT = SPOTS.bay;
   const RAIL = 580;                                        // 再往右栈道有栏杆：跳不下水，也爬不上来
   const STALL_CX = 243;                                    // 做菜、大胃王的时候镜头对着摊子中间
   const SEAL_R = 7;                                        // 海狗撞墙按这么大的圈算
-  const TREASURE = Object.keys(BAY.THINGS);                // 地图上"宝贝 几/几"
+  let TREASURE = Object.keys(BAY.THINGS);                  // 地图上"宝贝 几/几"（这个展区的）
   const CH = 120;                                          // 石头按 120×120 一块一块画（算好的图存起来）
 
   /* ================= 图 ================= */
@@ -36,11 +59,24 @@
     'panel', 'btn', 'hud', 'airbar', 'bubble', 'say', 'order', 'fighticons', 'topbar6', 'slot6', 'bin',   // 界面那批（11-25 到的）
     'potside', 'potclose', 'tub',   // 锅补图：侧面的锅、锅里特写、侧面的木盆
     'tourists6b',   // 游客补图：站着等、闻香味（不带道具）
-    'tourists6c', 'poster', 'seal2', 'pad'];   // 操作和爽吃补图（11-25）：游客爽吃 7 格、鱼谱挂图、海狗叼／攻击／被夹、手机摇杆和按键
+    'tourists6c', 'poster', 'seal2', 'pad',
+    'icons6b',
+    'shark2', 'gate-open'];   // 大白鲨统一形象（11-25）：上排岸上 0 等菜 1 吃 2 盯上你 3 空桌子 4 扑下水；下排水里 0 1 游 2 张嘴扑 3 尾巴被咬 4 服了 5 被惹急了   // 小图标补图（11-25）：0 撒鱼食 1 放进来 2 管理 3 回岸上 4 金币 5 鱼食颗粒 6 珍珠 7 摊子标记 8 章鱼小铺标记 9 小地图按钮   // 操作和爽吃补图（11-25）：游客爽吃 7 格、鱼谱挂图、海狗叼／攻击／被夹、手机摇杆和按键
   const OLD = ['title', 'topbar', 'slots', 'fish-extra', 'cracks', 'contract', 'tourists', 'pot', 'helpers2', 'seabed', 'clam', 'kit'];   // 以前画的，新图没来之前先顶着
+  // 珊瑚礁那包（11-26，「codex任务包/怪怪水煮箱-珊瑚礁全套素材.md」）放 assets/tank/reef/，名字前面加 reef/
+  const REEF_ART = ['rock', 'sand', 'coral', 'far-shallow', 'far-mid', 'far-deep', 'backwall', 'ledges', 'front', 'decor', 'vent', 'shore-far', 'shore-mid', 'deck', 'post', 'rail', 'gate', 'gate-open', 'tent', 'stall', 'gong',
+    'fish6', 'merchants', 'judges', 'leopard', 'tourists7', 'tourists7b', 'tourists7c', 'sub', 'subin', 'urchin', 'boulder', 'tunnel', 'icons7', 'potclose2', 'platter'];
+  // 跟浅水湾同名同格式的：在珊瑚礁的时候换成 reef/ 那张
+  // 海草林那包（11-26，「codex任务包/怪怪水煮箱-海草林全套素材.md」）放 assets/tank/kelp/
+  const KELP_ART = ['rock', 'sand', 'far-shallow', 'far-mid', 'far-deep', 'backwall', 'ledges', 'front', 'decor', 'vent', 'shore-far', 'shore-mid', 'deck', 'post', 'rail', 'gate', 'gate-open', 'tent', 'stall', 'gong',
+    'fish6', 'merchants', 'judges', 'octo', 'octorock', 'tentacle', 'tourists8', 'tourists8b', 'tourists8c', 'station', 'stationin', 'kelp', 'kelpwall', 'eel', 'icons8', 'potclose3'];
+  const PACKS = { reef: REEF_ART, kelp: KELP_ART };
+  const AREA_ART = ['rock', 'sand', 'far-shallow', 'far-mid', 'far-deep', 'backwall', 'ledges', 'front', 'decor', 'vent', 'shore-far', 'shore-mid', 'deck', 'post', 'rail', 'gate', 'gate-open', 'tent', 'stall', 'gong', 'merchants', 'judges'];
+  const an = n => (LOOK.pack && AREA_ART.indexOf(n) >= 0 ? LOOK.pack + '/' + n : n);
   const IMG = {};
   function art(n) {
-    const dir = V6.indexOf(n) >= 0 ? 'assets/tank/v6/' : OLD.indexOf(n) >= 0 ? 'assets/tank/' : null;
+    const sl = n.indexOf('/'), pk = sl > 0 ? PACKS[n.slice(0, sl)] : null;
+    const dir = sl > 0 ? (pk && pk.indexOf(n.slice(sl + 1)) >= 0 ? 'assets/tank/' : null) : V6.indexOf(n) >= 0 ? 'assets/tank/v6/' : OLD.indexOf(n) >= 0 ? 'assets/tank/' : null;
     if (!dir) return null;
     if (n in IMG) return IMG[n];
     IMG[n] = null;
@@ -51,6 +87,10 @@
   }
   let artLoaded = false;
   const loadArt = () => { if (!artLoaded) { artLoaded = true; V6.concat(OLD).forEach(art); } };
+  const aart = n => art(an(n));
+  const packLoaded = {};
+  const loadPack = id => { if (id && PACKS[id] && !packLoaded[id]) { packLoaded[id] = true; PACKS[id].forEach(n => art(id + '/' + n)); } };   // 有了去那个展区的许可证再下那一包
+  const loadReef = () => loadPack('reef');
   const BSOD = { id: 'tank', name: 'TANK_GLASS_CRACKED', text: '不奔腾刚刚以为进水了，吓得停止工作了' };
 
   /* ================= 文案 ================= */
@@ -58,38 +98,47 @@
     title: '怪怪水煮箱', sub: '加辣版', loading: '生火中',
     start: '开始', cont: '接着玩', helpBtn: '帮助', quit: '退出', back: '返回', yes: '好', no: '算了',
     restartAsk: '重新开始会把存档清掉，\n确定吗？',
-    day: d => '第 ' + d + ' 天', zone: '浅水湾',
+    day: d => '第 ' + d + ' 天',
     basketFull: '鱼篓满了，先回岸上', airOut: '憋不住了！', current: '急流太冲，游不过去',
-    rail: '这边有栏杆，跳不下去', tooDark: '太黑了，不敢再往下游', crackHit: '石头裂了缝', crackBroke: '轰！石头撞开了', secret: '暗道！', breath: '换了口气',
+    rail: '这边有栏杆，跳不下去', tooDark: '太黑了，不敢再往下游', tooDeep: '水压太大，没潜水头盔下不去', crackHit: '石头裂了缝', crackBroke: '轰！石头撞开了', secret: '暗道！', breath: '换了口气',
     airHome: '憋不住了！拼命游回了岸边',
-    gear: { thruster: '捡到一个推进器！\n八成是景区潜水员掉的。\n能往前猛冲一下，撞开裂了缝的石头。', fins: '捡到一双大脚蹼！\n这下逆着急流也游得过去了。', lamp: '捡到一盏头灯！\n最黑的深海也敢下去了。', o2: '捡到一个氧气瓶！\n憋气多了 10 秒。' },
+    gear: { thruster: '捡到一个推进器！\n八成是景区潜水员掉的。\n能往前猛冲一下，撞开裂了缝的石头。', fins: '捡到一双大脚蹼！\n这下逆着急流也游得过去了。', lamp: '捡到一盏头灯！\n最黑的深海也敢下去了。', o2: '捡到一个氧气瓶！\n憋气多了 10 秒。',
+      k_knife: '观察站隧道尽头躺着一把海带刀！\n密不透风的海带墙，\n这下割得开了。', k_suit: '海带墙后面挂着一件绝缘潜水服！\n穿上它电鳗电不着你，\n还能一头把它顶开。', k_flick: '窄道尽头，学会了"甩尾"！\n在水里冲刺完马上再按一下冲刺，\n能接着再冲一次，还能换方向。',
+      r_gloves: '座位底下压着一双厚皮手套！\n戴上就不怕扎了：\n海胆推得开，狮子鱼也叼得住。', r_echo: '迷宫最里头供着一只大海螺！\n按住"攻击"不放，发一圈声波，\n附近的暗道和躲着的鱼都会亮一下。', r_helmet: '暗道尽头躺着一顶潜水头盔！\n戴上它，海沟再深也下得去。' },
     stash: n => '石缝里藏着一堆珍珠！\n叼走 ' + n + ' 颗。', valve: '拧开了进水口的阀门！\n管子直通岸上锅旁边，\n以后一下就上去了。',
     pipeShut: '一根粗水管，通到水底下。\n那头堵着。', pipeGo: '钻进管子，\n直接下到海底进水口？', pipeYes: '钻',
-    mapT: '浅水湾', mapN: (a, b) => '宝贝 ' + a + '/' + b, mapKey: ['摊子', '海狗', '气泡泉', '找到的宝贝'],
+    mapN: (a, b) => '宝贝 ' + a + '/' + b, mapKey: ['摊子', '海狗', '气泡泉', '找到的宝贝'],
     dumped: n => '倒进盆里 ' + n + ' 条', basinFull: '盆里装不下了', pearlSold: (n, m) => '卖了 ' + n + ' 颗珍珠，' + m + ' 块', junkBin: m => '破烂扔进垃圾桶，景区给了 ' + m + ' 块',
-    gotPearl: '叼到一颗珍珠', clank: '当！', gotJunk: { shoe: '一只破鞋', can: '一个易拉罐', tire: '一个烂轮胎' },
-    bottle: { sour: '漂流瓶：里面是一张酸菜鱼的配方！', money: n => '漂流瓶：里面卷着 ' + n + ' 块钱！' },
+    mapKey2: '小铺', gotPearl: '叼到一颗珍珠', clank: '当！', gotJunk: { shoe: '一只破鞋', can: '一个易拉罐', tire: '一个烂轮胎' },
+    bottle: { sour: '漂流瓶：里面是一张酸菜鱼的配方！', coco: '漂流瓶：里面是一张椰汁鱼的配方！\n清清甜甜，鹦鹉最爱。', haidai: '漂流瓶：里面是一张海带鱼汤的配方！\n鲜得很，大海星最爱。', money: n => '漂流瓶：里面卷着 ' + n + ' 块钱！' },
     emptyBasin: '盆里没鱼，先下水抓', busy: '锅里还没卖完',
     judge: { S: ['就这么小一条？', '小了点吧', '塞牙缝的'], M: ['还行吧', '中规中矩', '凑合'], L: ['这鱼真肥！', '个头不错！', '闻着就香'], K: ['哇，鱼王！', '鱼王！今天赚到了', '这么大一条！'] },
     pickRecipe: '选配方', steps: ['下汤底', '加水', '下鱼', '烧开'], openPot: '点锅开锅',
     best: '火候正好！', good: '火候不错', raw: '还没熟……', over: '煮过头了', burnt: '糊了……',
     leave: ['不爱吃这个', '摇摇头走了', '……算了'], bid: (k, p) => k + ' 条 ' + p, sellAll: '全卖了',
     warm: '保温中', cold: (n, m) => '凉了，剩下 ' + n + ' 条三折处理，' + m + ' 块', sold: m => '+' + m,
-    tent: '睡一觉？\n醒来水里的鱼和珍珠都补回来了。', sleep: '睡觉', morning: d => '第 ' + d + ' 天，早上好！',
-    shop: n => n + '的摊子', owned: '已买', maxed: '满了', buy: p => p + ' 块', noMoney: '钱不够',
-    gate: '珊瑚礁展区\n要摊位许可证才能过去。', gateSoon: '珊瑚礁展区还在装修，敬请期待。',
-    gong: n => '敲锣叫第 ' + n + ' 位大胃王？\n他会点菜，限时做出来。', gongDone: '三位大胃王都服了。', gongBusy: '先把手上这锅卖完',
+    tent: '睡一觉？\n醒来水里的鱼和珍珠都补回来了。', sleep: '睡觉', morning: '天亮了，又是新的一天！', zzz: '呼……噜……',
+    shop: n => n + '的摊子', owned: '已买', maxed: '满了', buy: p => p + ' 块', noMoney: '钱不够', nextArea: '下个展区才有', otherArea: '别处才有',
+    refund: m => '商人们对了一遍账：\n有几样东西卖到了后面展区才有的档次，\n换回浅水湾能买的，多收的 ' + m + ' 块退给你。',
+    gate: n => n + '展区\n要摊位许可证才能过去。', gateGo: (n, t) => '推着推车去' + n + '？\n' + (t ? '锅、木盆、水族箱都跟着走。' : '锅和木盆跟着走。'), gateBack: n => '推着推车回' + n + '？', gateYes: '走',
+    gateSoon: '下一个展区还在装修，敬请期待。', tunnel: '一条去下一个展区的水下通道，\n铁栅栏锁着。', tunnelGo: n => '钻进水下通道，\n游去' + n + '？',
+    gongT: (n, who) => '第 ' + n + ' 位大胃王：' + who, gongLimit: s => '限时 ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'), gongDish: i => '第 ' + i + ' 道', gongNoRecipe: '还没学会', gongYes: '敲锣', gongDone: '三位大胃王都服了。', gongBusy: '先把手上这锅卖完',
+    giveUp: '放弃', giveUpAsk: '放弃这次挑战？\n大胃王会走，下次再敲锣，什么都不丢。', gaveUp: n => n + '摇摇头走了。\n下次再敲锣，什么都不丢。',
+    recipeClose: '先不做', bossWants: n => '大胃王点的是：' + n,
     alarm: '警告！大胃王驾到！',
     order: (who, i, n) => who + ' 点菜' + (n > 1 ? ' 第 ' + i + ' 道' : ''),
     needFish: f => '盆里的鱼不够：' + f, wrongRecipe: '我点的不是这个！', bossBad: '火候不行，重做！', bossGood: '嗯，就是这个味儿！',
     bossTimeout: '大胃王等不及，摇摇头走了。\n下次再敲锣，什么都不丢。', bossPass: (n, m) => n + '吃满意了！\n赏你 ' + m + ' 块。',
     sharkEye: '……你看起来更好吃。', sharkChase: '大白鲨追着海狗跳下水了！', bitTail: '咬到尾巴了！', gotBit: '被咬了一口！',
-    eaten: '海狗被大白鲨吃了。', retry: '重新再来', later: '下次挑战',
+    sharkSay1: '嗯，两锅都不错……', scared: '！', sharkHurt: ['嗷！你给我等着！', '这回真生气了！'],
+    replayWin: '又把大白鲨咬服了一次。\n后门重打，不改进度，也不给钱。',
+    backdoorT: n => '后门：重打第三位大胃王' + n + '\n不改存档进度，打赢了也不给钱。', backdoorBtns: ['从点菜开始', '从吃完跳下水开始', '直接开打'],
+    eaten: n => '海狗被' + n + '吃了。', retry: '重新再来', later: '下次挑战',
     license: '大白鲨服了，签了字：\n珊瑚礁展区摊位许可证！\n另外赏你 1000 块。', fix: '装修中',
-    tankNone: '还没有水族箱，\n去水獭那儿买一个。', tankBtns: ['撒鱼食 5', '放进来', '回岸上'], tankFull: '水族箱满了', tankPut: n => '放进来 ' + n + ' 条', tankTake: '捞出来放进盆里',
+    tankNone: '还没有水族箱，\n去水獭那儿买一个。', tankBtns: ['撒鱼食 5', '放进来', '回岸上', '管理'], tankMgT: '水族箱里的鱼', tankMgEmpty: '水族箱里没鱼', tankOut: '捞出来放进盆', tankGrow: n => '再喂 ' + n + ' 回长一号', tankKing: '鱼王，长到头了', tankFed: '刚吃饱', tankCoin: v => '掉钱 ' + v, tankFull: '水族箱满了', tankPut: n => '放进来 ' + n + ' 条', tankTake: '捞出来放进盆里',
     menu: ['继续', '声音：开', '声音：关', '回标题画面', '地图', '鱼类图鉴', '按键设置', '海狗状态', '菜谱'], air: '憋气',
     recipeT: '菜谱', recipeN: (a, b) => '学会 ' + a + '/' + b, recipeMul: m => '卖价 ×' + m, recipeLike: '爱吃：', recipeHate: '怕这口：', recipeHowT: '学会：', openRecipes: '看菜谱',
-    recipeHow: { clear: '一开始就会', spicy: '海象的摊子，150 块', sour: '海底沉着的漂流瓶' },
+    recipeHow: { clear: '一开始就会', spicy: '海象的摊子，150 块', sour: '海底沉着的漂流瓶', suanla: '珊瑚礁海象分店，400 块', coco: '珊瑚礁海里的漂流瓶', sashimi: '豹海豹服了以后送的', tangcu: '海草林海象分店，700 块', haidai: '海草林海里的漂流瓶', duojiao: '大章鱼服了以后送的' },
     statT: '海狗状态', statLeft: '本事', statGear: '海里找到的', statRecipe: '菜谱', statNone: '没有', statGood: '好鱼食', statPlain: '普通',
     stat: { air: '憋气', speed: '游速', basket: '鱼篓', hp: '血', pot: '锅', warm: '保温', tank: '水族箱', food: '鱼食', basin: '木盆' },
     statSec: n => n + ' 秒', statGe: n => n + ' 格', statDi: n => n + ' 滴', statTiao: n => n + ' 条', statFl: f => '口味：' + f, statBoss: n => '大胃王 ' + n + '/3',
@@ -102,10 +151,28 @@
     basinT: '木盆', basinEmpty: '盆里没鱼', toss: '扔回海里', toTank: '放进水族箱', tossAll: '全扔回海里', tossAllAsk: '盆里的鱼全扔回海里？', tossYes: '扔', tossed: '扑通',
     dexT: '常见海鱼图谱', dexN: (a, b) => '认识 ' + a + '/' + b, dexUnknown: '？？？', dexNot: '还没抓到过', dexHome: '住在：', dexBoss: '大胃王点过：', dexPrice: '卖价：',
     dexGot: (n, s) => '抓到过 ' + n + ' 条，最大的' + s, poster: '鱼谱',
-    inBasin: (a, b) => '盆里 ' + a + ' · 水族箱 ' + b,
-    eatBig: { clear: '鲜掉眉毛！', spicy: '辣得过瘾！', sour: '酸爽！' }, eatOk: ['嗯，好吃', '不错不错', '挺香'], eatBad: ['唉……', '凑合咽了', '这也叫火候？'],
+    inBasin: (a, b) => '盆里 ' + a + ' · 水族箱 ' + b, inBasinOnly: a => '盆里 ' + a,
+    eatBig: { clear: '鲜掉眉毛！', spicy: '辣得过瘾！', sour: '酸爽！', suanla: '酸辣够劲！', coco: '甜到心里了！', sashimi: '入口就化了！', tangcu: '酸酸甜甜，香！', haidai: '鲜得掉牙！', duojiao: '辣得冒烟了！' }, eatOk: ['嗯，好吃', '不错不错', '挺香'], eatBad: ['唉……', '凑合咽了', '这也叫火候？'],
     disc: '请插入"幻觉游戏 V3.0"光盘。',
+    // 11-26 珊瑚礁（创意稿「怪怪水煮箱-珊瑚礁-创意.md」）
+    domeHit: '玻璃罩裂了好几道缝', domeBroke: '哗啦！玻璃罩撞碎了',
+    urchinOuch: '好扎！空手推不动海胆', urchinPush: '戴着手套，把海胆推开了', lionOuch: '扎手！', groupHide: '缩在洞里不出来', groupOut: '顶出来了！',
+    echoGot: '声波照出一条暗道！', echoFish: '有鱼躲着！',
+    stepsRaw: ['铺冰', '垫叶子', '放鱼', '下刀'], openRaw: '点盘子出菜', bestRaw: '刀工正好！', goodRaw: '切得不错', rawRaw: '还没切好……', overRaw: '切得太碎', burntRaw: '切坏了……',
+    license2: '豹海豹服了，签了字：\n下一个展区的摊位许可证！\n还送了一张刺身拼盘的配方，\n另外赏你 1600 块。', replayWin2: '又把豹海豹撞服了一次。\n后门重打，不改进度，也不给钱。',
+    leoChase: '豹海豹追着海狗跳下水了！', leoHit: '撞上了！', leoRock: '咚！一头撞上礁石', leoFront: '正面撞不过它！', leoGot: '被它撞了一下！',
+    leoHurt: ['嗷！有两下子嘛！', '嘶……还挺疼！', '还来？！', '这回真生气了！'], leoStrong: '挺厉害呀，我要开始认真了', leoSmash: '轰！礁石砸碎了', leoDizzy: '……头、头有点晕',  leoLeap: '它跳出水面了……', leoDive: '从上面扎下来了！', leoBounce: '咚——反弹回来了！', leoSay1: '嗯，酸辣、清甜，都对味……', leoEye: '……不过我最爱吃的，是海狗。',
     wonder: '北极熊和企鹅同时出现？我是产生幻觉了吗？',
+    // 11-26 海草林（创意稿「怪怪水煮箱-海草林-创意.md」，作者 1～12 全 A）
+    doorHit: '舱门锈死了', doorBroke: '哐！舱门撞开了',
+    kelpWall: '海带缠得密不透风', kelpCut: '唰唰几刀，海带墙割开了',
+    eelZap: '被电鳗电了一下！', eelPush: '穿着绝缘服，一头把电鳗顶开了', fishFled: '叼着的鱼吓跑了一条',
+    sheepButt: '羊头鱼回头撞了你一下！', wolfBite: '狼鳗探头咬了一口！',
+    license3: '大章鱼服了，签了字：\n下一个展区的摊位许可证！\n还送了一张剁椒鱼头的配方，\n另外赏你 2400 块。', replayWin3: '又把大章鱼咬服了一次。\n后门重打，不改进度，也不给钱。',
+    octoSay1: '嗯，鲜的、酸甜的，都对味……', octoEye: '……不过我八条腿都闻到了，海狗更香。', octoChase: '大章鱼的触手跟着卷下来了！',
+    octoGrab: '被触手缠住了！', octoFree: '挣开了！', octoChomp: '被拖到嘴边咬了一口！', octoCut: '咬断了一条触手！', octoSweep: '被触手扫中了！',
+    octoInk: '它喷墨了！', octoOut: '它从礁石后面扑出来了！', octoPounce: '被它扑中了！', octoHead: '咬中脑袋了！',
+    octoHurt: ['嘶——我的腿！', '还敢咬？！', '我生气了！'],
     help: [
       '你是一只海狗，在景区的大水族馆里摆水煮鱼摊。',
       '· 手机上：左半边屏幕按住拖就是摇杆，右下角是冲刺、叼、攻击。电脑上：WASD 或方向键走，J K L 或 Z X C 是冲刺、叼、攻击，菜单里能改键。走到东西跟前，攻击键就变成"用"；点一下岸上的东西也会走过去用。',
@@ -115,7 +182,7 @@
       '· 点锅做菜：选配方，等最亮的绿点一下开锅。游客出价，点价钱泡泡卖给他；等一等可能加价，也可能走。',
       '· 帐篷里睡一觉，水里的鱼和珍珠都补回来了。',
       '· 敲锣叫大胃王：按他点的菜抓鱼、做菜，限时。三位都服了，拿到下一个展区的许可证。',
-      '· 家里的水族箱能养备用鱼，点水里撒鱼食，鱼越喂越大。'
+      '· 家里的水族箱能养备用鱼，点水里撒鱼食，鱼越喂越大。顶上"管理"里能看每条鱼、挑一条捞出来。'
     ]
   };
   const fmt = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -129,50 +196,133 @@
     yellow: { n: '小黄鱼', len: [9, 11, 14, 17], val: [6, 9, 14, 24], col: '#f2c230', fin: '#d89a10', row: 0, h: '栈道底下的浅水，一群一群的' },
     bass: { n: '鲈鱼', len: [13, 17, 22, 26], val: [12, 18, 28, 48], col: '#b8c4cc', fin: '#6a7a88', row: 1, h: '浅水、右边礁石、深一点的水里都有' },
     squid: { n: '墨鱼', len: [12, 15, 19, 23], val: [14, 20, 30, 50], col: '#ecc8d4', fin: '#c88aa0', row: 2, squid: true, h: '沉船旁边的沙地、右边礁石' },
-    croaker: { n: '大黄鱼', len: [18, 23, 28, 33], val: [24, 36, 55, 90], col: '#f0b020', fin: '#c87a00', row: 3, h: '深海，最黑的地方有鱼王' }
+    croaker: { n: '大黄鱼', len: [18, 23, 28, 33], val: [24, 36, 55, 90], col: '#f0b020', fin: '#c87a00', row: 3, h: '深海，最黑的地方有鱼王' },
+    // 珊瑚礁的鱼（作者 5A：各带一种脾气）：reef/fish6 每行三格，第 3 格是受惊 ／ 被顶出洞 ／ 刺炸起来
+    clown: { n: '小丑鱼', len: [8, 10, 12, 14], val: [10, 15, 22, 36], col: '#f07a20', fin: '#ffffff', row: 0, sheet: 'reef/fish6', school: true, h: '浅水礁湖、珊瑚迷宫，一群一群的，一口能叼好几条' },
+    butterfly: { n: '蝴蝶鱼', len: [10, 12, 15, 18], val: [16, 24, 36, 58], col: '#f4d020', fin: '#202020', row: 1, sheet: 'reef/fish6', shy: true, h: '浅水礁湖、珊瑚迷宫，见人就跑，得冲刺追' },
+    grouper: { n: '石斑鱼', len: [18, 23, 29, 35], val: [30, 45, 70, 110], col: '#8a6040', fin: '#5a3a20', row: 2, sheet: 'reef/fish6', h: '珊瑚洞、海沟，躲在小洞里探头，先顶出来再叼' },
+    lion: { n: '狮子鱼', len: [13, 16, 20, 24], val: [36, 54, 80, 130], col: '#e86050', fin: '#fff0e0', row: 3, sheet: 'reef/fish6', spiky: true, h: '珊瑚洞、海沟，浑身是刺，戴厚皮手套才叼得住' }
+    // 海草林的鱼（作者 5A）：kelp/fish6 第 3 格：受惊散开 ／ 回头撞人 ／ 露馅 ／ 探头咬人
+    , sardine: { n: '沙丁鱼', len: [7, 9, 11, 13], val: [12, 18, 26, 42], col: '#a8c0d8', fin: '#4a6a8a', row: 0, sheet: 'kelp/fish6', school: true, scatter: true, h: '海带林，一大群一大群的，一冲就散，慢慢靠近一口叼几条' },
+    sheephead: { n: '羊头鱼', len: [16, 20, 25, 30], val: [36, 54, 80, 130], col: '#e87a8a', fin: '#202020', row: 1, sheet: 'kelp/fish6', butt: true, h: '海带林、中间的洞、电鳗窝，会撞人，先顶晕再叼' },
+    seadragon: { n: '叶海龙', len: [10, 12, 14, 16], val: [80, 120, 180, 300], col: '#c8d860', fin: '#90a830', row: 2, sheet: 'kelp/fish6', camo: true, h: '海带林、中间的洞，像片海草，游到跟前才露馅' },
+    wolfeel: { n: '狼鳗', len: [20, 26, 32, 38], val: [44, 66, 100, 160], col: '#8a7a6a', fin: '#5a4a3a', row: 3, sheet: 'kelp/fish6', lunge: true, h: '石缝里，经过就探头咬人，趁它缩回去前叼住' }
   };
+  const DEX_PAGES = [{ n: '浅水湾', list: ['yellow', 'bass', 'squid', 'croaker'] }, { n: '珊瑚礁', list: ['clown', 'butterfly', 'grouper', 'lion'] }, { n: '海草林', list: ['sardine', 'sheephead', 'seadragon', 'wolfeel'] }];
   const fishTag = (sp, size) => SPECIES[sp].n + '·' + SIZE_N[size];
   const SIZE_N = ['小', '中', '大', '鱼王'];
-  const REGIONS = BAY.REGIONS;   // 野生鱼住在哪儿（在 tank-bay.js）
+  let REGIONS = BAY.REGIONS;   // 野生鱼住在哪儿（在地形那个文件里）
   // 菜谱：星级管卖价（星越高游客给的钱越多），口味管谁爱吃谁怕。浅水湾这三道都是一星，只是口味不一样（11-25 作者；以后还有复合口味）
+  // tags：口味。复合口味两样都算（作者 8A：酸辣鱼爱吃酸的、爱吃辣的都多给钱，怕辣的照样怕）
   const RECIPES = {
-    clear: { n: '清汤水煮', fl: '清淡', star: 1, ic: 0, col: '#e8f0d8' },
-    spicy: { n: '麻辣水煮', fl: '辣', star: 1, ic: 1, col: '#d8301a' },
-    sour: { n: '酸菜鱼', fl: '酸', star: 1, ic: 2, col: '#e8c840' }
+    clear: { n: '清汤水煮', fl: '清淡', tags: ['clear'], star: 1, ic: 0, col: '#e8f0d8' },
+    spicy: { n: '麻辣水煮', fl: '辣', tags: ['spicy'], star: 1, ic: 1, col: '#d8301a' },
+    sour: { n: '酸菜鱼', fl: '酸', tags: ['sour'], star: 1, ic: 2, col: '#e8c840' },
+    suanla: { n: '酸辣鱼', fl: '酸辣', tags: ['sour', 'spicy'], star: 2, ic7: 0, close: 0, col: '#e87a20' },
+    coco: { n: '椰汁鱼', fl: '清甜', tags: ['sweet'], star: 2, ic7: 1, close: 1, col: '#f4f0e4' },
+    sashimi: { n: '刺身拼盘', fl: '鲜', tags: ['fresh'], star: 3, ic7: 2, close: 2, raw: true, col: '#f4c8c0' },   // 生鱼片不进锅：冰盘上切、摆
+    // 海草林（作者 6A）：锅里特写是 kelp/potclose3 第几行
+    tangcu: { n: '糖醋鱼', fl: '酸甜', tags: ['sour', 'sweet'], star: 2, ic8: 0, close: 0, closeSheet: 'kelp/potclose3', col: '#d8402a' },
+    haidai: { n: '海带鱼汤', fl: '鲜', tags: ['fresh'], star: 2, ic8: 1, close: 1, closeSheet: 'kelp/potclose3', col: '#e8f0e0' },
+    duojiao: { n: '剁椒鱼头', fl: '辣', tags: ['spicy'], star: 3, ic8: 2, close: 2, closeSheet: 'kelp/potclose3', col: '#e02a1a' }
   };
+  const hates = (T, r) => !!(r && T.hate && RECIPES[r].tags.some(t => T.hate.indexOf(t) >= 0));
+  const likes = (T, r) => !!(r && RECIPES[r].tags.some(t => T.like.indexOf(t) >= 0)) && !hates(T, r);   // 又爱又怕（企鹅爱酸怕辣，碰上酸辣鱼）：算怕
   const STAR_MAX = 5, STAR_MUL = [1, 1, 1.35, 1.8, 2.4, 3.2];   // 几星卖价乘几（一星 ×1）
-  const RECIPE_PAGES = [{ n: '浅水湾', list: ['clear', 'spicy', 'sour'] }];   // 菜谱按展区一页一页，后面四个箱庭的菜再加页
+  const RECIPE_PAGES = [{ n: '浅水湾', list: ['clear', 'spicy', 'sour'] }, { n: '珊瑚礁', list: ['suanla', 'coco', 'sashimi'] }, { n: '海草林', list: ['tangcu', 'haidai', 'duojiao'] }];   // 菜谱按展区一页一页
   const TOURISTS = {
-    shark: { n: '鲨鱼', like: 'spicy', hate: 'clear', eat: 2, row: 0, e: '🦈' },
-    bird: { n: '海鸟', like: 'clear', hate: 'spicy', eat: 1, row: 1, e: '🐦' },
-    bear: { n: '北极熊', like: 'sour', hate: null, eat: 3, row: 2, e: '🐻‍❄️' },
-    penguin: { n: '企鹅', like: 'sour', hate: 'spicy', eat: 1, row: 3, e: '🐧' }
+    shark: { n: '鲨鱼', like: ['spicy'], hate: ['clear'], eat: 2, row: 0, e: '🦈' },
+    bird: { n: '海鸟', like: ['clear'], hate: ['spicy'], eat: 1, row: 1, e: '🐦' },
+    bear: { n: '北极熊', like: ['sour'], hate: null, eat: 3, row: 2, e: '🐻‍❄️' },
+    penguin: { n: '企鹅', like: ['sour'], hate: ['spicy'], eat: 1, row: 3, e: '🐧' },
+    // 珊瑚礁新来的（作者 16A）：reef/tourists7、7b、7c 第 1、2 行
+    crab: { n: '大螃蟹', like: ['sour', 'spicy'], hate: ['clear'], eat: 2, row: 0, set: 'reef', e: '🦀' },
+    parrot: { n: '鹦鹉', like: ['sweet'], hate: ['spicy'], eat: 1, pay: 1.6, row: 1, set: 'reef', e: '🦜' },
+    // 海草林新来的（作者 10A）：kelp/tourists8、8b、8c 第 1、2 行。河豚吃到怕的气得鼓成刺球、滚着走
+    puffer: { n: '河豚', like: ['spicy'], hate: ['sweet'], eat: 1, row: 0, set: 'kelp', puff: true, e: '🐡' },
+    star: { n: '大海星', like: ['fresh'], hate: null, eat: 3, row: 1, set: 'kelp', e: '⭐' }
   };
-  const TOUR_POOL = ['shark', 'shark', 'bird', 'bird', 'penguin', 'penguin', 'bear'];
+  const TSHEET = { reef: 'reef/tourists7', kelp: 'kelp/tourists8' };
+  const tsheet = (T, suf) => (T.set ? TSHEET[T.set] : 'tourists6') + suf;   // 游客那三张图：走路 ／ 站着 ／ 吃（suf：''、'b'、'c'）
+  const POOLS = { bay: ['shark', 'shark', 'bird', 'bird', 'penguin', 'penguin', 'bear'], reef: ['shark', 'bird', 'penguin', 'bear', 'crab', 'crab', 'crab', 'parrot', 'parrot'],
+    kelp: ['shark', 'bird', 'penguin', 'bear', 'crab', 'parrot', 'puffer', 'puffer', 'puffer', 'star', 'star', 'star'] };
+  let TOUR_POOL = POOLS.bay;
   const ITEMS = {
-    recipeSpicy: { n: '麻辣水煮配方', d: '学会麻辣水煮：辣，鲨鱼爱吃，海鸟企鹅怕辣', cost: [150], ic: 1, e: '🌶' },
-    pot: { n: '大锅', d: '一锅多煮几条', cost: [200, 500], ic: 10, e: '🍲' },
-    warm: { n: '保温锅盖', d: '卖不完的鱼保温更久', cost: [150, 300], ic: 11, e: '🫕' },
-    basket: { n: '鱼篓', d: '下一次水能多叼一条', cost: [100, 250, 500], ic: 3, e: '🧺' },
-    tank: { n: '水族箱', d: '养备用鱼：不喂不会死，喂了长大', cost: [200, 500, 1200, 2500], names: ['小号水族箱', '中号水族箱', '大号水族箱', '特大号水族箱'], ic: 13, e: '🐠' },
-    food: { n: '好鱼食', d: '水族箱里的鱼长得快一倍', cost: [120], ic: 12, e: '✨' },
-    speed: { n: '游得快', d: '在水里游得更快', cost: [150, 350, 700], ic: 6, e: '💨' },
-    hp: { n: '皮厚', d: '打架的时候多一滴血', cost: [300], ic: 9, e: '🛡' }
+    recipeSpicy: { n: '麻辣水煮配方', d: '学会麻辣水煮：辣，鲨鱼爱吃，海鸟企鹅怕辣', cost: [150], area: [0], ic: 1, e: '🌶' },
+    pot: { n: '大锅', d: '一锅多煮几条', cost: [200, 500, 1000], area: [0, 1, 2], ic: 10, e: '🍲' },
+    warm: { n: '保温锅盖', d: '卖不完的鱼保温更久', cost: [150, 300, 600], area: [0, 1, 2], ic: 11, e: '🫕' },
+    basket: { n: '鱼篓', d: '下一次水能多叼一条', cost: [100, 250, 500, 900], area: [0, 0, 1, 2], ic: 3, e: '🧺' },
+    tank: { n: '水族箱', d: '养备用鱼：不喂不会死，喂了长大', cost: [200, 500, 1200, 2500], area: [0, 0, 1, 2], names: ['小号水族箱', '中号水族箱', '大号水族箱', '特大号水族箱'], ic: 13, e: '🐠' },
+    food: { n: '好鱼食', d: '水族箱里的鱼长得快一倍', cost: [120], area: [0], ic: 12, e: '✨' },
+    speed: { n: '游得快', d: '在水里游得更快', cost: [150, 350, 700], area: [0, 1, 2], ic: 6, e: '💨' },
+    hp: { n: '皮厚', d: '打架的时候多一滴血', cost: [300, 700, 1200], area: [0, 1, 2], ic: 9, e: '🛡' },
+    recipeSuanla: { n: '酸辣鱼配方', d: '学会酸辣鱼：又酸又辣，爱吃酸的、爱吃辣的都爱，怕辣的还是怕', cost: [400], area: [1], ic7: 0, e: '🍋', recipe: 'suanla' },
+    breath: { n: '憋气更久', d: '在水里多憋 10 秒气', cost: [600, 1200], area: [1, 2], ic7: 6, e: '🫧' },
+    recipeTangcu: { n: '糖醋鱼配方', d: '学会糖醋鱼：又酸又甜，爱吃酸的、爱吃甜的都爱，怕的还是怕', cost: [700], area: [2], ic8: 0, e: '🍬', recipe: 'tangcu' }
   };
   // 海里自己找的东西（不卖）
-  const GEAR = { thruster: { n: '推进器', ic: 7, e: '🚀' }, fins: { n: '大脚蹼', ic: 4, e: '🦶' }, lamp: { n: '头灯', ic: 5, e: '🔦' }, o2: { n: '氧气瓶', ic: 8, e: '🫧' } };
+  const GEAR = { thruster: { n: '推进器', ic: 7, e: '🚀' }, fins: { n: '大脚蹼', ic: 4, e: '🦶' }, lamp: { n: '头灯', ic: 5, e: '🔦' }, o2: { n: '氧气瓶', ic: 8, e: '🫧' },
+    r_gloves: { n: '厚皮手套', ic7: 4, e: '🧤' }, r_echo: { n: '回声', ic7: 5, e: '🐚' }, r_helmet: { n: '潜水头盔', ic7: 3, e: '⛑' },
+    k_knife: { n: '海带刀', ic8: 3, e: '🔪' }, k_suit: { n: '绝缘潜水服', ic8: 4, e: '⚡' }, k_flick: { n: '甩尾', ic8: 5, e: '💨' } };
+  const O2S = ['o2a', 'o2b', 'o2c', 'r_o2a', 'r_o2b', 'r_o2c', 'k_o2a', 'k_o2b', 'k_o2c'];
   const MERCHANTS = {
-    walrus: { n: '海象', items: ['recipeSpicy', 'pot', 'warm'], cell: 0, e: '🦭' },
+    walrus: { n: '海象', items: ['recipeSpicy', 'pot', 'warm'], reefItems: ['recipeSuanla', 'recipeSpicy', 'pot', 'warm'], kelpItems: ['recipeTangcu', 'recipeSuanla', 'pot', 'warm'], cell: 0, e: '🦭' },
     pelican: { n: '鹈鹕', items: ['basket'], cell: 1, e: '🦤' },
     otter: { n: '水獭', items: ['tank', 'food'], cell: 2, e: '🦦' },
-    octopus: { n: '章鱼', items: ['speed', 'hp'], cell: 3, e: '🐙' }
+    octopus: { n: '章鱼', items: ['speed', 'hp'], cell: 3, e: '🐙', local: 0 },   // 只在浅水湾水下，只卖浅水湾这一档；后面展区的水下商人卖更高的
+    hermit: { n: '寄居蟹', items: ['speed', 'hp', 'breath'], cell: 3, e: '🐚', local: 1 },   // 珊瑚礁迷宫半路（作者 11A）
+    seahorse: { n: '海马', items: ['speed', 'hp', 'breath'], cell: 3, e: '🐴', local: 2 }   // 海草林中间那个洞（作者 9A）
   };
-  const SHORE = { mA: 'walrus', mB: 'pelican', mC: 'otter' };   // 岸上三位商人天天都在，能卖的一直都卖（作者：按天换商人对玩家不友好）
-  const BOSSES = [
-    { n: '胖企鹅', who: 'penguin', reward: 300, t: 150, dishes: [{ r: 'clear', f: { bass: 2 } }] },
-    { n: '北极熊', who: 'bear', reward: 600, t: 180, dishes: [{ r: 'spicy', f: { squid: 1, yellow: 2 } }, { r: 'clear', f: { croaker: 1 } }] },
-    { n: '大白鲨', who: 'shark', reward: 1000, t: 200, dishes: [{ r: 'spicy', f: { croaker: 2 } }, { r: 'sour', f: { bass: 2 } }], fight: true }
-  ];
+  const itemsOf = mk => (AREA === 'kelp' && MERCHANTS[mk].kelpItems) || (AREA !== 'bay' && MERCHANTS[mk].reefItems) || MERCHANTS[mk].items;
+  const SHORE = { mA: 'walrus', mB: 'pelican', mC: 'otter' };
+  // 升级按展区一档档开放（11-25 作者：1A 2A 3 按推荐 4B）：每档的 area 是要几张摊位许可证。海象、鹈鹕、水獭是景区里的连锁摊，
+  // 许可证越多进的货越高档；章鱼这种水下商人只在自己的展区（local），只卖那个展区的档
+  const licenses = S => (S.license ? 1 : 0) + (S.license2 ? 1 : 0) + (S.license3 ? 1 : 0);
+  // 能卖到第几档：给了商人就按这家算（连锁摊看许可证，水下那种只卖自己展区那档）；没给就是哪家都算上最高能到几档
+  function itemCap(S, id, mk) {
+    const lim = k => { const M = MERCHANTS[k]; return M.local != null ? Math.min(M.local, licenses(S)) : licenses(S); };
+    const ks = mk ? [mk] : Object.keys(MERCHANTS).filter(k => MERCHANTS[k].items.concat(MERCHANTS[k].reefItems || [], MERCHANTS[k].kelpItems || []).indexOf(id) >= 0);
+    const top = Math.max.apply(null, ks.map(lim).concat([-1]));
+    return ITEMS[id].area.filter(a => a <= top).length;
+  }
+  // 老存档（以前浅水湾什么都能升满）：超过的档次降回来，多花的钱退回去（作者 4B）；水族箱放不下的鱼先挪到盆里
+  function fitShelves(g) {
+    const S = g.S;
+    let refund = 0;
+    Object.keys(ITEMS).forEach(id => {
+      const cap = itemCap(S, id), lv = lvOf(S, id);
+      if (lv <= cap) return;
+      for (let k = cap; k < lv; k++) refund += ITEMS[id].cost[k];
+      S.lv[id] = cap;
+    });
+    if (!refund) return;
+    S.money += refund;
+    const C = caps(S);
+    while (S.tank.fish.length > C.tank && S.basin.length < C.basin) { const f = S.tank.fish.pop(); S.basin.push({ sp: f.sp, size: f.size }); }
+    g.panel = { kind: 'note', text: L.refund(refund) };
+    save(g);
+  }   // 岸上三位商人天天都在，能卖的一直都卖（作者：按天换商人对玩家不友好）
+  // row、foot：judges.webp 第几行、每格脚底在第几行（量出来的）；珊瑚礁那两位在 reef/judges
+  const BOSS_SETS = {
+    bay: [
+      { n: '胖企鹅', who: 'penguin', row: 0, foot: [151, 145, 148, 148], reward: 300, t: 150, dishes: [{ r: 'clear', f: { bass: 2 } }] },
+      { n: '北极熊', who: 'bear', row: 1, foot: [154, 158, 158, 158], reward: 600, t: 180, dishes: [{ r: 'spicy', f: { squid: 1, yellow: 2 } }, { r: 'clear', f: { croaker: 1 } }] },
+      { n: '大白鲨', who: 'shark', reward: 1000, t: 200, dishes: [{ r: 'spicy', f: { croaker: 2 } }, { r: 'sour', f: { bass: 2 } }], fight: 'shark' }
+    ],
+    // 珊瑚礁（作者 9A 10A）：大海龟慢吞吞点一道清淡的；海豚嘴刁点两道，一道复合口味；豹海豹吃完两道追下水互撞
+    reef: [
+      { n: '大海龟', who: 'turtle', e: '🐢', row: 0, foot: [154, 154, 154, 154], reward: 600, t: 200, dishes: [{ r: 'clear', f: { grouper: 1, butterfly: 1 } }] },
+      { n: '海豚', who: 'dolphin', e: '🐬', row: 1, foot: [154, 154, 154, 154], reward: 1000, t: 200, dishes: [{ r: 'suanla', f: { clown: 3 } }, { r: 'coco', f: { butterfly: 2 } }] },
+      { n: '豹海豹', who: 'leopard', e: '🦭', reward: 1600, t: 220, dishes: [{ r: 'suanla', f: { lion: 1, clown: 2 } }, { r: 'coco', f: { grouper: 2 } }], fight: 'leopard' }
+    ],
+    // 海草林（作者 7A 8A）：海狮嗓门大吃得快，点一道清淡的；大龙虾挑三拣四点两道，一道复合口味、一道要叶海龙；大章鱼吃完两道追下水，咬触手
+    kelp: [
+      { n: '海狮', who: 'sealion', e: '🦭', row: 0, foot: [154, 154, 154, 154], reward: 900, t: 200, dishes: [{ r: 'clear', f: { sheephead: 1, sardine: 1 } }] },
+      { n: '大龙虾', who: 'lobster', e: '🦞', row: 1, foot: [154, 154, 154, 154], reward: 1400, t: 220, dishes: [{ r: 'tangcu', f: { sheephead: 1, sardine: 2 } }, { r: 'haidai', f: { seadragon: 1 } }] },
+      { n: '大章鱼', who: 'octo', e: '🐙', reward: 2400, t: 240, dishes: [{ r: 'haidai', f: { wolfeel: 1, sardine: 2 } }, { r: 'tangcu', f: { seadragon: 1, sheephead: 1 } }], fight: 'octo' }
+    ]
+  };
+  let BOSSES = BOSS_SETS.bay;
   const fishText = f => Object.keys(f).map(k => SPECIES[k].n + ' ×' + f[k]).join(' + ');
   const orderText = d => RECIPES[d.r].n + '：' + fishText(d.f);
   const COOK_T = 8, BEST = 0.6, BEST_W = 0.06, G0 = 0.45, G1 = 0.75;
@@ -199,18 +349,31 @@
   }
   function newState() {
     return { v: 7, day: 1, money: 60, seal: { x: 118, y: GY, land: true }, basket: [], pearls: 0, basin: [], lv: {}, recipes: ['clear'], boss: 0, license: false, got: {}, seen: '', dex: {},
-      tank: { fish: [], coins: [] }, world: null };
+      tank: { fish: [], coins: [] }, world: null, area: 'bay', away: {} };
   }
   const lvOf = (S, id) => S.lv[id] || 0;
   const has = (S, k) => !!(S.got && S.got[k]);   // 海里找到的东西、撞开的石头、发现的暗道
   const caps = S => ({
-    basket: 1 + lvOf(S, 'basket'), pot: [3, 5, 8][lvOf(S, 'pot')], warm: [25, 40, 60][lvOf(S, 'warm')], speed: 55 + 12 * lvOf(S, 'speed'),
-    air: 20 + 10 * ['o2a', 'o2b', 'o2c'].filter(k => has(S, k)).length, tank: [0, 3, 6, 10, 15][lvOf(S, 'tank')], hp: 3 + lvOf(S, 'hp'), basin: 10
+    basket: 1 + lvOf(S, 'basket'), pot: [3, 5, 8, 12][lvOf(S, 'pot')], warm: [25, 40, 60, 90][lvOf(S, 'warm')], speed: 55 + 12 * lvOf(S, 'speed'),
+    air: 20 + 10 * O2S.filter(k => has(S, k)).length + 10 * lvOf(S, 'breath'), tank: [0, 3, 6, 10, 15][lvOf(S, 'tank')], hp: 3 + lvOf(S, 'hp'), basin: 10
   });
   // 每天早上：海贝长珍珠、海底的破烂补上、浅水里漂下来一个漂流瓶
   function freshWorld(S) {
-    S.world = { clams: BAY.CLAMS.map(() => ({ pearl: true })), junk: [0, 1, 2].map(i => ({ k: ['shoe', 'can', 'tire'][i], x: [288, 404, 520][i] + rnd(-8, 8) })), bottle: { x: rnd(262, 580), money: 30 + Math.floor(rnd(0, 6)) * 10 } };
+    const jx = BAY.JUNK || [288, 404, 520], dr = BAY.DRIFT || [262, 580];
+    S.world = { day: S.day, clams: BAY.CLAMS.map(() => ({ pearl: true })), junk: [0, 1, 2].map(i => ({ k: ['shoe', 'can', 'tire'][i], x: jx[i] + rnd(-8, 8) })), bottle: { x: rnd(dr[0], dr[1]), money: 30 + Math.floor(rnd(0, 6)) * 10 } };
   }
+  // 换展区：地形、岸上的摆法、鱼、大胃王、游客全换成那边的；没换走的（大胃王打到第几位、海里今天的样子、去过哪儿）存在 S.away 里
+  const SANDBOX_OF = B => { const xs = B.SAND.map(p => p[0]), ys = B.SAND.map(p => p[1]); return [Math.min(...xs) - 20, Math.min(...ys) - 20, Math.max(...xs) + 20, Math.max(...ys) + 20]; };
+  const SANDSEG_OF = B => B.SAND.map((a, i) => { const b = B.SAND[(i + 1) % B.SAND.length]; return [a[0], a[1], b[0], b[1], Math.min(a[0], b[0]) - 18, Math.min(a[1], b[1]) - 18, Math.max(a[0], b[0]) + 18, Math.max(a[1], b[1]) + 18]; });
+  function setArea(id) {
+    AREA = AREAS[id] ? id : 'bay'; BAY = AREAS[AREA]; LOOK = LOOKS[AREA];
+    WW = BAY.WW; WH = BAY.WH; SPOT = SPOTS[AREA];
+    TREASURE = Object.keys(BAY.THINGS); REGIONS = BAY.REGIONS; BOSSES = BOSS_SETS[AREA]; TOUR_POOL = POOLS[AREA];
+    SANDBOX = SANDBOX_OF(BAY); SAND_SEG = SANDSEG_OF(BAY);
+    POSTER.x = LOOK.cart ? 147 : 157;   // 珊瑚礁起是推车：鱼谱挂在推车最左头，别挡住掌勺的海狗
+    currentBand.c = null;
+  }
+  const SEEN_W = () => Math.ceil(WW / 40), SEEN_H = () => Math.ceil(WH / 40);
 
   /* ================= 窗口 ================= */
   let G = null;
@@ -235,6 +398,7 @@
       e.preventDefault();
       if (a.length === 1) { g.keys[a] = isDown; return; }
       if (a === 'map') { if (isDown && !e.repeat && g.S) toggleMini(g); return; }
+      if (a === 'act') g.actHeld = isDown;   // 按住不放：回声（珊瑚礁的海螺）
       if (isDown && !e.repeat) doAct(g, a);
     };
     g.win = OS.wm.open({ title: L.title, icon: 'game-tank', width: 382, content: root, maximizable: false, center: true, className: 'tk-win',
@@ -284,21 +448,56 @@
   }
   function loadSave() { const S = OS.save.get(SAVE_KEY, null); return S && S.v === 7 ? S : null; }
   function startGame(g, S) {
-    if (!S.world) freshWorld(S);
+    if (!S.area) S.area = 'bay';
+    if (!S.away) S.away = {};
+    setArea(S.area);
+    loadPack(LOOK.pack); if (S.license) loadPack('reef'); if (S.license2) loadPack('kelp');
+    if (!S.world || (S.world.clams || []).length !== BAY.CLAMS.length) freshWorld(S);
     if (!S.got) S.got = {};
+    Object.keys(S.got).forEach(k => { if (/^r_boulder/.test(k)) delete S.got[k]; });   // 打豹海豹砸碎的礁石只在那一场里碎着
     if (!S.dex) { S.dex = {}; S.basin.concat(S.basket.filter(f => f.sp), S.tank.fish).forEach(f => dexAdd(S, f.sp, f.size)); }   // 老存档：盆里、鱼篓里、水族箱里有的鱼都算认识
     g.S = S;
     g.stick = null; g.padBtn = {}; g.tapC = null; g.clamWas = []; g.mapTerr = null; g.fogDirty = true;   // 换存档：地图重算
     buildMap(g);
     g.seal = { x: S.seal.x, y: S.seal.land ? GY : S.seal.y, land: S.seal.land, vx: 0, vy: 0, face: 1, air: caps(S).air, dashT: 0, dashCD: 0, bump: 0, hurt: 0, biteT: 0, biteCD: 0, atkT: 0, atkCD: 0, clamp: null, clampCD: 0 };
     if (!g.seal.land && fieldAt(g, g.seal.x, g.seal.y) > -SEAL_R) { g.seal.land = true; g.seal.y = GY; g.seal.x = SPOT.basin; }
-    g.fish = []; g.tourists = []; g.session = null; g.boss = null; g.fight = null; g.panel = null; g.pending = null; g.floats = []; g.fade = null; g.coverFade = {}; g.inBoat = 0; g.shake = 0;
+    g.fish = []; g.tourists = []; g.session = null; g.boss = null; g.fight = null; g.panel = null; g.pending = null; g.floats = []; g.fade = null; g.coverFade = {}; g.inBoat = 0; g.shake = 0; g.echoes = []; g.pushing = [];
     g.camSnap = true; camStep(g, 0);
-    REGIONS.forEach((R, i) => { for (let k = 0; k < R.n; k++) spawnFish(g, i, true); });
+    spawnAll(g);
     g.screen = 'play';
     g.saveT = 0;
-    flt(g, W / 2, 100, L.day(S.day) + '　' + L.zone, '#fff6c0', 2.2, true);
+    flt(g, W / 2, 100, BAY.LOOK.zone, '#fff6c0', 2.2, true);
+    fitShelves(g);
   }
+  // 过门：画面黑一下，切到另一个展区（作者 2B）。推车（锅和木盆）跟着海狗走，盆里的鱼两边通用（作者 1A）
+  function switchArea(g, id, x, viaTunnel) {
+    const S = g.S, from = AREA;
+    save(g);
+    S.away[AREA] = { boss: S.boss, world: S.world, seen: S.seen };
+    const A = S.away[id] || {};
+    delete S.away[id];
+    S.boss = A.boss || 0; S.world = A.world || null; S.seen = A.seen || ''; S.area = id;
+    setArea(id); loadPack(LOOK.pack);
+    if (!S.world || S.world.day !== S.day || (S.world.clams || []).length !== BAY.CLAMS.length) freshWorld(S);
+    g.session = null; g.boss = null; g.fight = null; g.tourists = []; g.pending = null; g.pendingW = null; g.potSteam = []; g.closeSteam = []; g.drops = []; g.echoes = []; g.pushing = [];
+    g.mapTerr = null; g.fogCv = null; g.fogDirty = true; g.clamWas = []; g.coverFade = {}; g.inBoat = 0;
+    buildMap(g);
+    const s = g.seal;
+    s.land = true; s.y = GY; s.x = x; s.vx = s.vy = 0; s.face = AREA_ORDER.indexOf(id) > AREA_ORDER.indexOf(from) ? 1 : -1; s.dashT = 0; s.clamp = null; s.air = caps(S).air;
+    if (viaTunnel) { const T = tunnelsOf().find(q => q.to === from); if (T) { s.land = false; s.x = T.at[0] + T.face * 34; s.y = T.at[1]; s.face = T.face; } }   // 钻水下通道过来的：落在这边通道口外面
+    spawnAll(g);
+    g.camSnap = true;
+    flt(g, W / 2, 100, BAY.LOOK.zone, '#fff6c0', 2.2, true);
+    sfx(g, 'chime');
+    save(g);
+  }
+  function goArea(g, id, x, viaTunnel) {
+    sfx(g, viaTunnel ? 'splash' : 'click');
+    g.fade = { t: 0, fn: () => switchArea(g, id, x, viaTunnel) };
+  }
+  // 水下通道口：珊瑚礁海沟底那个（拿到海草林许可证铁栅栏就开了，作者 2A）⇄ 海草林观察站那间的左墙；海草林最深处那个去深海沟，还没做
+  const tunnelsOf = () => BAY.TUNNELS || (BAY.TUNNEL ? [{ id: 'rt', at: BAY.TUNNEL, face: -1, to: 'kelp' }] : []);
+  const tunnelOpen = (S, T) => (T.to === 'kelp' ? !!S.license2 : !!T.to);
   /* ================= 地形：离墙多远的表、撞墙、落地 ================= */
   function buildMap(g) {
     const S = g.S;
@@ -308,15 +507,24 @@
     const fl = (x, y) => floorY(g, x, y);
     g.pos = {
       things: {}, vents: BAY.VENTS.map(([x, y]) => [x, fl(x, y - 12)]), clams: BAY.CLAMS.map(([x, y]) => [x, fl(x, y - 12) - 4]),
-      octo: [BAY.OCTOPUS[0], fl(BAY.OCTOPUS[0], BAY.OCTOPUS[1] - 20) - 20]
+      shop: [BAY.SHOP.at[0], fl(BAY.SHOP.at[0], BAY.SHOP.at[1] - 20) - 20]
     };
     TREASURE.forEach(k => { const T = BAY.THINGS[k], [x, y] = T.at; g.pos.things[k] = T.k === 'gear' || T.k === 'o2' ? [x, y] : [x, fl(x, y - 10) - 5]; });   // 装备漂着，别的落地
+    g.urchinFly = []; g.kwCut = {};
+    g.eels = (BAY.EELS || []).map(E => ({ E, t: 0, x: E.path[0][0], y: E.path[0][1], face: 1, ang: 0, tilt: 0, zap: 0, knock: 0, kx: 0, ky: 0, glowT: rnd(1, 4) }));
     g.map.GX = new Float32Array(F.length); g.map.GY = new Float32Array(F.length);
+    // 洞后墙那层：船 ／ 潜水艇四周按"没有船"算离墙多远（原来是在船四周整块挖掉不画，露出一个方框，11-26 作者：潜水艇的边缘……）
+    // 大礁石也一样（它们另外贴图，后墙别绕着它们糊一团；原来只有船那块不算礁石、旁边又算，接出一道竖缝，作者：这还有一条接缝）
+    { const bb = BAY.BOAT.box.slice(), cs = BAY.CELL, m = 48;
+      (BAY.BOULDERS || []).forEach(([x, y]) => { bb[0] = Math.min(bb[0], x - 30); bb[1] = Math.min(bb[1], y - 45); bb[2] = Math.max(bb[2], x + 30); bb[3] = Math.max(bb[3], y + 4); });
+      const x0 = Math.floor((bb[0] - m) / cs) * cs, y0 = Math.floor((bb[1] - m) / cs) * cs, nx = Math.ceil((bb[2] + m - x0) / cs) + 1, ny = Math.ceil((bb[3] + m - y0) / cs) + 1, BF = new Float32Array(nx * ny);
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) BF[j * nx + i] = BAY.solid(x0 + i * cs, y0 + j * cs, S.got, true, true);
+      g.boatF = { x0, y0, nx, ny, F: BF }; }
     gradGrid(g, null);
     g.rc = { rock: new Map(), back: new Map() }; g.tv = -1;
     findSpots(g);
     g.snow = null; g.bubs = [];
-    g.seen = new Uint8Array(32 * 30);
+    g.seen = new Uint8Array(SEEN_W() * SEEN_H());
     const sv = S.seen || '';
     for (let i = 0; i < g.seen.length; i++) g.seen[i] = sv.charCodeAt(i) === 49 ? 1 : 0;
   }
@@ -353,20 +561,22 @@
     let sd = 4242;
     const R = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
     const floors = [], ceils = [], bb = BAY.BOAT.box;
-    const hidden = (x, y) => BAY.COVERS.some(Q => inRect(x, y, [Q.r[0] - 6, Q.r[1] - 6, Q.r[2] + 6, Q.r[3] + 6]));
+    const hidden = (x, y) => BAY.COVERS.some(Q => inRect(x, y, [Q.r[0] - 6, Q.r[1] - 6, Q.r[2] + 6, Q.r[3] + 6])) || (BAY.KWALLS || []).some(K => Math.abs(x - K.x) < K.w / 2 + 10 && Math.abs(y - K.y) < K.h / 2 + 10);
     for (let x = 10; x < WW - 10; x += 8 + R() * 16) {
       let prev = fieldAt(g, x, WY + 6);
       for (let y = WY + 9; y < WH - 3; y += 3) {
         const f = fieldAt(g, x, y);
         if (prev < -1.5 && f >= 0) { const sy = edgeY(g, x, y - 3, y), sl = fieldAt(g, x + 3, sy) - fieldAt(g, x - 3, sy); if (Math.abs(sl) < 3 && !inRect(x, sy, [bb[0] - 8, bb[1], bb[2] + 8, bb[3] + 8]) && !hidden(x, sy)) floors.push([x, sy, Math.abs(sl)]); }
-        else if (prev >= 0 && f < -1.5 && y > WY + 40) { const sy = edgeY(g, x, y - 3, y), sl = fieldAt(g, x + 3, sy) - fieldAt(g, x - 3, sy); if (Math.abs(sl) < 3 && !hidden(x, sy)) ceils.push([x, sy]); }
+        else if (prev >= 0 && f < -1.5 && y > WY + 40) { const sy = edgeY(g, x, y - 3, y), sl = fieldAt(g, x + 3, sy) - fieldAt(g, x - 3, sy); if (Math.abs(sl) < 3 && !hidden(x, sy) && !inRect(x, sy, [bb[0] - 8, bb[1] - 8, bb[2] + 8, bb[3] + 8])) ceils.push([x, sy]); }   // 沉船、潜水艇的顶棚不算洞顶（不然垂下来的石片挂到船舱里，11-26 看出来的）
         prev = f;
       }
     }
-    const P = g.pos, busy = P.vents.map(v => [v[0], v[1], 34]).concat(P.clams.map(v => [v[0], v[1], 22]), Object.values(P.things).map(v => [v[0], v[1], 26]), [[P.octo[0], P.octo[1], 50], [BAY.INLET[0], BAY.INLET[1], 44]], BAY.CRACKS.map(K => [K.shape[1], K.shape[2], 50]));
+    const P = g.pos, busy = P.vents.map(v => [v[0], v[1], 34]).concat(P.clams.map(v => [v[0], v[1], 22]), Object.values(P.things).map(v => [v[0], v[1], 26]), [[P.shop[0], P.shop[1], 50]],
+      BAY.INLET ? [[BAY.INLET[0], BAY.INLET[1], 44]] : [], tunnelsOf().map(T => [T.at[0], T.at[1], 50]), BAY.OCTO_ROCK ? [[BAY.OCTO_ROCK[0], BAY.OCTO_ROCK[1] - 20, 60]] : [], BAY.CRACKS.filter(K => K.shape[0] === 'ell').map(K => [K.shape[1], K.shape[2], 50]),
+      (BAY.URCHINS || []).map(U => [U.x, U.y, 30]), (BAY.BOULDERS || []).map(([x, y]) => [x, y - 20, 40]), (BAY.HOLES || []).map(([x, y]) => [x, y, 22]));
     const free = (x, y) => busy.every(([bx, by, r]) => Math.hypot(bx - x, by - y) > r);
     const roomy = (x, y, dir) => fieldAt(g, x, y + dir * 46) < -10 && fieldAt(g, x - 20, y + dir * 30) < -4 && fieldAt(g, x + 20, y + dir * 30) < -4;
-    const kindAt = (x, y) => (y < 430 && x < 610 ? [0, 1, 0, 4, 5, 1] : y < 470 ? [2, 3, 6, 1, 2] : y < BAY.DARK_Y ? [1, 6, 0, 3] : [7, 1, 7, 6]);
+    const kindAt = BAY.decorKinds || ((x, y) => (y < 430 && x < 610 ? [0, 1, 0, 4, 5, 1] : y < 470 ? [2, 3, 6, 1, 2] : y < BAY.DARK_Y ? [1, 6, 0, 3] : [7, 1, 7, 6]));
     g.decor = floors.filter(([x, y, sl]) => R() < 0.42 && sl < 1.6 && free(x, y)).map(([x, y]) => { const ks = kindAt(x, y); return { x, y, k: ks[Math.floor(R() * ks.length)], s: 0.8 + R() * 0.5, ph: R() * 6 }; });
     const spaced = (list, gap, prob) => { const out = []; list.forEach(([x, y]) => { if (R() < prob && out.every(q => Math.hypot(q[0] - x, q[1] - y) > gap)) out.push([x, y]); }); return out; };
     g.fronts = spaced(floors.filter(([, y]) => y > 380), 170, 0.5).map(([x, y]) => ({ x, y, k: Math.floor(R() * 5), ph: R() * 6 }));   // 第 6 样是垂下来的，地面上不用
@@ -411,9 +621,11 @@
   const inRect = (x, y, r) => x > r[0] && x < r[2] && y > r[1] && y < r[3];
   // 去过的地方（地图上显示）：40×40 一格
   function markSeen(g) {
-    const i0 = Math.max(0, Math.floor(g.cam.x / 40)), i1 = Math.min(31, Math.floor((g.cam.x + VW) / 40)), j0 = Math.max(0, Math.floor(g.cam.y / 40)), j1 = Math.min(29, Math.floor((g.cam.y + VH) / 40));
-    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const q = j * 32 + i; if (!g.seen[q]) { g.seen[q] = 1; g.fogDirty = true; } }
+    const SW = SEEN_W(), SH = SEEN_H();
+    const i0 = Math.max(0, Math.floor(g.cam.x / 40)), i1 = Math.min(SW - 1, Math.floor((g.cam.x + VW) / 40)), j0 = Math.max(0, Math.floor(g.cam.y / 40)), j1 = Math.min(SH - 1, Math.floor((g.cam.y + VH) / 40));
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const q = j * SW + i; if (!g.seen[q]) { g.seen[q] = 1; g.fogDirty = true; } }
   }
+  const seenAt = (g, x, y) => g.seen[Math.min(SEEN_H() - 1, Math.max(0, Math.floor(y / 40))) * SEEN_W() + Math.min(SEEN_W() - 1, Math.max(0, Math.floor(x / 40)))];
 
 
   /* ================= 鱼 ================= */
@@ -431,19 +643,61 @@
     const R = REGIONS[ri];
     let s = Math.random(), sp = R.pick[0][0];
     for (const [k, w] of R.pick) { s -= w; if (s < 0) { sp = k; break; } }
-    const size = R.king && Math.random() < R.king ? 3 : Math.random() < R.big ? 2 : Math.random() < 0.5 ? 0 : 1;
+    let size = R.king && Math.random() < R.king ? 3 : Math.random() < R.big ? 2 : Math.random() < 0.5 ? 0 : 1;
+    if (SPECIES[sp].scatter && size > 2) size = 2;   // 一大群沙丁鱼个个戴王冠太怪
     const p = openAt(g, R, 20, !anywhere);
     if (!p) return;
     const mk = (x, y) => { const f = { sp, size, x, y, vx: 0, vy: 0, tx: x, ty: y, face: 1, ri, ph: Math.random() * 6, stuck: 0 }; g.fish.push(f); return f; };
-    if (sp === 'yellow') { const lead = mk(p[0], p[1]); for (let i = 0; i < 3 + Math.floor(Math.random() * 3); i++) { const f = mk(p[0] + rnd(-10, 10), p[1] + rnd(-6, 6)); f.size = lead.size; f.lead = lead; } }
+    if (SPECIES[sp].school) { const lead = mk(p[0], p[1]), nn = SPECIES[sp].scatter ? 5 + Math.floor(Math.random() * 3) : 3 + Math.floor(Math.random() * 3); for (let i = 0; i < nn; i++) { const f = mk(p[0] + rnd(-10, 10), p[1] + rnd(-6, 6)); f.size = lead.size; f.lead = lead; } }
     else mk(p[0], p[1]);
   }
+  // 狼鳗（作者 5A）：躲在石缝里，有东西经过就探头咬一口（掉气）；咬完露在外面一会儿再缩回去——趁这会儿叼住
+  function lungeStep(g, f, dt) {
+    const s = g.seal, [hx, hy, face] = BAY.HOLES[f.hole], len = SPECIES[f.sp].len[f.size];
+    f.face = face;
+    if (f.lcd > 0) f.lcd -= dt;
+    if (!f.ls && !s.land && !g.fight && !(f.lcd > 0) && dist(s.x, s.y, hx + face * 16, hy) < 40) { f.ls = 'wind'; f.lt = 0.4; }
+    else if (f.ls === 'wind' && (f.lt -= dt) <= 0) {
+      f.ls = 'out'; f.lt = 1.2; sfx(g, 'tkChomp');
+      if (!s.land && !(s.hurt > 0) && dist(s.x, s.y, hx + face * len, hy) < 15) {   // 正好在它嘴前面：咬一口
+        s.air = Math.max(0, s.air - 4); s.vx = face * 110; s.vy = -30; s.dashT = 0; s.bump = 0.45;
+        flt(g, s.x, s.y - 16, L.wolfBite, '#ffd0d0', 1.3); sfx(g, 'ysSlap'); g.shake = 0.15;
+      }
+    } else if (f.ls === 'out' && (f.lt -= dt) <= 0) { f.ls = null; f.lcd = 1.8; }
+    const out = f.ls === 'out' ? clamp(Math.min((1.2 - f.lt) / 0.12, f.lt / 0.15), 0, 1) : 0;
+    f.x = hx - face * 3 + face * len * 0.6 * out; f.y = hy + Math.sin(f.ph * 1.3) * 0.6;
+  }
+  // 石斑鱼躲在小洞里探头（作者 5A：先"攻击"顶一下赶出来）：每天早上大多数洞里有一条，越深越大
+  function spawnHoles(g) {
+    (BAY.HOLES || []).forEach(([x, y, face], i) => {
+      if (Math.random() > 0.8) return;
+      const deep = y > 800, size = deep && Math.random() < 0.25 ? 3 : Math.random() < (deep ? 0.6 : 0.2) ? 2 : Math.random() < 0.5 ? 1 : 0;
+      g.fish.push({ sp: BAY.HOLE_SP || 'grouper', size, x: x - face * 3, y, vx: 0, vy: 0, tx: x, ty: y, face, ri: -1, hole: i, hide: true, ph: Math.random() * 6, stuck: 0 });
+    });
+  }
+  function spawnAll(g) {
+    g.fish = [];
+    REGIONS.forEach((R, i) => { for (let k = 0; k < R.n; k++) spawnFish(g, i, true); });
+    spawnHoles(g);
+  }
+  // 从洞里顶出来的石斑鱼：归到离它最近的那片
+  const nearRegion = (x, y) => { let best = 0, bd = 1e9; REGIONS.forEach((R, i) => { const d = Math.hypot(Math.max(R.x0 - x, 0, x - R.x1), Math.max(R.y0 - y, 0, y - R.y1)); if (d < bd) { bd = d; best = i; } }); return best; };
 
 
 
   function fishStep(g, dt) {
+    const s = g.seal;
     g.fish.forEach(f => {
+      if (f.gone) return;   // 这一帧刚被叼走的
       f.ph += dt;
+      if (f.glow > 0) f.glow -= dt;
+      if (f.spike > 0) f.spike -= dt;
+      if (f.esc > 0) { f.esc -= dt; f.x += f.vx * dt; f.y += f.vy * dt; if (f.esc <= 0) f.gone = true; return; }   // 吓跑的鱼：一溜烟没了
+      if (f.ram > 0) f.ram -= dt;
+      if (f.seen > 0) f.seen -= dt;
+      if (f.flinch > 0) f.flinch -= dt;
+      if (f.hide && SPECIES[f.sp].lunge) { lungeStep(g, f, dt); return; }
+      if (f.hide) { f.x += (BAY.HOLES[f.hole][0] - f.face * 3 - f.x) * Math.min(1, dt * 3); f.y = BAY.HOLES[f.hole][1] + Math.sin(f.ph * 1.3) * 0.6; return; }   // 躲在洞里：一动不动，偶尔往外探一探
       const R = REGIONS[f.ri];
       // 被顶晕了：翻着肚皮慢慢漂，一会儿缓过来
       if (f.dizzy > 0) {
@@ -454,10 +708,21 @@
         f.y = Math.max(WY + 8, f.y);
         return;
       }
-      let tx = f.tx, ty = f.ty;
-      if (f.lead && !f.lead.gone) { tx = f.lead.x + Math.sin(f.ph) * 10; ty = f.lead.y + Math.cos(f.ph * 1.3) * 6; }
+      let tx = f.tx, ty = f.ty, boost = 1;
+      const SP = SPECIES[f.sp];
+      // 沙丁鱼：海狗冲过来，整群"哗"地散开，过一会儿再聚回来（作者 5A）
+      if (SP.scatter && !s.land && s.dashT > 0 && !(f.flee > 0) && dist(f.x, f.y, s.x, s.y) < 56) { f.flee = 1.3; const a = Math.atan2(f.y - s.y, f.x - s.x) + rnd(-0.7, 0.7); f.fx = Math.cos(a); f.fy = Math.sin(a); }
+      // 叶海龙：长得跟海草一样、几乎不动；游到跟前它一动才露馅（回声一照也亮）
+      if (SP.camo) {
+        if (!s.land && !(f.seen > 0) && dist(f.x, f.y, s.x, s.y) < 30) { f.seen = 3; f.flinch = 0.7; f.flee = 0.5; f.fx = f.x - s.x; f.fy = f.y - s.y; }
+        if (!(f.seen > 0) && !(f.flee > 0)) boost = 0.3;
+      }
+      // 蝴蝶鱼胆小：海狗一靠近就往反方向跑（作者 5A：得冲刺追）
+      if (SPECIES[f.sp].shy && !s.land && dist(f.x, f.y, s.x, s.y) < 46) { f.flee = 0.9; f.fx = f.x - s.x; f.fy = f.y - s.y; }
+      if (f.flee > 0) { f.flee -= dt; const d0 = Math.hypot(f.fx, f.fy) || 1; tx = f.x + f.fx / d0 * 60; ty = f.y + f.fy / d0 * 40; boost = 2.6; }
+      else if (f.lead && !f.lead.gone) { tx = f.lead.x + Math.sin(f.ph) * 10; ty = f.lead.y + Math.cos(f.ph * 1.3) * 6; }
       else if (dist(f.x, f.y, tx, ty) < 6 || Math.random() < dt * 0.12 || f.stuck > 0.6) { const q = openAt(g, R, 8, false); if (q) { f.tx = q[0]; f.ty = q[1]; } f.stuck = 0; tx = f.tx; ty = f.ty; }
-      const sp = 14 + SPECIES[f.sp].len[f.size] * 0.3;
+      const sp = (14 + SPECIES[f.sp].len[f.size] * 0.3) * boost;
       const dx = tx - f.x, dy = ty - f.y, d = Math.hypot(dx, dy) || 1;
       f.vx += (dx / d * sp - f.vx) * Math.min(1, dt * 2);
       f.vy += (dy / d * sp * 0.6 - f.vy) * Math.min(1, dt * 2);
@@ -472,7 +737,7 @@
     g.refillT = (g.refillT || 0) + dt;
     if (g.refillT > 6) {
       g.refillT = 0;
-      REGIONS.forEach((R, i) => { if (g.fish.filter(f => f.ri === i && !f.lead).length < Math.ceil(R.n * (i === 0 ? 0.5 : 1))) spawnFish(g, i, false); });
+      REGIONS.forEach((R, i) => { if (g.fish.filter(f => f.ri === i && !f.lead).length < Math.ceil(R.n * (i === 0 ? 0.5 : 1))) spawnFish(g, i, false); });   // 洞里的石斑鱼不补，第二天早上才回来
     }
   }
 
@@ -520,7 +785,7 @@
     if (!padOn(g) || !discIn()) return false;
     if (g.btns.some(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h)) return false;   // 画面上的按钮（菜单、全卖了、价钱泡泡）先管
     const k = padKeyAt(g, x, y);
-    if (k) { g.padBtn[id] = k; g.padHit = g.padHit || {}; g.padHit[k] = g.anim; doAct(g, k); return true; }
+    if (k) { g.padBtn[id] = k; g.padHit = g.padHit || {}; g.padHit[k] = g.anim; if (k === 'act') g.actHeld = true; doAct(g, k); return true; }
     if (x < W / 2 && !g.stick) {
       const [wx, wy] = toWorld(g, x, y), s = g.seal;
       const obj = s.land ? (wy > GY - 46 && wy < GY + 10 ? landObj(wx, wy) : null) : waterObj(g, wx, wy);
@@ -538,7 +803,7 @@
     k.dx = dx / PAD.R; k.dy = dy / PAD.R; k.m = Math.min(1, d / PAD.R);
   }
   function padUp(g, id) {
-    if (g.padBtn && g.padBtn[id]) { delete g.padBtn[id]; return true; }
+    if (g.padBtn && g.padBtn[id]) { if (g.padBtn[id] === 'act') g.actHeld = false; delete g.padBtn[id]; return true; }
     const k = g.stick;
     if (!k || k.id !== id) return false;
     g.stick = null;
@@ -564,21 +829,32 @@
   function actTarget(g) {
     const s = g.seal;
     if (!s || g.fight || s.clamp || locked(g)) return null;
-    if (!s.land) { const P = g.pos; return [['octo', P.octo], ['valve', P.things.valve], ['inlet', BAY.INLET]].map(([k, p]) => waterObj(g, p[0], p[1] - (k === 'valve' ? 4 : 0))).find(o => o && dist(s.x, s.y, o.x, o.y) < 34) || null; }
+    if (!s.land) {
+      const P = g.pos, cand = [['shop', P.shop]];
+      if (BAY.INLET) cand.push(['valve', P.things.valve], ['inlet', BAY.INLET]);
+      tunnelsOf().forEach(T => cand.push(['tunnel', [T.at[0] + T.face * 12, T.at[1]]]));
+      return cand.map(([k, p]) => waterObj(g, p[0], p[1] - (k === 'valve' ? 4 : 0))).find(o => o && dist(s.x, s.y, o.x, o.y) < 34) || null;
+    }
     return landObj(s.x);
   }
   // 水下能点的：章鱼小铺、进水口的阀门、拧开以后的管子口
   function waterObj(g, wx, wy) {
     const S = g.S, P = g.pos;
     if (!P || g.fight) return null;
-    const list = [['octo', P.octo[0], P.octo[1], 22]];
-    if (!has(S, 'valve')) list.push(['valve', P.things.valve[0], P.things.valve[1] - 4, 14]);
-    else list.push(['inlet', BAY.INLET[0], BAY.INLET[1], 18]);
-    for (const [k, x, y, r] of list) if (dist(wx, wy, x, y) < r) return { k, x, y };
+    const list = [['shop', P.shop[0], P.shop[1], 22]];
+    if (BAY.INLET) { if (!has(S, 'valve')) list.push(['valve', P.things.valve[0], P.things.valve[1] - 4, 14]); else list.push(['inlet', BAY.INLET[0], BAY.INLET[1], 18]); }
+    tunnelsOf().forEach(T => list.push(['tunnel', T.at[0] + T.face * 12, T.at[1], 24, T]));
+    for (const [k, x, y, r, T] of list) if (dist(wx, wy, x, y) < r) return { k, x, y, T };
     return null;
   }
   function useW(g, o) {
-    if (o.k === 'octo') { g.S.got.octo = 1; openShop(g, 'octopus'); }
+    if (o.k === 'shop') { g.S.got[BAY.SHOP.flag] = 1; openShop(g, BAY.SHOP.mk); }
+    else if (o.k === 'tunnel') {
+      const T = o.T;
+      if (!tunnelOpen(g.S, T)) g.panel = { kind: 'note', text: L.tunnel };
+      else if (g.session || g.boss) flt(g, g.seal.x, g.seal.y - 16, L.busy, '#ffd0d0', 1.4);   // 岸上还有一锅、大胃王在等：先别走
+      else g.panel = { kind: 'ask', text: L.tunnelGo(AREAS[T.to].LOOK.zone), yes: L.pipeYes, fn: () => goArea(g, T.to, SPOTS[T.to].gateL + 24, true) };
+    }
     else if (o.k === 'valve') getThing(g, 'valve');
     else if (o.k === 'inlet') pipeUp(g);
     g.hold = false;
@@ -587,33 +863,35 @@
   const POSTER = { x: 157, y0: GY - 21, y1: GY - 11 };   // 钉在摊子左边那根柱子上（柱子在雨棚和柜台之间露出来的那段）
   function landObj(wx, wy) {
     if (wy != null && Math.abs(wx - POSTER.x) < 7 && wy > POSTER.y0 - 2 && wy < POSTER.y1 + 2) return { k: 'dex', x: POSTER.x };
-    const list = [['tent', SPOT.tent, 22], ['tank', SPOT.tank, 20], ['gong', SPOT.gong, 12], ['basin', SPOT.basin, 10], ['pot', SPOT.pot, 20], ['pipe', SPOT.pipe, 12], ['mA', SPOT.mA, 24], ['mB', SPOT.mB, 24], ['mC', SPOT.mC, 24], ['gate', SPOT.gate, 26]];
+    const list = [['tent', 22], ['tank', 20], ['gong', 12], ['basin', 10], ['pot', 20], ['pipe', 12], ['mA', 24], ['mB', 24], ['mC', 24], ['gate', 26], ['gateL', 22]].filter(([k]) => SPOT[k] != null).map(([k, r]) => [k, SPOT[k], r]);
     let best = null, bd = 1e9;
     for (const [k, x, r] of list) { const d = Math.abs(wx - x); if (d < r && d < bd) { bd = d; best = { k, x }; } }
     return best;
   }
   function dash(g, dir) {
     const s = g.seal;
-    if (!s || s.land || s.clamp || !has(g.S, 'thruster') || s.dashCD > 0 || g.fade) return;
+    if (!s || s.land || s.clamp || !has(g.S, 'thruster') || g.fade || (g.fight && g.fight.grab)) return;
+    let second = false;
+    if (s.dashCD > 0) { if (!(s.flickOK && s.dashCD > 0.5 && has(g.S, 'k_flick'))) return; second = true; }   // 甩尾（海草林）：冲完 0.6 秒以内再按，接着再冲一下，能换方向
     let dx = s.face, dy = 0;
     if (dir) { dx = dir[0]; dy = dir[1]; }
     const d = Math.hypot(dx, dy) || 1;
-    s.vx = dx / d * 170; s.vy = dy / d * 170; s.dashT = 0.35; s.dashCD = 1.1;
+    s.vx = dx / d * 170; s.vy = dy / d * 170; s.dashT = second ? 0.42 : 0.35; s.dashCD = second ? 1.2 : 1.1; s.flickOK = !second;
     if (Math.abs(dx) > 0.1) s.face = dx < 0 ? -1 : 1;
-    sfx(g, 'splash');
+    if (second) { s.flickT = 0.45; sfx(g, 'mbWhoosh'); } else sfx(g, 'splash');
   }
   // 叼：往前咬一口，叼住嘴前面最近的那样——鱼、破烂、开着的海贝里的珍珠（作者：碰到就抓太烦，要按键）
   function bite(g) {
     const s = g.seal, S = g.S;
     if (!s || s.biteCD > 0 || locked(g)) return;
-    s.biteT = 0.28; s.biteCD = 0.4;
+    s.biteT = 0.28; s.biteCD = g.fight && g.fight.grab ? 0.1 : 0.4;   // 被触手缠着：连按挣，按得多快挣得多快
     if (s.clamp) { struggle(g); return; }
     if (s.land) { sfx(g, 'tkChomp'); return; }
     if (g.fight) { hitShark(g); return; }   // 打大白鲨的时候，叼也是咬尾巴
     // 从身子到嘴前面这一段都算咬得到（鱼钻到肚子底下也能一扭头叼住）
     const seg = (px, py) => { const t = clamp((px - s.x) * s.face / 16, 0, 1); return dist(px, py, s.x + s.face * 16 * t, s.y); };
     let best = null, bd = 8;
-    g.fish.forEach(f => { if (f.gone || hiddenByCover(S, f.x, f.y)) return; const d = seg(f.x, f.y) - SPECIES[f.sp].len[f.size] * 0.45; if (d < bd) { bd = d; best = { k: 'fish', f }; } });
+    g.fish.forEach(f => { if (f.gone || f.esc > 0 || hiddenByCover(S, f.x, f.y)) return; const d = seg(f.x, f.y) - SPECIES[f.sp].len[f.size] * (f.hide && f.ls !== 'out' ? 0.2 : 0.45); if (d < bd) { bd = d; best = { k: 'fish', f }; } });
     S.world.junk.forEach(j => { if (j.gone) return; const d = seg(j.x, floorAt(g, j.x) - 3) - 5; if (d < bd) { bd = d; best = { k: 'junk', j }; } });
     g.pos.clams.forEach(([x, y], i) => { const d = seg(x, y - 4) - 4; if (d < bd) { bd = d; best = { k: 'clam', i, x, y }; } });
     if (!best) { sfx(g, 'tkChomp'); return; }
@@ -626,23 +904,45 @@
     if (S.basket.length >= caps(S).basket) { flt(g, s.x, s.y - 14, L.basketFull, '#fff2c0', 1.6); sfx(g, 'tkChomp'); return; }
     if (best.k === 'fish') {
       const f = best.f;
-      f.gone = true; S.basket.push({ sp: f.sp, size: f.size }); sfx(g, 'pop');
-      if (dexAdd(S, f.sp, f.size)) { flt(g, s.x, s.y - 16, L.newFish(SPECIES[f.sp].n), '#fff6a0', 1.8); sfx(g, 'chime'); }
+      if (f.hide && f.ls !== 'out') { flt(g, f.x, f.y - 12, L.groupHide, '#ffffff', 1.2); sfx(g, 'tkChomp'); return; }   // 石斑鱼缩在洞里：先顶出来
+      if (f.hide) { f.hide = false; f.ls = null; f.ri = nearRegion(f.x, f.y); }   // 狼鳗探出来那会儿：叼住拽出来
+      if (SPECIES[f.sp].butt && !(f.dizzy > 0)) { buttSeal(g, f); return; }   // 羊头鱼：先顶晕再叼
+      if (SPECIES[f.sp].spiky && !has(S, 'r_gloves')) { prick(g, f); return; }   // 狮子鱼：没手套扎手
+      const take = q => { q.gone = true; S.basket.push({ sp: q.sp, size: q.size }); if (dexAdd(S, q.sp, q.size)) { flt(g, s.x, s.y - 16, L.newFish(SPECIES[q.sp].n), '#fff6a0', 1.8); sfx(g, 'chime'); } };
+      take(f); sfx(g, 'pop');
+      if (SPECIES[f.sp].school && f.sp !== 'yellow') g.fish.forEach(q => { if (!q.gone && q.sp === f.sp && S.basket.length < caps(S).basket && dist(q.x, q.y, f.x, f.y) < 18) take(q); });   // 小丑鱼成群：冲进去一口叼好几条（作者 5A，鱼篓装得下的话）
+      if (SPECIES[f.sp].scatter) g.fish.forEach(q => { if (!q.gone && q.sp === f.sp && dist(q.x, q.y, f.x, f.y) < 60) { q.flee = 1.3; const a = Math.atan2(q.y - s.y, q.x - s.x) + rnd(-0.6, 0.6); q.fx = Math.cos(a); q.fy = Math.sin(a); } });   // 沙丁鱼：叼完剩下的一哄而散
     } else { const j = best.j; j.gone = true; S.basket.push({ junk: j.k }); flt(g, j.x, floorAt(g, j.x) - 14, L.gotJunk[j.k], '#ffffff', 1.4); sfx(g, 'thud'); }
   }
   // 攻击：往前一顶。水里顶到鱼，鱼晕一会儿好叼；打大白鲨的时候咬尾巴；被海贝夹住的时候是挣扎
   function attack(g) {
     const s = g.seal;
     if (!s || s.atkCD > 0 || locked(g)) return;
-    s.atkT = 0.3; s.atkCD = 0.45;
+    s.atkT = 0.3; s.atkCD = g.fight && g.fight.grab ? 0.1 : 0.45;
     if (s.clamp) { struggle(g); return; }
     if (s.land) { sfx(g, 'slap'); return; }
     if (g.fight) { hitShark(g); return; }
     s.vx += s.face * 40;
     const mx = s.x + s.face * 12, my = s.y;
     let hit = false;
-    g.fish.forEach(f => { if (!f.gone && dist(mx, my, f.x, f.y) - SPECIES[f.sp].len[f.size] * 0.5 < 10) { f.dizzy = 2.2; f.lead = null; f.vx = s.face * 30; hit = true; } });
+    g.fish.forEach(f => {
+      if (f.gone || dist(mx, my, f.x, f.y) - SPECIES[f.sp].len[f.size] * 0.5 >= (f.hide ? 14 : 10)) return;
+      if (SPECIES[f.sp].spiky && !has(g.S, 'r_gloves')) { prick(g, f); return; }
+      if (f.hide && SPECIES[f.sp].lunge && f.ls !== 'out') { flt(g, f.x, f.y - 12, L.groupHide, '#ffffff', 1.2); return; }   // 狼鳗缩在洞里顶不着
+      if (f.hide) { f.hide = false; f.ls = null; f.ri = nearRegion(f.x, f.y); f.dizzy = 2.4; f.vx = f.face * 45; flt(g, f.x, f.y - 14, L.groupOut, '#fff6a0', 1.2); hit = true; return; }   // 从洞里顶出来，晕着往外漂
+      f.dizzy = 2.2; f.lead = null; f.vx = s.face * 30; hit = true;
+    });
     sfx(g, hit ? 'ysSlap' : 'slap');
+  }
+  // 扎了一下：海狗被弹开（狮子鱼、海胆；作者 5A 4A）
+  function prick(g, f, text) {
+    const s = g.seal;
+    if (s.prickCD > 0) return;
+    s.prickCD = 0.8;
+    const d = dist(s.x, s.y, f.x, f.y) || 1;
+    s.vx = (s.x - f.x) / d * 110; s.vy = (s.y - f.y) / d * 110; s.dashT = 0; s.bump = 0.45;
+    if (f.sp) f.spike = 1;
+    flt(g, s.x, s.y - 16, text || L.lionOuch, '#ffd0d0', 1.3); sfx(g, 'ysSlap'); g.shake = 0.12;
   }
   function struggle(g) {
     const s = g.seal;
@@ -671,7 +971,7 @@
       const paused = g.panel || g.win.minimized || !discIn();
       if (g.screen === 'tank') { if (!paused) tankStep(g, dt); }
       else if (!paused) { if (g.fade) fadeStep(g, dt); step(g, dt); }
-      want = g.fight ? 'fight' : g.boss ? 'tense' : g.seal.land || g.screen === 'tank' ? 'day' : 'night';
+      want = g.fight ? 'fight' : g.boss ? 'tense' : (g.seal.land || g.screen === 'tank' ? 'day' : 'night') + LOOK.music;
       g.saveT += dt;
       if (g.saveT > 20) { g.saveT = 0; save(g); }
     }
@@ -703,6 +1003,8 @@
   function steamKind(g) {
     const se = g.session;
     if (!se) return null;
+    const raw = se.recipe && RECIPES[se.recipe].raw;
+    if (raw) return se.phase === 'bid' || potStage(g) === 5 ? { n: 1.2, col: 'w', a: 0.18 } : null;   // 刺身：只冒一点冷气
     if (se.phase === 'bid') return { n: 2.2, col: 'w', a: 0.32 };
     const st = potStage(g);
     if (st === 0) return null;
@@ -730,6 +1032,7 @@
   // 水里飘的小白点（海雪：远的小、慢）、海狗带的小气泡
   function fxStep(g, dt) {
     steamStep(g, dt);
+    dropsStep(g, dt);
     if (!g.snow) { g.snow = []; for (let i = 0; i < 64; i++) g.snow.push({ x: Math.random() * W, y: Math.random() * H, z: 0.25 + Math.random() * 0.75, ph: Math.random() * 6 }); g.pcam = { x: g.cam.x, y: g.cam.y }; }
     const dx = (g.cam.x - g.pcam.x) * Z, dy = (g.cam.y - g.pcam.y) * Z;
     g.pcam.x = g.cam.x; g.pcam.y = g.cam.y;
@@ -744,6 +1047,7 @@
     const s = g.seal;
     let tx, ty;
     if (g.fight) { tx = BAY.FIGHT.x0; ty = BAY.FIGHT.y0; }
+    else if (g.boss && g.boss.phase === 'show') { tx = SHOW_CX - VW / 2; ty = 0; }   // 演戏：对着大白鲨座位和海狗中间
     else if (s.land && g.session) { tx = STALL_CX - VW / 2; ty = 0; }   // 做菜、卖鱼的时候对着摊子；大胃王来了镜头照样跟着海狗走，好去水族箱拿鱼（作者 7A）
     else { tx = s.x - VW / 2; ty = s.land ? 0 : s.y - VH / 2; }
     tx = clamp(tx, 0, WW - VW); ty = clamp(ty, 0, WH - VH);
@@ -753,19 +1057,24 @@
     g.camSnap = false;
   }
   // 一黑一亮（憋不住游回岸、钻管子）
+  // inT 黑下去、hold 黑着、outT 亮起来（不写就是 0.45、0、0.45）
+  const fadeT = F => [F.inT || 0.45, F.hold || 0, F.outT || 0.45];
   function fadeStep(g, dt) {
-    const F = g.fade;
+    const F = g.fade, [a, h, b] = fadeT(F);
     F.t += dt;
-    if (F.t >= 0.45 && !F.done) { F.done = true; F.fn(); }
-    if (F.t >= 0.9) g.fade = null;
+    if (F.t >= a && !F.done) { F.done = true; F.fn(); }
+    if (F.sleep && F.t >= a + h && !F.woke) { F.woke = true; sfx(g, 'chime'); flt(g, W / 2, 100, L.morning, '#fff6c0', 3, true); }   // 亮起来的时候说"天亮了"
+    if (F.t >= a + h + b) g.fade = null;
   }
-  function locked(g) { const se = g.session; return !!g.fade || (se && ['gather', 'recipe', 'prep', 'heat'].indexOf(se.phase) >= 0) || (g.boss && g.boss.phase === 'eye'); }
+  function locked(g) { const se = g.session; return !!g.fade || (se && ['gather', 'recipe', 'prep', 'heat'].indexOf(se.phase) >= 0) || (g.boss && g.boss.phase === 'show'); }
   function sealStep(g, dt) {
     const s = g.seal, S = g.S, C = caps(S);
+    if (g.boss && g.boss.phase === 'show') { if (s.biteT > 0) s.biteT -= dt; if (s.dashT > 0) s.dashT -= dt; return; }   // 演戏的时候海狗归 showStep 管
     if (s.dashCD > 0) s.dashCD -= dt;
     if (s.bump > 0) s.bump -= dt;
     if (s.hurt > 0) s.hurt -= dt;
-    ['biteT', 'biteCD', 'atkT', 'atkCD', 'clampCD'].forEach(k => { if (s[k] > 0) s[k] -= dt; });
+    ['biteT', 'biteCD', 'atkT', 'atkCD', 'clampCD', 'prickCD', 'echoCD', 'zapCD', 'flickT'].forEach(k => { if (s[k] > 0) s[k] -= dt; });
+    if (g.fight && g.fight.grab) { s.vx = s.vy = 0; s.moving = false; return; }   // 被大章鱼的触手缠着：归 octoStep 管
     // 被海贝夹住：动不了，拼命挣（按叼 ／ 攻击挣得快），憋气掉得快三倍
     if (s.clamp) {
       const K = s.clamp;
@@ -803,7 +1112,7 @@
       return;
     }
     // 水里
-    const sp = C.speed * spd;
+    const sp = C.speed * spd * (inKelp(g, s) ? 0.72 : 1);   // 钻海带林慢一点（作者 1A）
     if (tx != null && s.dashT <= 0) {
       const dx = tx - s.x, dy = ty - s.y, d = Math.hypot(dx, dy);
       if (d > 4) { s.vx += (dx / d * sp - s.vx) * Math.min(1, dt * 4); s.vy += (dy / d * sp - s.vy) * Math.min(1, dt * 4); }
@@ -816,9 +1125,10 @@
     BAY.CURRENTS.forEach(Q => {
       if (s.x < Q.x0 || s.x > Q.x1 || s.y < Q.y0 || s.y > Q.y1) return;
       if (Q.fins && has(S, 'fins')) return;
+      if (Q.flick && s.dashT > 0 && has(S, 'k_flick')) return;   // 海草林电鳗窝那道：甩尾连冲两下，冲着的时候推不动
       if (Q.vx < 0) s.vx = Math.min(s.vx, Q.vx); else if (Q.vx > 0) s.vx = Math.max(s.vx, Q.vx);
       if (Q.vy > 0) s.vy = Math.max(s.vy, Q.vy); else if (Q.vy < 0) s.vy = Math.min(s.vy, Q.vy);
-      if (Q.fins && !(s.curSaid > 0) && tx != null && (tx - s.x) * Q.vx < 0) { s.curSaid = 2.6; flt(g, s.x, s.y - 14, L.current, '#e0f4ff', 1.6); sfx(g, 'splash'); }   // 顶着水流游：隔一会儿说一次
+      if ((Q.fins || Q.flick) && !(s.curSaid > 0) && tx != null && (tx - s.x) * Q.vx < 0) { s.curSaid = 2.6; flt(g, s.x, s.y - 14, L.current, '#e0f4ff', 1.6); sfx(g, 'splash'); }   // 顶着水流游：隔一会儿说一次
     });
     if (s.curSaid > 0) s.curSaid -= dt;   // 在水流边上进进出出也不会一直冒字
     // 走两小步，撞墙推回来
@@ -829,16 +1139,49 @@
     s.x = clamp(s.x, 8, WW - 8);
     if (s.y < WY + 4) { s.y = WY + 4; s.vy = Math.max(0, s.vy); }
     if (g.fight) { const A = BAY.FIGHT; s.x = clamp(s.x, A.x0 + 10, A.x1 - 10); s.y = clamp(s.y, A.y0 + 10, A.y1 - 8); }
-    // 没头灯，最黑的深海不敢下去
-    if (!has(S, 'lamp') && s.y > BAY.DARK_Y) { s.y = BAY.DARK_Y; s.vy = Math.min(s.vy, -20); if (!s.darkSaid) { s.darkSaid = true; flt(g, s.x, s.y - 16, L.tooDark, '#ffe0a0', 1.8); } }
-    else if (s.y < BAY.DARK_Y - 30) s.darkSaid = false;
+    // 往下有一条线：浅水湾没头灯不敢下最黑的深海；珊瑚礁没潜水头盔下不了海沟（水压）
+    const DG = BAY.DEPTH;
+    if (!has(S, DG.need) && s.y > DG.y) { s.y = DG.y; s.vy = Math.min(s.vy, -20); if (!s.darkSaid) { s.darkSaid = true; flt(g, s.x, s.y - 16, L[DG.msg], '#ffe0a0', 1.8); } }
+    else if (s.y < DG.y - 30) s.darkSaid = false;
+    // 海胆：空手碰了扎一下弹回来；戴着手套顶上去一会儿就推开了（作者 4A）
+    (BAY.URCHINS || []).forEach(U => {
+      if (has(S, U.id)) return;
+      const d = dist(s.x, s.y, U.x, U.y), key = 'ur_' + U.id;
+      if (d > U.r + SEAL_R + 4) { s[key] = 0; return; }
+      if (has(S, 'r_gloves')) { s[key] = (s[key] || 0) + dt; if (s[key] > 0.3) pushUrchin(g, U); }
+      else prick(g, U, L.urchinOuch);
+    });
+    // 海带墙：有海带刀顶上去一会儿就割开了（作者 3A）
+    (BAY.KWALLS || []).forEach(K => {
+      if (has(S, K.id)) return;
+      const d = Math.max(Math.abs(s.x - K.x) - K.w / 2, Math.abs(s.y - K.y) - K.h / 2), key = 'kw_' + K.id;
+      if (d > SEAL_R + 4) { if (d > 30) s[key] = 0; return; }
+      if (has(S, 'k_knife')) { s[key] = (s[key] || 0) + dt; if (s[key] > 0.25) cutKelp(g, K); }
+      else if (!s[key]) { s[key] = 1; flt(g, s.x, s.y - 14, L.kelpWall, '#e0ffe0', 1.4); sfx(g, 'squish'); }
+    });
+    // 电鳗（作者 4A）：碰了被电一下（掉气、弹开、叼着的鱼吓跑一条）；穿着绝缘服就把它顶开
+    if (!g.fight) (g.eels || []).forEach(e => {
+      if (e.knock > 0) return;
+      const ca = Math.cos(e.ang), sa = Math.sin(e.ang), d = segD(s.x, s.y, e.x - ca * 13, e.y - sa * 13, e.x + ca * 13, e.y + sa * 13);
+      if (d > 5.5 + SEAL_R) return;
+      if (has(S, 'k_suit')) {
+        const dd = dist(e.x, e.y, s.x, s.y) || 1;
+        e.knock = 1.4; e.kx = (e.x - s.x) / dd * 18; e.ky = (e.y - s.y) / dd * 18; s.vx *= 0.4; s.vy *= 0.4; sfx(g, 'thud');
+        if (!s.suitSaid) { s.suitSaid = true; flt(g, s.x, s.y - 16, L.eelPush, '#e0f4ff', 1.6); }
+      } else if (!(s.zapCD > 0)) zapSeal(g, e);
+    });
+    // 回声：按住"攻击"不放一会儿，发一圈声波（作者 4A）
+    if (has(S, 'r_echo') && !g.fight) {
+      if (g.actHeld && !actTarget(g)) { s.echoC = (s.echoC || 0) + dt; if (s.echoC >= 0.55 && !(s.echoCD > 0)) { emitEcho(g); s.echoC = -9; } }
+      else s.echoC = 0;
+    }
     // 裂了缝的石头：推进器冲过去撞开
     BAY.CRACKS.forEach(K => {
       if (has(S, K.id)) return;
       const d = BAY.sd(K.shape, s.x, s.y);
       if (d > SEAL_R + 4) { if (d > 30) s['crk_' + K.id] = false; return; }
       if (s.dashT > 0) breakCrack(g, K);
-      else if (!s['crk_' + K.id]) { s['crk_' + K.id] = true; flt(g, s.x, s.y - 14, L.crackHit, '#ffffff', 1.4); sfx(g, 'thud'); }
+      else if (!s['crk_' + K.id]) { s['crk_' + K.id] = true; flt(g, s.x, s.y - 14, L[K.hit || (K.sub ? 'domeHit' : 'crackHit')], '#ffffff', 1.4); sfx(g, 'thud'); }
     });
     // 憋气：水面上、气泡泉里回气，别处掉气；没气了拼命游回岸边
     if (s.y <= WY + 8) s.air = Math.min(C.air, s.air + dt * C.air / 2.5);
@@ -860,16 +1203,126 @@
     sfx(g, 'buzz');
     g.fade = { t: 0, fn: () => { const s = g.seal; s.land = true; s.y = GY; s.x = SPOT.basin; s.vx = s.vy = 0; s.dashT = 0; s.air = caps(g.S).air; g.camSnap = true; flt(g, W / 2, 90, L.airHome, '#ffd0d0', 2.2, true); arriveStall(g); } };
   }
+  // 地形改了一块（撞开石头、推开海胆、回声照出暗道）：重算这一块
+  function rebuildAt(g, b) {
+    const r = [b[0] - 20, b[1] - 20, b[2] + 20, b[3] + 20];
+    BAY.build(g.S.got, g.map.F, r);
+    gradGrid(g, r);
+    clearChunks(g, r); g.floorC = {}; g.seatC = {}; g.mapTerr = null;
+  }
+  function shapeBB(sh) {
+    if (sh[0] === 'ell') return [sh[1] - sh[3], sh[2] - sh[4], sh[1] + sh[3], sh[2] + sh[4]];
+    if (sh[0] === 'tun') { const xs = sh[1].map(p => p[0]), ys = sh[1].map(p => p[1]); return [Math.min(...xs) - sh[2], Math.min(...ys) - sh[2], Math.max(...xs) + sh[2], Math.max(...ys) + sh[2]]; }
+    if (sh[0] === 'rect') return sh.slice(1, 5);
+    if (sh[0] === 'cap') return [Math.min(sh[1], sh[3]) - sh[5], Math.min(sh[2], sh[4]) - sh[5], Math.max(sh[1], sh[3]) + sh[5], Math.max(sh[2], sh[4]) + sh[5]];
+    return [0, 0, WW, WH];
+  }
   function breakCrack(g, K) {
     const S = g.S, s = g.seal;
     S.got[K.id] = 1;
-    const [, cx, cy, rx, ry] = K.shape;
-    BAY.build(S.got, g.map.F, [cx - rx - 20, cy - ry - 20, cx + rx + 20, cy + ry + 20]);
-    gradGrid(g, [cx - rx - 20, cy - ry - 20, cx + rx + 20, cy + ry + 20]);
-    clearChunks(g, [cx - rx - 20, cy - ry - 20, cx + rx + 20, cy + ry + 20]); g.floorC = {}; g.seatC = {}; g.mapTerr = null;
-    flt(g, s.x, s.y - 16, L.crackBroke, '#fff6a0', 1.6);
+    rebuildAt(g, shapeBB(K.shape));
+    flt(g, s.x, s.y - 16, L[K.broke || (K.sub ? 'domeBroke' : 'crackBroke')], '#fff6a0', 1.6);
     sfx(g, 'thud'); sfx(g, 'splash');
+    if (K.sub && !K.hit) sfx(g, 'ysGlass');   // 潜水艇的玻璃罩；观察站的铁舱门不是玻璃
     g.shake = 0.35;
+    save(g);
+  }
+  function cutKelp(g, K) {
+    const S = g.S, s = g.seal;
+    S.got[K.id] = 1;
+    rebuildAt(g, [K.x - K.w / 2, K.y - K.h / 2, K.x + K.w / 2, K.y + K.h / 2]);
+    g.kwCut = g.kwCut || {}; g.kwCut[K.id] = 0.5;
+    flt(g, s.x, s.y - 16, L.kelpCut, '#e0ffd0', 1.6); sfx(g, 'slap'); sfx(g, 'squish');
+    save(g);
+  }
+  function zapSeal(g, e) {
+    const s = g.seal, d = dist(s.x, s.y, e.x, e.y) || 1;
+    s.zapCD = 1.2; e.zap = 0.6;
+    s.vx = (s.x - e.x) / d * 120; s.vy = (s.y - e.y) / d * 120; s.dashT = 0; s.bump = 0.5;
+    s.air = Math.max(0, s.air - 4);
+    flt(g, s.x, s.y - 16, L.eelZap, '#d0f0ff', 1.3); sfx(g, 'buzz'); g.shake = 0.2;
+    loseFish(g);
+  }
+  // 叼着的鱼吓跑一条（电鳗电的、羊头鱼撞的）：一溜烟游走、淡掉
+  function loseFish(g) {
+    const S = g.S, s = g.seal;
+    let i = -1;
+    for (let k = S.basket.length - 1; k >= 0; k--) if (S.basket[k].sp) { i = k; break; }
+    if (i < 0) return false;
+    const f = S.basket.splice(i, 1)[0];
+    g.fish.push({ sp: f.sp, size: f.size, x: s.x + s.face * 10, y: s.y + 2, vx: -s.face * 50 + rnd(-10, 10), vy: rnd(-25, 5), tx: 0, ty: 0, face: -s.face, ri: -1, ph: Math.random() * 6, stuck: 0, esc: 1.4 });
+    flt(g, s.x, s.y - 26, L.fishFled, '#ffe8c0', 1.4);
+    return true;
+  }
+  // 羊头鱼（作者 5A：第一种会还手的鱼）：没顶晕就去叼，它回头撞你一下，叼着的鱼吓跑一条
+  function buttSeal(g, f) {
+    const s = g.seal;
+    if (s.prickCD > 0) return;
+    s.prickCD = 0.8; f.ram = 0.5; f.face = s.x > f.x ? 1 : -1; f.vx = f.face * 40;
+    const d = dist(s.x, s.y, f.x, f.y) || 1;
+    s.vx = (s.x - f.x) / d * 120; s.vy = (s.y - f.y) / d * 120 - 10; s.dashT = 0; s.bump = 0.45;
+    flt(g, s.x, s.y - 16, L.sheepButt, '#ffd0c0', 1.3); sfx(g, 'mbPunch'); g.shake = 0.15;
+    loseFish(g);
+  }
+  const segD = (px, py, ax, ay, bx, by) => { const dx = bx - ax, dy = by - ay, t = clamp(((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy || 1), 0, 1); return Math.hypot(px - ax - dx * t, py - ay - dy * t); };
+  // 海带林：一根海带底下那块地面（地形算一次记住）；海狗在不在海带里（游得慢）
+  const kelpFloor = (g, k) => (k.fyMap === g.map ? k.fy : (k.fyMap = g.map, k.fy = floorAt(g, k.x)));
+  const inKelp = (g, s) => !!BAY.KELP && !g.fight && s.y < 470 && BAY.KELP.some(k => Math.abs(k.x - s.x) < 9 && s.y < kelpFloor(g, k));
+  // 电鳗：沿着一条线来回游（被顶开的时候停一停、往旁边让开，过一会儿游回来）
+  function eelPos(E, t) {
+    const P = E.path, segs = [];
+    let tot = 0;
+    for (let i = 1; i < P.length; i++) { const l = dist(P[i - 1][0], P[i - 1][1], P[i][0], P[i][1]); segs.push(l); tot += l; }
+    let u = ((t * E.sp + E.ph * 2 * tot) % (2 * tot) + 2 * tot) % (2 * tot);
+    const back = u > tot;
+    if (back) u = 2 * tot - u;
+    for (let i = 0; i < segs.length; i++) {
+      if (u <= segs[i] || i === segs.length - 1) { const k = clamp(u / segs[i], 0, 1), a = P[i], b = P[i + 1], dx = (b[0] - a[0]) * (back ? -1 : 1), dy = (b[1] - a[1]) * (back ? -1 : 1); return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, dx, dy]; }
+      u -= segs[i];
+    }
+    return [P[0][0], P[0][1], 1, 0];
+  }
+  function eelStep(g, dt) {
+    (g.eels || []).forEach(e => {
+      if (e.knock > 0) { e.knock -= dt; e.kx *= Math.pow(0.3, dt); e.ky *= Math.pow(0.3, dt); } else { e.t += dt; e.kx *= Math.pow(0.05, dt); e.ky *= Math.pow(0.05, dt); }
+      const [x, y, dx, dy] = eelPos(e.E, e.t);
+      e.x = x + e.kx; e.y = y + e.ky;
+      if (Math.abs(dx) > 0.01) e.face = dx > 0 ? 1 : -1;
+      e.ang = Math.atan2(dy, dx); e.tilt = clamp(Math.atan2(dy, Math.abs(dx)), -0.5, 0.5);
+      if (e.zap > 0) e.zap -= dt;
+      e.glowT -= dt; if (e.glowT <= 0) { e.zap = 0.35; e.glowT = rnd(2.5, 5); }   // 时不时自己噼啪闪一下
+    });
+  }
+  function pushUrchin(g, U) {
+    const S = g.S, s = g.seal;
+    S.got[U.id] = 1;
+    rebuildAt(g, [U.x - U.r, U.y - U.r, U.x + U.r, U.y + U.r]);
+    g.urchinFly.push({ x: U.x, y: U.y, r: U.r, t: 0, dir: s.face });
+    flt(g, s.x, s.y - 16, L.urchinPush, '#fff6a0', 1.6);
+    sfx(g, 'squish'); sfx(g, 'pop');
+    save(g);
+  }
+  // 回声：一圈声波，附近没发现的暗道露出来（只有回声找得到的那种就此打通），躲着的鱼亮一下
+  function emitEcho(g) {
+    const s = g.seal, S = g.S, RAD = 130;
+    s.echoCD = 1.2;
+    g.echoes.push({ x: s.x, y: s.y, t: 0 });
+    sfx(g, 'mbRing');
+    BAY.COVERS.forEach(Q => {
+      if (has(S, Q.id)) return;
+      const dx = Math.max(Q.r[0] - s.x, 0, s.x - Q.r[2]), dy = Math.max(Q.r[1] - s.y, 0, s.y - Q.r[3]);
+      if (Math.hypot(dx, dy) < RAD) revealCover(g, Q, true);
+    });
+    let n = 0;
+    g.fish.forEach(f => { if (!f.gone && (f.hide || hiddenByCover(S, f.x, f.y) || (SPECIES[f.sp].camo && !(f.seen > 0))) && dist(f.x, f.y, s.x, s.y) < RAD) { f.glow = 3; if (SPECIES[f.sp].camo) f.seen = 4; n++; } });
+    if (n) flt(g, s.x, s.y - 26, L.echoFish, '#c0f0ff', 1.4);
+  }
+  function revealCover(g, Q, byEcho) {
+    const S = g.S;
+    S.got[Q.id] = 1;
+    if (Q.echo) rebuildAt(g, Q.r); else { clearChunks(g, Q.r); g.mapTerr = null; }
+    g.coverFade[Q.id] = 1;
+    flt(g, (Q.r[0] + Q.r[2]) / 2, Q.r[1] - 6, byEcho ? L.echoGot : L.secret, '#ffe0ff', 1.6); sfx(g, 'chime');
     save(g);
   }
   // 钻管子：海底进水口 ⇄ 岸上锅旁边
@@ -914,12 +1367,10 @@
     if (b && dist(s.x, s.y, b.x, Math.min(b.y || WY, floorAt(g, b.x) - 4)) < 12) { S.money += b.money; flt(g, s.x, s.y - 16, L.bottle.money(b.money), '#fff6a0', 2); Wd.bottle = null; sfx(g, 'ding'); }
     // 藏在海里的东西
     TREASURE.forEach(k => { if (k !== 'valve' && !has(S, k) && dist(s.x, s.y, P.things[k][0], P.things[k][1]) < 15) getThing(g, k); });   // 捡东西还是碰到就捡
-    // 暗道：游进去就露出来
-    BAY.COVERS.forEach(Q => {
-      if (has(S, Q.id) || !inRect(s.x, s.y, Q.r)) return;
-      S.got[Q.id] = 1; clearChunks(g, Q.r); g.mapTerr = null;
-      flt(g, s.x, s.y - 16, L.secret, '#ffe0ff', 1.4); sfx(g, 'chime');
-    });
+    // 暗道：游进去就露出来（只有回声找得到的那种是实心的，游不进去）
+    BAY.COVERS.forEach(Q => { if (!Q.echo && !has(S, Q.id) && inRect(s.x, s.y, Q.r)) revealCover(g, Q, false); });
+    // 狮子鱼：空手碰一下就扎（作者 5A）
+    if (!has(S, 'r_gloves')) g.fish.forEach(f => { if (!f.gone && SPECIES[f.sp].spiky && !(f.dizzy > 0) && dist(s.x, s.y, f.x, f.y) < SPECIES[f.sp].len[f.size] * 0.42 + 6) prick(g, f); });
     // 章鱼小铺、阀门、管子口：要点一下才用（waterObj ／ useW），游过去碰到不算
   }
   function getThing(g, k) {
@@ -928,7 +1379,7 @@
     let text;
     if (T.k === 'gear') text = L.gear[k];
     else if (T.k === 'o2') { text = L.gear.o2; g.seal.air = caps(S).air; }
-    else if (T.k === 'recipe') { if (S.recipes.indexOf('sour') < 0) S.recipes.push('sour'); text = L.bottle.sour; }
+    else if (T.k === 'recipe') { const r = T.r || 'sour'; if (S.recipes.indexOf(r) < 0) S.recipes.push(r); text = L.bottle[r]; }
     else if (T.k === 'pearls') { S.pearls += T.n; text = L.stash(T.n); }
     else text = L.valve;
     g.panel = { kind: 'note', text };
@@ -945,69 +1396,74 @@
     Object.keys(g.coverFade).forEach(k => { g.coverFade[k] -= dt * 1.5; if (g.coverFade[k] <= 0) delete g.coverFade[k]; });
     const s = g.seal, inside = !s.land && inPoly(s.x, s.y, BAY.BOAT.inside);
     g.inBoat = clamp(g.inBoat + (inside ? dt : -dt) * 4, 0, 1);
+    g.echoes.forEach(e => { e.t += dt; }); g.echoes = g.echoes.filter(e => e.t < 1);
+    g.urchinFly.forEach(u => { u.t += dt; }); g.urchinFly = g.urchinFly.filter(u => u.t < 0.9);
+    if (g.kwCut) Object.keys(g.kwCut).forEach(k => { g.kwCut[k] -= dt; });
+    eelStep(g, dt);
+    if (g.rubble) { g.rubble.forEach(q => { q.t += dt; q.vy += 120 * dt; q.vx *= Math.pow(0.3, dt); q.x += q.vx * dt; q.y += q.vy * dt; q.rot += q.vr * dt; if (fieldAt(g, q.x, q.y + q.r) > 0) { q.vy = 0; q.vr = 0; q.y -= 0.5; } }); g.rubble = g.rubble.filter(q => q.t < 1.6); }
   }
 
 
   /* ================= 岸上的东西 ================= */
   function use(g, obj) {
     const S = g.S;
-    if (obj.k === 'tent') { if (g.session || g.boss) { flt(g, obj.x, GY - 30, L.busy, '#ffd0d0', 1.4); return; } g.panel = { kind: 'ask', text: L.tent, yes: L.sleep, fn: () => sleep(g) }; }
+    if (obj.k === 'tent') { if (g.session || g.boss) { flt(g, obj.x, GY - 30, L.busy, '#ffd0d0', 1.4); return; } g.panel = { kind: 'ask', text: L.tent, yes: L.sleep, fn: () => { sfx(g, 'click'); g.fade = { t: 0, inT: 0.8, hold: 1.6, outT: 0.9, sleep: true, fn: () => sleep(g) }; } }; }   // 睡觉的演出：慢慢黑下去，黑着打呼噜，再慢慢亮
     else if (obj.k === 'tank') openTank(g);
     else if (obj.k === 'basin') { g.panel = { kind: 'basin', sel: 0 }; g.hold = false; sfx(g, 'pop'); }
     else if (obj.k === 'dex') { g.panel = { kind: 'dex' }; g.hold = false; sfx(g, 'pop'); }
     else if (obj.k === 'pot') startSession(g);
     else if (obj.k === 'gong') gong(g);
     else if (SHORE[obj.k]) openShop(g, SHORE[obj.k]);
-    else if (obj.k === 'gate') g.panel = { kind: 'note', text: S.license ? L.gateSoon : L.gate };
+    else if (obj.k === 'gate' || obj.k === 'gateL') {
+      if (g.session || g.boss) { flt(g, obj.x, GY - 30, L.busy, '#ffd0d0', 1.4); return; }
+      const ai = AREA_ORDER.indexOf(AREA), prev = AREA_ORDER[ai - 1], next = AREA_ORDER[ai + 1];
+      if (obj.k === 'gateL') g.panel = { kind: 'ask', text: L.gateBack(AREAS[prev].LOOK.zone), yes: L.gateYes, fn: () => goArea(g, prev, SPOTS[prev].gate - 24) };
+      else if (!next) g.panel = { kind: 'note', text: S[LOOK.lic] ? L.gateSoon : L.gate('深海沟') };   // 再往后的展区还没做
+      else g.panel = S[LOOK.lic] ? { kind: 'ask', text: L.gateGo(AREAS[next].LOOK.zone, caps(S).tank > 0), yes: L.gateYes, fn: () => goArea(g, next, SPOTS[next].gateL + 24) } : { kind: 'note', text: L.gate(AREAS[next].LOOK.zone) };
+    }
     else if (obj.k === 'pipe') { if (g.session || g.boss) flt(g, obj.x, GY - 30, L.busy, '#ffd0d0', 1.4); else if (!has(S, 'valve')) g.panel = { kind: 'note', text: L.pipeShut }; else g.panel = { kind: 'ask', text: L.pipeGo, yes: L.pipeYes, fn: () => pipeDown(g) }; }
   }
   function sleep(g) {
     const S = g.S;
     S.day++;
-    freshWorld(S);   // 过一天：水里的鱼、海贝的珍珠、海底的破烂、漂流瓶都补回来（作者定；商人不再按天换）
-    g.fish = [];
-    REGIONS.forEach((R, i) => { for (let k = 0; k < R.n; k++) spawnFish(g, i, true); });
+    freshWorld(S);   // 过一天：水里的鱼、海贝的珍珠、海底的破烂、漂流瓶都补回来（作者定；商人不再按天换）；另一个展区回去的时候再补
+    spawnAll(g);
     g.seal.air = caps(S).air;
-    flt(g, W / 2, 100, L.morning(S.day), '#fff6c0', 2.2, true);
-    sfx(g, 'chime');
     save(g);
   }
   function openShop(g, mk) { g.panel = { kind: 'shop', mk }; g.hold = false; sfx(g, 'pop'); }
-  function buyItem(g, id) {
+  function buyItem(g, id, mk) {
     const S = g.S, it = ITEMS[id];
     const lv = lvOf(S, id);
-    if (lv >= it.cost.length) return;
+    if (lv >= it.cost.length || lv >= itemCap(S, id, mk)) return;
     const p = it.cost[lv];
     if (S.money < p) { flt(g, W / 2, 200, L.noMoney, '#ffd0d0', 1.2, true); sfx(g, 'error'); return; }
     S.money -= p;
     S.lv[id] = lv + 1;
     if (id === 'recipeSpicy' && S.recipes.indexOf('spicy') < 0) S.recipes.push('spicy');
+    if (it.recipe && S.recipes.indexOf(it.recipe) < 0) S.recipes.push(it.recipe);
     sfx(g, 'chip');
     save(g);
   }
 
   /* ================= 做菜 ================= */
   // 点锅：盆里有鱼就开始。大胃王在等的时候，只拿他点的鱼
+  // 大胃王点的那几条鱼，盆里够不够（够的话返回要拿的那几条，先不拿）
+  function bossFish(g) {
+    const S = g.S, dish = BOSSES[g.boss.i].dishes[g.boss.dish], take = [], pool = S.basin.slice().sort((a, b) => b.size - a.size);
+    let ok = true;
+    Object.keys(dish.f).forEach(sp => { for (let k = 0; k < dish.f[sp]; k++) { const i = pool.findIndex(f => f.sp === sp); if (i < 0) { ok = false; return; } take.push(pool.splice(i, 1)[0]); } });
+    if (!ok) { flt(g, SPOT.pot, GY - 34, L.needFish(fishText(dish.f)), '#ffd0d0', 2.2); sfx(g, 'error'); return null; }
+    return take;
+  }
+  // 点锅：先弹选配方（能关掉，作者：挡住大胃王的菜单了），选定了才从盆里拿鱼
   function startSession(g) {
     const S = g.S;
-    if (g.session) return;
+    if (g.session || (g.boss && g.boss.phase !== 'order')) return;
     if (!S.basin.length) { flt(g, SPOT.pot, GY - 30, L.emptyBasin, '#ffd0d0', 1.6); return; }
-    let fish;
-    if (g.boss && g.boss.phase === 'order') {
-      const dish = BOSSES[g.boss.i].dishes[g.boss.dish];
-      const take = [];
-      const pool = S.basin.slice().sort((a, b) => b.size - a.size);
-      let ok = true;
-      Object.keys(dish.f).forEach(sp => { for (let k = 0; k < dish.f[sp]; k++) { const i = pool.findIndex(f => f.sp === sp); if (i < 0) { ok = false; return; } take.push(pool.splice(i, 1)[0]); } });
-      if (!ok) { flt(g, SPOT.pot, GY - 34, L.needFish(fishText(dish.f)), '#ffd0d0', 2.2); sfx(g, 'error'); return; }
-      take.forEach(f => S.basin.splice(S.basin.indexOf(f), 1));
-      fish = take;
-    } else fish = S.basin.splice(0, caps(S).pot);
-    g.session = { phase: g.boss ? 'recipe' : 'gather', t: 0, fish, recipe: null, p: 0, q: 0, warm: 0, boss: !!g.boss };
-    g.seal.x = SPOT.pot - 13; g.seal.face = 1; g.pending = null; g.hold = false;
-    if (!g.boss) callTourists(g, Math.min(6, fish.length + 1 + Math.floor(Math.random() * 2)), true);
-    else g.panel = { kind: 'recipe' };
-    sfx(g, 'splash');
+    if (g.boss && !bossFish(g)) return;
+    g.panel = { kind: 'recipe' }; g.pending = null; g.hold = false;
+    sfx(g, 'pop');
   }
   const SLOTS = [238, 259, 280, 301, 322, 343];   // 游客站的位置：大胃王座位右边一排，前面什么都不摆
   function callTourists(g, n, judge) {
@@ -1036,10 +1492,17 @@
   }
   const zoneName = p => (p >= 1 ? 'burnt' : Math.abs(p - BEST) <= BEST_W ? 'best' : p < G0 ? 'raw' : p <= G1 ? 'good' : 'over');
   function pickRecipe(g, r) {
-    const se = g.session;
-    if (!se) return;
-    se.recipe = r; se.phase = 'prep'; se.t = 0;
+    const S = g.S;
     g.panel = null;
+    if (g.session) return;
+    let fish;
+    if (g.boss) { fish = g.boss.phase === 'order' && bossFish(g); if (!fish) return; fish.forEach(f => S.basin.splice(S.basin.indexOf(f), 1)); }
+    else fish = S.basin.splice(0, caps(S).pot);
+    if (!fish.length) return;
+    // 平时：游客先闻着味围过来、评价这批鱼，再下锅；大胃王：直接下锅
+    g.session = { phase: g.boss ? 'prep' : 'gather', t: 0, fish, recipe: r, p: 0, q: 0, warm: 0, boss: !!g.boss };
+    g.seal.x = SPOT.pot - 13; g.seal.face = 1; g.pending = null; g.hold = false;
+    if (!g.boss) callTourists(g, Math.max(1, Math.min(6, fish.length + 1 + Math.floor(Math.random() * 2) + LOOK.crowd)), true);
     sfx(g, 'splash');
   }
   function openPot(g) {
@@ -1047,7 +1510,8 @@
     if (!se || se.phase !== 'heat') return;
     se.q = quality(se.p);
     const z = zoneName(se.p);
-    flt(g, SPOT.pot, GY - 44, { best: L.best, good: L.good, raw: L.raw, over: L.over, burnt: L.burnt }[z], z === 'best' ? '#fff27a' : '#ffffff', 1.6);
+    const raw = RECIPES[se.recipe].raw;   // 刺身：说的是刀工
+    flt(g, SPOT.pot, GY - 44, (raw ? { best: L.bestRaw, good: L.goodRaw, raw: L.rawRaw, over: L.overRaw, burnt: L.burntRaw } : { best: L.best, good: L.good, raw: L.raw, over: L.over, burnt: L.burnt })[z], z === 'best' ? '#fff27a' : '#ffffff', 1.6);
     sfx(g, z === 'best' ? 'ysWin' : z === 'burnt' ? 'buzz' : 'ding');
     if (se.boss) { bossServe(g); return; }
     se.phase = 'bid'; se.t = 0;
@@ -1058,8 +1522,8 @@
     const se = g.session, T = TOURISTS[o.k];
     const k = Math.min(T.eat, se.fish.length);
     if (!k) return;
-    const like = T.like === se.recipe ? 1.25 : 1;
-    o.bid = { k, p: Math.max(1, Math.round(k * fishValue(g) * se.q * like * rnd(0.85, 1.1))), tick: 0, n: 0, like: T.like === se.recipe };
+    const lk = likes(T, se.recipe), like = lk ? 1.25 : 1;
+    o.bid = { k, p: Math.max(1, Math.round(k * fishValue(g) * se.q * like * (T.pay || 1) * LOOK.pay * rnd(0.85, 1.1))), tick: 0, n: 0, like: lk };
     o.ph = 'bid';
   }
   function sell(g, o) {
@@ -1073,9 +1537,11 @@
     flt(g, o.x, GY - 44, L.sold(p), '#ffe36a', 1.4);
     sfx(g, 'chip');
     // 吃完演一段：火候最好又是爱吃的口味 → 大演出（各有招牌）；还行 → 点头竖大拇指；火候差 → 皱眉硬咽（作者 1A 2A 3A，纯演出不加钱）
-    const like = TOURISTS[o.k].like === se.recipe;
+    const like = likes(TOURISTS[o.k], se.recipe);
     o.bid = null; o.ph = 'eat'; o.t = 0; o.show = { tier: se.q >= 1 && like ? 2 : se.q >= 0.6 ? 1 : 0, rec: se.recipe, cue: 0 };
-    if (!se.fish.length) endSession(g);
+    if (!se.fish.length) { endSession(g); return; }
+    // 锅里剩的不够别人要的了：别的泡泡跟着改成剩几条、按条数折价（11-26 作者：只做了 4 条，3 条的和 2 条的都卖成了）
+    g.tourists.forEach(q => { if (q.bid && q.bid.k > se.fish.length) { q.bid.p = Math.max(1, Math.round(q.bid.p * se.fish.length / q.bid.k)); q.bid.k = se.fish.length; q.bump = 0.4; } });
   }
   function endSession(g) {
     g.tourists.forEach(o => { if (o.ph !== 'eat') { o.bid = null; o.ph = 'out'; o.slot = null; } });
@@ -1086,7 +1552,7 @@
     const se = g.session, S = g.S;
     if (!se) return;
     se.t += dt;
-    if (se.phase === 'gather' && se.t > 2.4) { se.phase = 'recipe'; g.panel = { kind: 'recipe' }; }
+    if (se.phase === 'gather' && se.t > 2.4) { se.phase = 'prep'; se.t = 0; }
     else if (se.phase === 'prep' && se.t > 3.2) { se.phase = 'heat'; se.t = 0; se.p = 0; }
     else if (se.phase === 'heat') {
       se.p = Math.min(1.05, se.p + dt / COOK_T);
@@ -1096,8 +1562,8 @@
         if (se.p > 0.15 + (o.slot % 7) * 0.05) {
           o.decided = true;
           const T = TOURISTS[o.k];
-          const goP = T.hate === se.recipe ? 0.8 : T.like === se.recipe ? 0 : 0.2;
-          if (Math.random() < goP) { o.ph = 'out'; o.huff = 0.9; o.say = pick(L.leave); o.sayT = 0; o.slot = null; }
+          const goP = hates(T, se.recipe) ? 0.8 : likes(T, se.recipe) ? 0 : 0.2;
+          if (Math.random() < goP) { o.ph = 'out'; o.huff = 0.9; o.say = pick(L.leave); o.sayT = 0; o.slot = null; o.mad = hates(T, se.recipe); }
         }
       });
     } else if (se.phase === 'bid') {
@@ -1171,9 +1637,27 @@
   /* ================= 大胃王 ================= */
   function gong(g) {
     const S = g.S;
-    if (S.boss >= 3) { g.panel = { kind: 'note', text: L.gongDone }; return; }
+    if (S.boss >= 3) { g.panel = { kind: 'note', text: L.gongDone, secret: () => openBackdoor(g) }; return; }   // 这句话连点三下：后门
+    if (g.boss && g.boss.phase === 'order') { askGiveUp(g); return; }   // 大胃王在等的时候再敲锣：问放不放弃
     if (g.session || g.boss) { flt(g, SPOT.gong, GY - 30, L.gongBusy, '#ffd0d0', 1.4); return; }
-    g.panel = { kind: 'ask', text: L.gong(S.boss + 1), yes: '敲', fn: () => { g.boss = { i: S.boss, dish: 0, phase: 'alarm', t: 0, left: BOSSES[S.boss].t, say: 0 }; sfx(g, 'rxAlarm'); } };
+    g.panel = { kind: 'gong' }; g.hold = false; sfx(g, 'pop');   // 先看他要点什么菜（作者：敲锣前就能看到菜单）
+  }
+  function callBoss(g) {
+    const S = g.S;
+    g.panel = null;
+    g.boss = { i: S.boss, dish: 0, phase: 'alarm', t: 0, left: BOSSES[S.boss].t, say: 0 };
+    sfx(g, 'rxAlarm');
+  }
+  // 放弃挑战（作者：没学会那道菜的时候，只能干等着时间过去）：做到一半的鱼退回盆里，大胃王走人，什么都不丢
+  function askGiveUp(g) { g.panel = { kind: 'ask', text: L.giveUpAsk, yes: L.giveUp, fn: () => giveUp(g) }; g.hold = false; }
+  function giveUp(g) {
+    const B = g.boss, S = g.S;
+    if (!B || B.phase !== 'order') return;
+    if (g.session) { S.basin = S.basin.concat(g.session.fish.map(f => ({ sp: f.sp, size: f.size }))); g.session = null; }
+    g.boss = null;
+    g.panel = { kind: 'note', text: L.gaveUp(BOSSES[B.i].n) };
+    sfx(g, 'ysLose');
+    save(g);
   }
   const DROP = { start: 1.0, land: 1.5, end: 2.7 };   // 大胃王进场：几秒开始掉、几秒落地、几秒开始点菜
   function bossStep(g, dt) {
@@ -1187,9 +1671,9 @@
     if (B.phase === 'alarm' && B.t >= DROP.land && !B.landed) { B.landed = true; g.shake = 0.55; sfx(g, 'mbBoom'); sfx(g, 'thud'); }
     if (B.phase === 'alarm' && B.t > DROP.end) { B.phase = 'order'; B.t = 0; B.left = BOSSES[B.i].t; g.tourists.forEach(o => { if (!o.bid && o.ph !== 'eat') { o.ph = 'out'; o.slot = null; } }); }
     else if (B.phase === 'order') {
-      if (!g.session || g.session.phase !== 'recipe') B.left -= dt;
+      B.left -= dt;   // 选配方的时候面板开着，整个游戏是停的
       if (B.left <= 0) { if (g.session) { g.S.basin = g.S.basin.concat(g.session.fish); g.session = null; } g.boss = null; g.panel = { kind: 'note', text: L.bossTimeout }; sfx(g, 'ysLose'); }
-    } else if (B.phase === 'eye' && B.t > 2.4) startFight(g);
+    } else if (B.phase === 'show') showStep(g, dt);
   }
   function bossServe(g) {
     const B = g.boss, se = g.session, S = g.S, D = BOSSES[B.i];
@@ -1200,48 +1684,90 @@
     B.line = L.bossGood; B.say = 1.6; B.eat = 2;
     B.dish++;
     if (B.dish < D.dishes.length) { B.left = D.t; return; }
-    if (D.fight) { B.phase = 'eye'; B.t = 0; B.line = L.sharkEye; B.say = 2.4; return; }
+    if (D.fight) { B.phase = 'show'; B.t = 0; B.step = 0; B.say = 0; g.pending = null; g.pendingW = null; g.hold = false; g.stick = null; g.keys = {}; return; }   // 进一段戏再打（showStep）
     S.money += D.reward; S.boss++;
     g.panel = { kind: 'note', text: L.bossPass(D.n, D.reward) };
     g.boss = null;
     sfx(g, 'ysWin');
     save(g);
   }
-  // 第三位：大白鲨追下水，绕到背后咬尾巴
-  function startFight(g) {
-    const s = g.seal, S = g.S;
+  // 第三位：大白鲨追下水，绕到背后咬尾巴（11-25 作者：照着尾巴连咬三下太简单）
+  // 每咬中一口：它无敌、负痛游出场 → 躲一会儿 → 边上冒"！" → 从那边猛冲进来；血越少越凶：游得快、瞄得快、一口气连扑好几下、喘气的时间短
+  const SHARK_PH = [
+    { v: 46, tel: 0.6, lunge: 120, tired: 2.6, turn: 1.5, combo: 1 },
+    { v: 56, tel: 0.48, lunge: 142, tired: 2.0, turn: 1.85, combo: 2 },
+    { v: 66, tel: 0.4, lunge: 162, tired: 1.5, turn: 2.2, combo: 3 }
+  ];
+  const sharkAway = K => K.st === 'exit' || K.st === 'away' || K.st === 'warn' || K.st === 'enter';
+  function startFight(g, keep) {
+    const s = g.seal, S = g.S, A = BAY.FIGHT, kind = BOSSES[2].fight, leo = kind === 'leopard';
     g.boss.phase = 'fight';
-    s.land = false; s.x = 470; s.y = 170; s.vx = 0; s.vy = 0; s.dashT = 0; s.air = caps(S).air; s.hurt = 0;
-    g.camSnap = true;
-    g.fight = { hp: caps(S).hp, shark: { x: 340, y: 236, a: 0, v: 46, hp: 3, st: 'tired', t: 2.2, hurt: 0, tiredT: 2.6 }, over: false };   // 开场它先喘口气，给你看清楚
+    if (!keep) { s.land = false; s.x = A.x1 - 70; s.y = kind !== 'shark' ? (A.y0 + A.y1) / 2 - 10 : 170; g.camSnap = true; }   // 重新再来：直接摆好；从岸上跳下来的那次（keep）不挪海狗，镜头慢慢移到打架那片水
+    s.vx = 0; s.vy = 0; s.dashT = 0; s.air = caps(S).air; s.hurt = 0; s.clamp = null;
+    if (kind === 'octo') {
+      const [rx, ry] = BAY.OCTO_ROCK, [kx, ky] = keep || [rx, ry - 40];
+      g.fight = { kind: 'octo', hp: caps(S).hp, cuts: 0, arms: [], next: 2.4, ink: 0, inkIn: 0, grab: null, over: false, octo: { st: keep ? 'enter' : 'hide', t: 0, x: kx, y: ky, x0: kx, y0: ky, face: -1, hurt: 0 }, shark: { hp: OCTO_ARMS } };   // shark.hp：剩几条能咬的触手（右上角）
+      flt(g, W / 2, 60, L.octoChase, '#ffd0d0', 2.2, true);
+      sfx(g, 'splash');
+      return;
+    }
+    if (leo) {
+      restoreBoulders(g);   // 重新再来：礁石都在
+      const [kx, ky] = keep || [A.x0 + 40, A.y0 + 60];
+      g.fight = { kind: 'leopard', hp: caps(S).hp, shark: { x: kx, y: ky, a: keep ? Math.PI * 0.45 : 0, hp: LEO_HP, st: 'circle', t: 2.6, hurt: 0, combo: 0, dives: 0, orb: Math.PI }, rocks: (BAY.BOULDERS || []).map(() => 0), over: false };   // 开场先绕开一点，给海狗看清楚
+      flt(g, W / 2, 60, L.leoChase, '#ffd0d0', 2.2, true);
+      sfx(g, 'splash');
+      return;
+    }
+    const [kx, ky] = keep || [340, 236];
+    g.fight = { hp: caps(S).hp, shark: { x: kx, y: ky, a: keep ? Math.PI * 0.45 : 0, hp: 3, st: 'tired', t: keep ? 1.6 : 2.2, hurt: 0, combo: 0 }, over: false };   // 开场它先喘口气，给你看清楚
     flt(g, W / 2, 60, L.sharkChase, '#ffd0d0', 2.2, true);
     sfx(g, 'splash');
   }
   function fightStep(g, dt) {
-    const F = g.fight, s = g.seal, K = F.shark;
+    if (g.fight.kind === 'leopard') { leopardStep(g, dt); return; }
+    if (g.fight.kind === 'octo') { octoStep(g, dt); return; }
+    const F = g.fight, s = g.seal, K = F.shark, A = BAY.FIGHT, P = SHARK_PH[clamp(3 - K.hp, 0, 2)];
     if (F.over) return;
     if (K.hurt > 0) K.hurt -= dt;
-    // 鲨鱼：追 → 张嘴瞄准 → 猛扑 → 扑完累得喘（转身慢，这时候绕到背后咬尾巴）→ 再追
     K.t -= dt;
-    if (K.t <= 0) {
-      if (K.st === 'chase') { K.st = 'tel'; K.t = 0.6; }
-      else if (K.st === 'tel') { K.st = 'lunge'; K.t = 0.7; sfx(g, 'splash'); }
-      else if (K.st === 'lunge') { K.st = 'tired'; K.t = K.tiredT; }
-      else { K.st = 'chase'; K.t = rnd(2.2, 3.4); }
+    if (K.st === 'exit') {   // 负痛游出场（无敌）
+      K.a = K.exitDir > 0 ? 0 : Math.PI;
+      K.x += K.exitDir * 150 * dt; K.y += ((A.y0 + A.y1) / 2 - K.y) * dt;
+      if (K.x < A.x0 - 70 || K.x > A.x1 + 70) { K.st = 'away'; K.t = rnd(1.0, 1.6); }
+      return;
     }
-    K.tel = K.st === 'tel' ? 1 : 0; K.lunge = K.st === 'lunge' ? 1 : 0;
-    const want = Math.atan2(s.y - K.y, s.x - K.x);
-    let da = want - K.a; while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2;
-    const turn = { chase: 1.5, tel: 2.2, lunge: 0.3, tired: 0.2 }[K.st] * (K.hurt > 0 ? 0.5 : 1);
-    K.a += clamp(da, -turn * dt, turn * dt);
-    const v = K.hurt > 0 ? 14 : { chase: K.v, tel: 14, lunge: 120, tired: 10 }[K.st];
-    const A = BAY.FIGHT;
-    K.x = clamp(K.x + Math.cos(K.a) * v * dt, A.x0 + 26, A.x1 - 26);
-    K.y = clamp(K.y + Math.sin(K.a) * v * dt, A.y0 + 18, A.y1 - 14);
-    // 海狗在鲨鱼身上哪儿：头 ／ 尾巴
+    if (K.st === 'away') {   // 看不见，过一会儿在边上冒"！"
+      if (K.t <= 0) { K.side = Math.random() < 0.5 ? -1 : 1; K.ey = clamp(s.y + rnd(-16, 16), A.y0 + 24, A.y1 - 52); K.st = 'warn'; K.t = 0.95 - (3 - K.hp) * 0.12; sfx(g, 'beep'); }   // 别从最底下那一条冲进来：手机上那里是按键，会挡住警告
+      return;
+    }
+    if (K.st === 'warn') {
+      if (K.t <= 0) { K.st = 'enter'; K.x = K.side < 0 ? A.x0 - 60 : A.x1 + 60; K.y = K.ey; K.a = K.side < 0 ? 0 : Math.PI; K.t = 2.4; sfx(g, 'mbWhoosh'); }
+      return;
+    }
+    if (K.st === 'enter') {   // 从边上横着猛冲进来，冲过头了接着追
+      K.x += Math.cos(K.a) * P.lunge * 1.15 * dt;
+      if ((K.side < 0 && K.x > A.x1 - 50) || (K.side > 0 && K.x < A.x0 + 50) || K.t <= 0) { K.st = 'chase'; K.t = rnd(1.2, 2); K.x = clamp(K.x, A.x0 + 26, A.x1 - 26); }
+    } else {
+      // 追 → 张嘴瞄准 → 猛扑（越凶连扑越多下）→ 扑完累得喘（转身慢，这时候绕到背后咬尾巴）→ 再追
+      if (K.t <= 0) {
+        if (K.st === 'chase') { K.st = 'tel'; K.t = P.tel; K.combo = P.combo; }
+        else if (K.st === 'tel') { K.st = 'lunge'; K.t = 0.7; sfx(g, 'splash'); }
+        else if (K.st === 'lunge') { K.combo--; if (K.combo > 0) { K.st = 'tel'; K.t = P.tel * 0.6; } else { K.st = 'tired'; K.t = P.tired; } }
+        else { K.st = 'chase'; K.t = rnd(1.6, 2.6); }
+      }
+      const want = Math.atan2(s.y - K.y, s.x - K.x);
+      let da = want - K.a; while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2;
+      const turn = { chase: P.turn, tel: P.turn * 1.5, lunge: 0.3, tired: 0.2 }[K.st] * (K.hurt > 0 ? 0.5 : 1);
+      K.a += clamp(da, -turn * dt, turn * dt);
+      const v = { chase: P.v, tel: 14, lunge: P.lunge, tired: 10 }[K.st];
+      K.x = clamp(K.x + Math.cos(K.a) * v * dt, A.x0 + 26, A.x1 - 26);
+      K.y = clamp(K.y + Math.sin(K.a) * v * dt, A.y0 + 18, A.y1 - 14);
+    }
+    K.tel = K.st === 'tel' ? 1 : 0; K.lunge = K.st === 'lunge' || K.st === 'enter' ? 1 : 0;
+    // 海狗在鲨鱼身上哪儿：头 ／ 尾巴。喘气的时候嘴是闭着的，撞上脑袋只会被弹开；尾巴要按"攻击"（或"叼"）才咬得到
     const [lx, ly] = sharkLocal(g);
     const LEN = 56;
-    // 喘气的时候嘴是闭着的，撞上脑袋只会被弹开；尾巴要按"攻击"（或"叼"）才咬得到（作者：改成按键）
     if (Math.abs(ly) < (lx < 0 ? 18 : 13) && s.hurt <= 0) {
       if (lx > LEN * 0.15 && lx < LEN * 0.55 && K.st !== 'tired') {
         F.hp--; s.hurt = 1.4; s.vx = (s.x - K.x) * 3; s.vy = (s.y - K.y) * 3; flt(g, s.x, s.y - 16, L.gotBit, '#ffd0d0', 1.2); sfx(g, 'ysSlap');
@@ -1253,28 +1779,432 @@
     const s = g.seal, K = g.fight.shark;
     return [(s.x - K.x) * Math.cos(-K.a) - (s.y - K.y) * Math.sin(-K.a), (s.x - K.x) * Math.sin(-K.a) + (s.y - K.y) * Math.cos(-K.a)];
   }
-  // 按"攻击"：嘴在尾巴那块就咬一口
-  function hitShark(g) {
+  // 珊瑚礁第三位：豹海豹，互撞（作者 10A）——绕着海狗游 → 低头蓄力、身子一红 → 直线猛冲（正面挨上掉血）→ 冲过头刹车掉头（这时候用冲刺撞它）
+  // 引它一头撞上礁石，晕一会儿，随便撞。
+  // 11-26 作者：一通连撞就赢了、跟大白鲨差不多、血也不比鲨鱼多 → 改：
+  //   5 滴血（大白鲨 3）；只有刹车掉头、撞礁石晕了这两个空当撞得进去，平时撞它身上弹回来；
+  //   撞中一下它负痛无敌，一跃跳出水面不见了 → 水面上一圈红波纹跟着海狗走 → 定住 → 从上面一头扎下来（扎到礁石上也晕）→ 落地刹一下（空当）→ 接着打；
+  //   每撞中一下更凶：冲得更快、蓄力更短、一口气连冲更多下、后面冲到场边会反弹接着冲、扎下来一次连扎好几下
+  const LEO_HP = 5;
+  const LEO_PH = [
+    { v: 40, tel: 0.95, rush: 185, brake: 1.4, combo: 1, bounce: 0, dives: 1, mark: 1.3, rest: [1.6, 2.4] },
+    { v: 44, tel: 0.85, rush: 200, brake: 1.25, combo: 1, bounce: 0, dives: 1, mark: 1.15, rest: [1.4, 2.1] },
+    { v: 48, tel: 0.75, rush: 215, brake: 1.1, combo: 2, bounce: 1, dives: 2, mark: 1.0, rest: [1.2, 1.8] },
+    { v: 52, tel: 0.66, rush: 232, brake: 1.0, combo: 2, bounce: 1, dives: 2, mark: 0.9, rest: [1.0, 1.6] },
+    { v: 56, tel: 0.58, rush: 250, brake: 0.9, combo: 3, bounce: 2, dives: 3, mark: 0.8, rest: [0.9, 1.4] }
+  ];
+  const leoAway = K => ['hurt', 'leap', 'gone', 'mark'].indexOf(K.st) >= 0;   // 这几样的时候它不在场上（或者负痛无敌），碰不到
+  const LEO_STRONG = 2;   // 还剩两滴血起（第四条血）变强
+  const boulderGone = (g, i) => has(g.S, 'r_boulder' + i);
+  // 往下扎砸碎礁石：这一场里那块礁石没了（地形重算），碎块往两边飞
+  function shatterBoulder(g, i) {
+    const [x, y] = BAY.BOULDERS[i];
+    g.S.got['r_boulder' + i] = 1;
+    rebuildAt(g, [x - 30, y - 50, x + 30, y + 4]);
+    g.rubble = g.rubble || [];
+    for (let k = 0; k < 12; k++) g.rubble.push({ x: x + rnd(-16, 16), y: y - rnd(8, 36), vx: rnd(-60, 60), vy: rnd(-70, -10), r: rnd(2, 4.5), rot: rnd(0, 6), vr: rnd(-8, 8), t: 0 });
+    g.shake = 0.6; flt(g, x, y - 50, L.leoSmash, '#fff6a0', 1.4); sfx(g, 'mbBoom'); sfx(g, 'thud');
+  }
+  // 打完（赢了、输了、下次再来）：礁石都长回去
+  function restoreBoulders(g) {
+    if (!BAY.BOULDERS) return;
+    BAY.BOULDERS.forEach(([x, y], i) => { if (boulderGone(g, i)) { delete g.S.got['r_boulder' + i]; rebuildAt(g, [x - 30, y - 50, x + 30, y + 4]); } });
+    g.rubble = [];
+  }
+  function leopardStep(g, dt) {
+    const F = g.fight, s = g.seal, K = F.shark, A = BAY.FIGHT, P = LEO_PH[clamp(LEO_HP - K.hp, 0, 4)];
+    if (F.over) return;
+    K.t -= dt; if (K.hurt > 0) K.hurt -= dt;
+    const turnTo = (want, rate) => { let da = want - K.a; while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2; K.a += clamp(da, -rate * dt, rate * dt); };
+    const toS = Math.atan2(s.y - K.y, s.x - K.x);
+    const boulderAt = (hx, hy) => (BAY.BOULDERS || []).findIndex((b, i) => !boulderGone(g, i) && BAY.sd(BAY.BOULDER_SH(b), hx, hy) < 3);
+    const strong = K.hp <= LEO_STRONG;
+    const stunAt = bi => { K.st = 'stun'; K.t = 2.6; K.dives = 0; F.rocks[bi]++; g.shake = 0.45; flt(g, K.x, K.y - 22, L.leoRock, '#fff6a0', 1.4); sfx(g, 'mbBoom'); sfx(g, 'thud'); };
+    let vx = 0, vy = 0, inside = true;   // inside：位置夹在场地里（跳出水面、扎下来的时候不夹）
+    if (K.st === 'circle') {   // 绕着海狗转，离它七八十远
+      K.orb = (K.orb || 0) + dt * 0.9;
+      const tx = s.x + Math.cos(K.orb) * 80, ty = s.y + Math.sin(K.orb) * 46;
+      turnTo(Math.atan2(ty - K.y, tx - K.x), 2.4);
+      vx = Math.cos(K.a) * P.v; vy = Math.sin(K.a) * P.v;
+      if (K.drunk) { K.swayT = (K.swayT == null ? 1.5 : K.swayT) - dt; if (K.swayT <= 0) { K.st = 'sway'; K.t = 1.9; K.swayT = rnd(2.2, 3.6); sfx(g, 'dizzy'); } }   // 礁石全碎了：时不时头晕、晃
+      if (K.st === 'circle' && K.t <= 0 && dist(K.x, K.y, s.x, s.y) > 56) { K.st = 'aim'; K.t = P.tel; K.combo = P.combo; sfx(g, 'mbCharge'); }   // 离得太近不冲，先拉开
+    } else if (K.st === 'aim') {   // 蓄力：对准海狗，身子发红；最后一小会儿方向定死了（一抖一抖的时候赶紧往旁边闪）
+      K.lock = K.t < 0.32;
+      if (!K.lock) turnTo(toS, 5);
+      vx = Math.cos(K.a) * 6; vy = Math.sin(K.a) * 6;
+      if (K.t <= 0) { K.st = 'rush'; K.t = 1.3; K.run = 0; K.bounces = P.bounce; sfx(g, 'mbWhoosh'); }
+    } else if (K.st === 'rush') {   // 直线猛冲，方向不再变
+      vx = Math.cos(K.a) * P.rush; vy = Math.sin(K.a) * P.rush; K.run += P.rush * dt;
+      const hx = K.x + Math.cos(K.a) * 24, hy = K.y + Math.sin(K.a) * 10, bi = boulderAt(hx, hy);
+      const wallX = hx < A.x0 + 8 || hx > A.x1 - 8, wallY = hy < A.y0 + 8 || hy > A.y1 - 6;
+      if (bi >= 0) { stunAt(bi); vx = vy = 0; }   // 一头撞上礁石：晕
+      else if ((wallX || wallY) && K.bounces > 0) { K.bounces--; if (wallX) K.a = Math.PI - K.a; if (wallY) K.a = -K.a; K.run = 0; K.t = 1.3; g.shake = 0.2; flt(g, K.x, K.y - 20, L.leoBounce, '#ffd0a0', 1); sfx(g, 'thud'); }   // 后面：冲到场边反弹回来接着冲
+      else if (K.run > 230 || K.t <= 0 || wallX || wallY) { K.st = 'brake'; K.t = P.brake; K.slide = 1; sfx(g, 'splash'); }
+    } else if (K.st === 'brake') {   // 冲过头刹车掉头：滑一段停下，慢慢掉头（空当）
+      K.slide = Math.max(0, K.slide - dt * 3);
+      vx = Math.cos(K.a) * P.rush * 0.35 * K.slide; vy = Math.sin(K.a) * P.rush * 0.35 * K.slide;
+      if (K.slide <= 0) turnTo(toS, 1.3);
+      if (K.t <= 0) {
+        K.combo--;
+        if (K.combo > 0) { K.st = 'aim'; K.t = P.tel * 0.7; sfx(g, 'mbCharge'); }
+        else if (K.dives > 0) { K.st = 'leap'; K.t = 0; }   // 还要再扎：又跳出去
+        else { K.st = 'circle'; K.t = rnd(P.rest[0], P.rest[1]); }
+      }
+    } else if (K.st === 'stun') {
+      if (K.t <= 0) { K.st = 'circle'; K.t = rnd(P.rest[0], P.rest[1]); }
+    } else if (K.st === 'hurt') {   // 被撞了一下：往旁边滑开（负痛无敌）
+      vx = K.kx; vy = K.ky; K.kx *= Math.pow(0.08, dt); K.ky *= Math.pow(0.08, dt);
+      if (K.t <= 0) { K.st = 'leap'; K.dives = P.dives; flt(g, K.x, K.y - 24, L.leoLeap, '#e0f0ff', 1.4); }
+    } else if (K.st === 'leap') {   // 一跃跳出水面，不见了（无敌）
+      inside = false; turnTo(-Math.PI / 2, 7);
+      vx = Math.cos(K.a) * 40; vy = -230;
+      if (K.y < A.y0 - 70) { K.st = 'gone'; K.t = rnd(0.7, 1.1); sfx(g, 'splash'); }
+    } else if (K.st === 'gone') {
+      inside = false;
+      if (K.t <= 0) { K.st = 'mark'; K.t = P.mark; K.mx = clamp(s.x, A.x0 + 24, A.x1 - 24); sfx(g, 'beep'); }
+    } else if (K.st === 'mark') {   // 水面上一圈红波纹跟着海狗走，最后一小会儿定住
+      inside = false;
+      if (K.t > 0.35) K.mx = clamp(K.mx + clamp(s.x - K.mx, -110 * dt, 110 * dt), A.x0 + 24, A.x1 - 24);
+      if (K.t <= 0) { K.st = 'dive'; K.x = K.mx; K.y = A.y0 - 40; K.a = Math.PI / 2; sfx(g, 'mbWhoosh'); flt(g, K.mx, A.y0 + 20, L.leoDive, '#ffd0d0', 1); }
+    } else if (K.st === 'dive') {   // 从上面一头扎下来；扎到礁石上也晕
+      inside = false; vy = 300;
+      const bi = boulderAt(K.x, K.y + 26);
+      if (bi >= 0 && strong) {   // 第四条血起：扎下来力气太大，礁石直接砸碎，它接着往下扎
+        shatterBoulder(g, bi);
+        if (BAY.BOULDERS.every((b, i) => boulderGone(g, i)) && !K.drunk) { K.drunk = true; K.swayT = 2.5; flt(g, K.x, K.y - 30, L.leoDizzy, '#ffd0a0', 1.8); }
+      } else if (bi >= 0) { stunAt(bi); vy = 0; }
+      else if (K.y + 26 > A.y1 - 4 || fieldAt(g, K.x, K.y + 28) > 0) { K.st = 'land'; K.t = 0.45; K.dives--; g.shake = 0.3; sfx(g, 'thud'); }   // 扎到底：站稳（防着，撞不进去；只有扎到礁石上才晕）
+    } else if (K.st === 'sway') {   // 像喝醉一样晃：慢慢往前飘、左右摇，这时候侧面撞得动
+      turnTo((Math.cos(K.a) < 0 ? Math.PI : 0) + Math.sin(g.anim * 3) * 0.45, 3);   // 身子放平了晃，别头朝下
+      vx = Math.cos(K.a) * 14 + Math.sin(g.anim * 5) * 18; vy = Math.sin(K.a) * 14 + Math.cos(g.anim * 4) * 8;
+      if (K.t <= 0) { K.st = 'circle'; K.t = rnd(0.5, 1); }
+    } else if (K.st === 'land') {
+      turnTo(toS, 4);
+      if (K.t <= 0) { if (K.dives > 0) { K.st = 'leap'; K.t = 0; } else { K.st = 'circle'; K.t = rnd(0.6, 1); } }
+    }
+    if (inside) {
+      K.x = clamp(K.x + vx * dt, A.x0 + 22, A.x1 - 22); K.y = clamp(K.y + vy * dt, A.y0 + 14, A.y1 - 12);
+      (BAY.BOULDERS || []).forEach((b, i) => { if (boulderGone(g, i)) return; const sh = BAY.BOULDER_SH(b), d = BAY.sd(sh, K.x, K.y) - 10; if (d < 0) { const nx = K.x - sh[1], ny = K.y - sh[2], nl = Math.hypot(nx, ny) || 1; K.x -= nx / nl * d; K.y -= ny / nl * d; } });   // 别钻进礁石里
+    } else if (K.st !== 'gone' && K.st !== 'mark') { K.x = clamp(K.x + vx * dt, A.x0 + 22, A.x1 - 22); K.y += vy * dt; }
+    K.tel = K.st === 'aim' ? 1 : 0; K.lunge = K.st === 'rush' || K.st === 'dive' ? 1 : 0;
+    if (leoAway(K)) return;   // 不在场上、负痛无敌：碰不到
+    // 碰上海狗了
+    const [lx, ly] = sharkLocal(g);
+    if (Math.abs(lx) > 28 || Math.abs(ly) > 9 + SEAL_R) return;
+    if (s.dashT > 0 && ((K.st === 'brake' && !strong) || K.st === 'stun' || K.st === 'sway')) { ramLeopard(g); return; }   // 撞得进去的空当：刹车掉头（前三条血）、撞礁石晕了、头晕晃的时候
+    if (K.st === 'rush' || K.st === 'dive') {   // 正面挨了它一冲 ／ 被扎下来砸中
+      if (s.hurt > 0) return;
+      F.hp--; s.hurt = 1.4; s.dashT = 0;
+      if (K.st === 'rush') { K.st = 'brake'; K.t = P.brake; K.slide = 0.6; }   // 撞上了就刹住（扎下来的接着往下扎）
+      const sd2 = ly < 0 ? -1 : 1;
+      s.vx = Math.cos(K.a) * 90 - Math.sin(K.a) * 90 * sd2; s.vy = Math.sin(K.a) * 90 + Math.cos(K.a) * 90 * sd2;
+      flt(g, s.x, s.y - 16, L.leoGot, '#ffd0d0', 1.2); sfx(g, 'mbPunch'); g.shake = 0.3;
+      if (F.hp <= 0) { F.over = true; g.panel = { kind: 'eaten' }; sfx(g, 'ysLose'); }
+      return;
+    }
+    if (s.dashT > 0) { s.dashT = 0; s.vx = -s.vx * 0.5; s.vy = -s.vy * 0.5; s.bump = 0.4; if (K.st === 'aim') flt(g, s.x, s.y - 16, L.leoFront, '#ffffff', 1.2); sfx(g, 'thud'); return; }   // 别的时候撞它：弹回来（不说话，作者）
+    const d = dist(s.x, s.y, K.x, K.y) || 1; s.vx += (s.x - K.x) / d * 160 * dt; s.vy += (s.y - K.y) / d * 160 * dt;   // 挨着：挤开一点
+  }
+  function ramLeopard(g) {
     const F = g.fight, s = g.seal, K = F.shark;
+    K.hp--; K.st = 'hurt'; K.t = 0.5; K.hurt = 0.8; K.kx = s.vx * 0.55; K.ky = s.vy * 0.55; K.combo = 0;
+    s.dashT = 0; s.vx = -s.vx * 0.3; s.vy = -s.vy * 0.3; s.hurt = 0.6;
+    flt(g, K.x, K.y - 20, L.leoHit, '#fff27a', 1.2); sfx(g, 'mbPunch'); g.shake = 0.35;
+    if (K.hp <= 0) { F.over = true; K.a = Math.cos(K.a) < 0 ? Math.PI : 0; winFight(g); return; }   // 服了：躺平翻白肚皮
+    flt(g, K.x, K.y - 32, K.hp === LEO_STRONG ? L.leoStrong : L.leoHurt[LEO_HP - 1 - K.hp] || L.leoHurt[0], '#ffb0a0', 1.8);   // 第四条血起变强：它自己放狠话
+  }
+  // 按"攻击"：嘴在尾巴那块就咬一口；咬中了它负痛游出场（离场、躲着、冲进来的时候都咬不到）
+  function hitShark(g) {
+    const F = g.fight, s = g.seal, K = F.shark, A = BAY.FIGHT;
     sfx(g, 'tkChomp');
-    if (F.over || K.hurt > 0) return;
+    if (F.kind === 'octo') { hitOcto(g); return; }   // 大章鱼：咬触手尖、最后咬脑袋；被缠住的时候是挣
+    if (F.kind === 'leopard') return;   // 豹海豹要用冲刺撞
+    if (F.over || K.hurt > 0 || sharkAway(K)) return;
     const mx = s.x + s.face * 8, my = s.y;
     const lx = (mx - K.x) * Math.cos(-K.a) - (my - K.y) * Math.sin(-K.a), ly = (mx - K.x) * Math.sin(-K.a) + (my - K.y) * Math.cos(-K.a);
     const LEN = 56;
     if (!(lx < -LEN * 0.12 && lx > -LEN * 0.78 && Math.abs(ly) < 22)) return;
-    K.hp--; K.hurt = 0.9; K.v += 6; K.tiredT = Math.max(1.8, K.tiredT - 0.35); K.st = 'chase'; K.t = 1.5; s.hurt = 0.6; s.vx = -Math.cos(K.a) * 80; s.vy = -Math.sin(K.a) * 80;
-    flt(g, s.x, s.y - 16, L.bitTail, '#fff27a', 1.2); sfx(g, 'munch'); g.shake = 0.2;
-    if (K.hp <= 0) { F.over = true; winFight(g); }
+    K.hp--; K.hurt = 0.9; s.hurt = 0.6; s.vx = -Math.cos(K.a) * 80; s.vy = -Math.sin(K.a) * 80;
+    flt(g, s.x, s.y - 16, L.bitTail, '#fff27a', 1.2); sfx(g, 'munch'); g.shake = 0.25;
+    if (K.hp <= 0) { F.over = true; winFight(g); return; }
+    K.st = 'exit'; K.exitDir = K.x < (A.x0 + A.x1) / 2 ? -1 : 1;
+    flt(g, K.x, K.y - 20, L.sharkHurt[2 - K.hp] || L.sharkHurt[0], '#ffb0a0', 1.6);
   }
   function winFight(g) {
-    const S = g.S, D = BOSSES[2];
-    S.money += D.reward; S.boss = 3; S.license = true;
-    g.panel = { kind: 'note', text: L.license, after: () => { g.fight = null; g.boss = null; const s = g.seal; s.land = true; s.y = GY; s.x = SPOT.pot - 16; } };
+    const S = g.S, D = BOSSES[2], replay = g.boss && g.boss.replay;
+    const WN = { bay: { lic: 'license', text: L.license, again: L.replayWin, pack: 'reef' }, reef: { lic: 'license2', recipe: 'sashimi', text: L.license2, again: L.replayWin2, pack: 'kelp' }, kelp: { lic: 'license3', recipe: 'duojiao', text: L.license3, again: L.replayWin3 } }[AREA];
+    if (!replay) {   // 后门重打：不改进度、不给钱
+      S.money += D.reward; S.boss = 3; S[WN.lic] = true;
+      if (WN.recipe && S.recipes.indexOf(WN.recipe) < 0) S.recipes.push(WN.recipe);
+      loadPack(WN.pack);
+    }
+    g.panel = { kind: 'note', text: replay ? WN.again : WN.text, after: () => { g.fight = null; g.boss = null; restoreBoulders(g); const s = g.seal; s.land = true; s.y = GY; s.x = SPOT.pot - 16; } };
     sfx(g, 'ysWin');
     save(g);
   }
+  // 海草林第三位：大章鱼（作者 8A）——身子缩在场地中间那块大礁石后面，只露眼睛；触手从两边的密海带里伸出来抓海狗，伸之前那片海带先猛晃一下。
+  // 抓住了往它嘴边拖，连按挣开，挣慢了被咬一口；抓空了停在那儿喘一下，这时候咬触手尖，咬断一条。一共 6 条，每断两条它更凶（一次伸两三条、伸得更快、还会横着扫），
+  // 还喷一次墨：整屏一黑，只看得见它的两只眼睛和海狗身边一小圈，眼睛往哪边瞟触手就从哪边来。6 条都断了它从礁石后面整个扑出来满场追：躲开扑过来的那一下，绕到背后咬脑袋，它就服了
+  const OCTO_ARMS = 6, ARM_SC = 0.42;   // tentacle.webp 一格 480×120 画成 202×50
+  const OCTO_PH = [
+    { tel: 0.95, reach: 520, rest: 1.5, max: 1, gap: [1.4, 2.0], sweep: 0, drag: 32 },
+    { tel: 0.8, reach: 600, rest: 1.25, max: 2, gap: [1.1, 1.6], sweep: 0.3, drag: 38 },
+    { tel: 0.66, reach: 680, rest: 1.05, max: 3, gap: [0.9, 1.3], sweep: 0.4, drag: 44 }
+  ];
+  const armRoot = a => { const A = BAY.FIGHT; return [a.side < 0 ? A.x0 + 14 : A.x1 - 14, a.y]; };
+  const armTip = a => { const [x, y] = armRoot(a); return [x + Math.cos(a.a) * a.len, y + Math.sin(a.a) * a.len]; };
+  const OCTO_HEAD_Y = () => BAY.OCTO_ROCK[1] - 95;   // 躲着露半个脑袋那格（octo 下排第 1 格）画在哪儿：切口（图里第 167 行）落在礁石顶上
+  const octoMouth = () => [BAY.OCTO_ROCK[0], BAY.OCTO_ROCK[1] - 58];
+  // 露半个脑袋那格：底下平着切掉的那道边淡出去，跟礁石顶接得上（礁石顶是圆的，平切口盖不严）
+  function octoPeek(im) {
+    if (octoPeek.im === im) return octoPeek.cv;
+    const cv = document.createElement('canvas'); cv.width = 320; cv.height = 240;
+    const x = cv.getContext('2d'); x.drawImage(im, 0, 160, 320, 240, 0, 0, 320, 240);
+    x.globalCompositeOperation = 'destination-in';
+    const gr = x.createLinearGradient(0, 157, 0, 168); gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = gr; x.fillRect(0, 0, 320, 240);
+    octoPeek.im = im; octoPeek.cv = cv;
+    return cv;
+  }
+  function octoHurtSeal(g, text, vx, vy) {
+    const F = g.fight, s = g.seal;
+    if (s.hurt > 0 || F.over) return;
+    F.hp--; s.hurt = 1.4; s.dashT = 0; s.vx = vx; s.vy = vy;
+    flt(g, s.x, s.y - 16, text, '#ffd0d0', 1.2); sfx(g, 'mbPunch'); g.shake = 0.3;
+    if (F.hp <= 0) { F.over = true; F.grab = null; g.panel = { kind: 'eaten' }; sfx(g, 'ysLose'); }
+  }
+  function octoStep(g, dt) {
+    const F = g.fight, s = g.seal, A = BAY.FIGHT, O = F.octo, [rx, ry] = BAY.OCTO_ROCK, P = OCTO_PH[clamp(Math.floor(F.cuts / 2), 0, 2)];
+    O.t += dt;
+    if (O.hurt > 0) O.hurt -= dt;
+    if (F.over) return;
+    if (F.ink > 0) { F.ink -= dt; F.inkIn += dt; }
+    if (O.st === 'enter') {   // 从岸上扑下来，钻到礁石后面
+      const k = clamp(O.t / 0.9, 0, 1);
+      O.x = O.x0 + (rx - O.x0) * k; O.y = O.y0 + (ry - 30 - O.y0) * k;
+      if (k >= 1) { O.st = 'hide'; O.t = 0; }
+      return;
+    }
+    if (O.st === 'hide') {
+      F.next -= dt;
+      if (F.next <= 0 && !F.grab && F.arms.filter(a => a.st !== 'cut' && a.st !== 'back').length < P.max) {   // 从两边海带里伸一条出来（先晃）
+        const side = Math.random() < 0.5 ? -1 : 1, sweep = Math.random() < P.sweep && !F.arms.some(a => a.kind === 'sweep');
+        const y = clamp(s.y + rnd(-26, 26), A.y0 + 24, A.y1 - 22);
+        F.arms.push({ side, y, st: 'warn', t: P.tel * (sweep ? 1.15 : 1), kind: sweep ? 'sweep' : 'grab', len: 0, a: side < 0 ? 0 : Math.PI });
+        F.next = rnd(P.gap[0], P.gap[1]);
+        sfx(g, 'squish');
+      }
+      F.arms.forEach(a => {
+        a.t -= dt;
+        const R = armRoot(a);
+        if (a.st === 'warn') {
+          if (a.t > 0) return;
+          if (a.kind === 'sweep') { a.st = 'sweep'; a.len = 0; a.a = a.side < 0 ? 0 : Math.PI; sfx(g, 'mbWhoosh'); return; }
+          let ang = Math.atan2(s.y - R[1], s.x - R[0]);   // 对准海狗这会儿在哪儿，伸出去就不变了
+          if (a.side < 0) ang = clamp(ang, -0.75, 0.75); else { let d = ang - Math.PI; while (d < -Math.PI) d += Math.PI * 2; while (d > Math.PI) d -= Math.PI * 2; ang = Math.PI + clamp(d, -0.75, 0.75); }
+          a.a = ang; a.L = Math.min(236, dist(R[0], R[1], s.x, s.y) + 26); a.st = 'reach'; a.len = 0; sfx(g, 'splash');
+        } else if (a.st === 'reach') {
+          a.len = Math.min(a.L, a.len + P.reach * dt);
+          const [tx, ty] = armTip(a);
+          if (!F.grab && !(s.hurt > 0) && dist(tx, ty, s.x, s.y) < 13) { a.st = 'grab'; F.grab = { a, t: 1.2, kick: 0 }; s.vx = s.vy = 0; s.dashT = 0; flt(g, s.x, s.y - 16, L.octoGrab, '#ffd0d0', 1.3); sfx(g, 'squish'); g.shake = 0.15; }
+          else if (a.len >= a.L) { a.st = 'rest'; a.t = P.rest; }   // 抓空了：停在那儿喘一下
+        } else if (a.st === 'rest') { if (a.t <= 0) a.st = 'back'; }
+        else if (a.st === 'back') { a.len -= 420 * dt; if (a.len <= 0) a.gone = true; }
+        else if (a.st === 'cut') { if (a.t <= 0) a.gone = true; }
+        else if (a.st === 'sweep') {   // 横着扫一下：那一条横线上的都挨
+          a.len = Math.min(240, a.len + 720 * dt);
+          if (Math.abs(s.y - a.y) < 13 && (a.side < 0 ? s.x < R[0] + a.len : s.x > R[0] - a.len)) octoHurtSeal(g, L.octoSweep, 0, (s.y < a.y ? -1 : 1) * 110);
+          if (a.len >= 240) { a.st = 'swept'; a.t = 0.3; }
+        } else if (a.st === 'swept') { if (a.t <= 0) a.st = 'back'; }
+      });
+      F.arms = F.arms.filter(a => !a.gone);
+      const G2 = F.grab;
+      if (G2) {   // 缠住了：往嘴边拖
+        const a = G2.a, R = armRoot(a), [mx, my] = octoMouth(), d = dist(s.x, s.y, mx, my) || 1;
+        if (G2.kick > 0) G2.kick -= dt;
+        s.x += (mx - s.x) / d * P.drag * dt; s.y += (my - s.y) / d * P.drag * dt; s.vx = s.vy = 0;
+        a.a = Math.atan2(s.y - R[1], s.x - R[0]); a.len = dist(R[0], R[1], s.x, s.y);
+        if (d < 16) { F.grab = null; a.st = 'back'; octoHurtSeal(g, L.octoChomp, (s.x < rx ? -1 : 1) * 70, -110); }
+      }
+      return;
+    }
+    // 6 条都咬断了：整个扑出来满场追
+    const face = () => { O.face = s.x < O.x ? -1 : 1; };
+    if (O.st === 'burst') {
+      const k = clamp(O.t / 0.9, 0, 1);
+      O.x = rx; O.y = ry - 30 - Math.sin(k * Math.PI * 0.5) * 90; face();
+      if (k >= 1) { O.st = 'chase'; O.t = 0; O.dur = rnd(1.1, 1.6); }
+    } else if (O.st === 'chase') {
+      face();
+      const d = dist(s.x, s.y, O.x, O.y) || 1;
+      O.x += (s.x - O.x) / d * 30 * dt; O.y += (s.y - O.y) / d * 30 * dt;
+      if (O.t > O.dur && d > 40) { O.st = 'tel'; O.t = 0; sfx(g, 'mbCharge'); }
+    } else if (O.st === 'tel') {   // 缩一下蓄力，最后定住方向
+      if (O.t < 0.45) face();
+      if (O.t > 0.62) { O.st = 'pounce'; O.t = 0; O.aim = Math.atan2(s.y - O.y, s.x - O.x); O.face = Math.cos(O.aim) < 0 ? -1 : 1; sfx(g, 'mbWhoosh'); }
+    } else if (O.st === 'pounce') {
+      O.x += Math.cos(O.aim) * 260 * dt; O.y += Math.sin(O.aim) * 260 * dt;
+      if (dist(s.x, s.y, O.x, O.y) < 24) octoHurtSeal(g, L.octoPounce, Math.cos(O.aim) * 120, Math.sin(O.aim) * 120);
+      const wall = O.x < A.x0 + 32 || O.x > A.x1 - 32 || O.y < A.y0 + 26 || O.y > A.y1 - 22;
+      if (O.t > 0.5 || wall) { O.st = 'stuck'; O.t = 0; g.shake = 0.25; sfx(g, 'thud'); }   // 扑过头了：背冲着你喘一会儿
+    } else if (O.st === 'stuck') { if (O.t > 1.4) { O.st = 'chase'; O.t = 0; O.dur = rnd(0.9, 1.4); } }
+    O.x = clamp(O.x, A.x0 + 32, A.x1 - 32); O.y = clamp(O.y, A.y0 + 26, A.y1 - 22);
+    if (O.st !== 'pounce' && O.st !== 'burst') { const d = dist(s.x, s.y, O.x, O.y) || 1; if (d < 26) { s.vx += (s.x - O.x) / d * 200 * dt; s.vy += (s.y - O.y) / d * 200 * dt; } }   // 挨着：挤开
+  }
+  // 按"叼"／"攻击"：被缠着的时候是挣；平时咬停住的触手尖；最后那阵咬它后脑勺
+  function hitOcto(g) {
+    const F = g.fight, s = g.seal, O = F.octo;
+    if (F.over) return;
+    if (F.grab) {
+      const G2 = F.grab;
+      G2.t -= 0.3; G2.kick = 0.15; sfx(g, 'squish');
+      if (G2.t <= 0) { const a = G2.a; F.grab = null; a.st = 'rest'; a.t = OCTO_PH[clamp(Math.floor(F.cuts / 2), 0, 2)].rest + 0.4; s.vx = Math.cos(a.a) * 70; s.vy = Math.sin(a.a) * 70 - 10; s.hurt = 0.5; flt(g, s.x, s.y - 16, L.octoFree, '#ffffff', 1.2); sfx(g, 'splash'); }
+      return;
+    }
+    const mx = s.x + s.face * 9, my = s.y;
+    if (O.st === 'hide') {
+      const a = F.arms.find(q => q.kind === 'grab' && (q.st === 'rest' || q.st === 'back') && q.len > 12 && dist(mx, my, armTip(q)[0], armTip(q)[1]) < 17);
+      if (!a) return;
+      const [tx, ty] = armTip(a);
+      a.st = 'cut'; a.t = 0.9; F.cuts++; F.shark.hp = OCTO_ARMS - F.cuts; O.hurt = 0.7;
+      flt(g, tx, ty - 12, L.octoCut, '#fff27a', 1.3); sfx(g, 'munch'); g.shake = 0.25;
+      g.inkPuffs = (g.inkPuffs || []).concat(Array.from({ length: 6 }, () => ({ x: tx, y: ty, vx: rnd(-30, 30), vy: rnd(-30, 20), r: rnd(3, 6), t: 0 })));   // 伤口冒墨
+      if (F.cuts >= OCTO_ARMS) {   // 6 条都断了
+        F.arms.forEach(q => { if (q !== a && q.st !== 'cut') q.st = 'back'; });
+        F.ink = 0; O.st = 'burst'; O.t = 0;
+        flt(g, BAY.OCTO_ROCK[0], BAY.OCTO_ROCK[1] - 80, L.octoOut, '#ffd0d0', 1.8); sfx(g, 'mbBoom'); g.shake = 0.5;
+        return;
+      }
+      flt(g, BAY.OCTO_ROCK[0], BAY.OCTO_ROCK[1] - 70, L.octoHurt[(F.cuts - 1) % L.octoHurt.length], '#ffb0a0', 1.6);
+      if (F.cuts % 2 === 0) { F.ink = 7.5; F.inkIn = 0; flt(g, W / 2, 70, L.octoInk, '#e0d0ff', 1.8, true); sfx(g, 'splash'); }   // 每断两条喷一次墨
+      return;
+    }
+    if (O.st === 'stuck' && (s.x - O.x) * O.face < 0 && dist(mx, my, O.x - O.face * 16, O.y - 6) < 24) {   // 绕到背后咬脑袋：服了
+      O.st = 'beat'; O.t = 0; O.hurt = 1; F.over = true; F.shark.hp = 0;
+      flt(g, O.x, O.y - 30, L.octoHead, '#fff27a', 1.4); sfx(g, 'munch'); g.shake = 0.4;
+      winFight(g);
+      return;
+    }
+    if (dist(mx, my, O.x, O.y) < 30) { s.vx = (s.x - O.x) * 3; s.vy = (s.y - O.y) * 3; s.bump = 0.4; sfx(g, 'thud'); }   // 正面咬不着：弹回来
+  }
+  // 画大章鱼：躲着的时候礁石后面露半个脑袋（喷墨的时候只剩眼睛，在 drawInk 里画）；两边一圈密海带，触手从里面伸出来；最后那阵整个在场上
+  function drawOcto(g) {
+    const c = g.c, F = g.fight, O = F.octo, tm = g.anim, A = BAY.FIGHT, [rx, ry] = BAY.OCTO_ROCK, im = art('kelp/octo'), tim = art('kelp/tentacle'), rk = art('kelp/octorock'), kw = art('kelp/kelpwall'), s = g.seal;
+    const body = (fr, x, y, face, sc2, rot) => { c.save(); c.translate(x, y); if (face < 0) c.scale(-1, 1); if (rot) c.rotate(rot); const z = 0.26 * (sc2 || 1); if (im) c.drawImage(im, fr * 320, 160, 320, 240, -160 * z, -120 * z, 320 * z, 240 * z); else emoji(c, '🐙', 0, 0, 40); c.restore(); };
+    // 躲在礁石后面：露半个脑袋，眼睛跟着海狗转；被咬断一条的时候一缩
+    if (O.st === 'hide' && !(F.ink > 0) && im) { const face = s.x < rx ? -1 : 1, dip = O.hurt > 0 ? 6 : 0; c.save(); c.translate(rx, OCTO_HEAD_Y() + Math.sin(tm * 1.5) * 1.2 + dip); if (face < 0) c.scale(-1, 1); c.drawImage(octoPeek(im), -43.2, 0, 86.4, 64.8); c.restore(); }
+    if (O.st === 'enter') body(3, O.x, O.y, 1, 0.9, 0.5);
+    if (rk) c.drawImage(rk, rx - 75.6, ry + 4 - 100.8, 151.2, 100.8);
+    // 触手
+    F.arms.forEach(a => {
+      if (a.st === 'warn') return;
+      const [x0, y0] = armRoot(a);
+      c.save(); c.translate(x0, y0); c.rotate(a.a); if (Math.cos(a.a) < 0) c.scale(1, -1);   // 吸盘一直朝下
+      if (!tim) { c.strokeStyle = '#a03050'; c.lineWidth = 7; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, 0); c.lineTo(a.st === 'cut' ? 20 : a.len, 0); c.stroke(); c.restore(); return; }
+      if (a.st === 'cut') { c.drawImage(tim, 2 * 480, 0, 194, 120, -10, -60 * ARM_SC, 194 * ARM_SC, 120 * ARM_SC); c.restore(); return; }   // 断了：短短一截冒墨
+      // 一格里"抓人的那一点"在第几列第几行：伸着 ／ 缠住（圈的中间）／ 横扫（尖）
+      const [ax, ay, fr] = a.st === 'grab' ? [408, 60, 1] : a.kind === 'sweep' ? [470, 60, 3] : [452, 76, 0];
+      const vis = a.len + (480 - ax) * ARM_SC, wob = a.st === 'rest' ? Math.sin(tm * 9) * 1.2 : 0;   // 喘的时候尖儿一抖一抖
+      if (vis <= 480 * ARM_SC) { const sx = 480 - vis / ARM_SC; c.drawImage(tim, fr * 480 + sx, 0, 480 - sx, 120, 0, -ay * ARM_SC + wob, vis, 120 * ARM_SC); }   // 从海带后面滑出来
+      else c.drawImage(tim, fr * 480, 0, 480, 120, 0, -ay * ARM_SC + wob, vis, 120 * ARM_SC);   // 伸得比图长：拉长一点
+      c.restore();
+    });
+    // 伤口冒的墨
+    (g.inkPuffs || []).forEach(p => { p.t += 1 / 60; p.x += p.vx / 60; p.y += p.vy / 60; c.globalAlpha = clamp(1.2 - p.t, 0, 1) * 0.8; c.fillStyle = '#2a1a3a'; c.beginPath(); c.arc(p.x, p.y, p.r * (1 + p.t), 0, Math.PI * 2); c.fill(); });
+    c.globalAlpha = 1; g.inkPuffs = (g.inkPuffs || []).filter(p => p.t < 1.2);
+    // 两边一圈密海带（触手根藏在里面）；要伸出来的那一截先猛晃
+    if (kw) [-1, 1].forEach(side => {
+      const x = side < 0 ? A.x0 - 6 : A.x1 - 26;
+      for (let y = A.y0 - 20; y < A.y1 + 20; y += 34) {
+        let sh = 0;
+        F.arms.forEach(a => { if (a.st === 'warn' && a.side === side) sh += Math.sin(tm * 46 + y) * 3.2 * clamp(1 - Math.abs(y + 17 - a.y) / 40, 0, 1); });
+        c.save(); c.translate(x + 16 + sh, y + 40); if (side > 0) c.scale(-1, 1); c.drawImage(kw, 0, 0, 200, 240, -16, -40, 32, 40); c.restore();
+      }
+      F.arms.forEach(a => { if (a.st !== 'warn' || a.side !== side) return; c.fillStyle = 'rgba(230,250,255,.75)'; for (let i = 0; i < 4; i++) { const q = (tm * 2 + i / 4) % 1; c.beginPath(); c.arc(x + 16 - side * (6 + q * 8), a.y - 6 + Math.sin(i * 2.4) * 8 - q * 10, 0.8 + q, 0, Math.PI * 2); c.fill(); } });   // 晃出来的小泡
+    });
+    // 最后那阵：整个在场上
+    if (['burst', 'chase', 'tel', 'pounce', 'stuck', 'beat'].indexOf(O.st) >= 0) {
+      const fr = O.st === 'beat' ? (O.t < 0.7 ? 4 : 5) : 3, shake = O.st === 'tel' ? Math.sin(tm * 60) * 1.2 : 0, squash = O.st === 'tel' ? 0.92 : 1;
+      if (O.st === 'tel') { const r = c.createRadialGradient(O.x, O.y, 4, O.x, O.y, 40), q = 0.3 + 0.2 * Math.sin(tm * 18); r.addColorStop(0, 'rgba(255,60,90,' + q + ')'); r.addColorStop(1, 'rgba(255,60,90,0)'); c.fillStyle = r; c.beginPath(); c.arc(O.x, O.y, 40, 0, Math.PI * 2); c.fill(); }
+      if (O.st === 'pounce') { c.strokeStyle = 'rgba(230,248,255,.6)'; c.lineWidth = 0.8; for (let i = 0; i < 4; i++) { const o = (i - 1.5) * 8, bx = O.x - Math.cos(O.aim) * 34, by = O.y - Math.sin(O.aim) * 34; c.beginPath(); c.moveTo(bx - Math.sin(O.aim) * o, by + Math.cos(O.aim) * o); c.lineTo(bx - Math.cos(O.aim) * 16 - Math.sin(O.aim) * o, by - Math.sin(O.aim) * 16 + Math.cos(O.aim) * o); c.stroke(); } }
+      body(fr, O.x + shake, O.y, O.face, squash, O.st === 'pounce' ? Math.sin(O.aim) * O.face * 0.3 : 0);
+      if (O.st === 'stuck') { c.fillStyle = 'rgba(255,255,255,.7)'; for (let i = 0; i < 3; i++) c.beginPath(), c.arc(O.x + O.face * 26 + Math.sin(tm * 3 + i) * 3, O.y - 14 - ((tm * 18 + i * 7) % 20), 1.4, 0, Math.PI * 2), c.fill(); }   // 喘气冒泡
+    }
+  }
+  // 喷墨：整屏一黑，只剩海狗身边一小圈，和礁石后面那两只发光的眼睛（眼珠往哪边瞟，下一条触手就从哪边来）
+  function drawInk(g) {
+    const F = g.fight;
+    if (!F || F.kind !== 'octo' || !(F.ink > 0)) return;
+    const s = g.seal, k = clamp(Math.min(F.inkIn / 0.5, F.ink / 0.8), 0, 1), [rx, ry] = BAY.OCTO_ROCK, im = art('kelp/octo');
+    if (!g.inkCv) { g.inkCv = document.createElement('canvas'); g.inkCv.width = W * SC; g.inkCv.height = H * SC; }
+    const d = g.inkCv.getContext('2d');
+    d.setTransform(SC, 0, 0, SC, 0, 0); d.globalCompositeOperation = 'source-over'; d.clearRect(0, 0, W, H);
+    d.fillStyle = 'rgba(8,4,16,' + 0.95 * k + ')'; d.fillRect(0, 0, W, H);
+    d.globalCompositeOperation = 'destination-out';
+    const X = x => (x - g.cam.x) * Z, Y = y => (y - g.cam.y) * Z, q = d.createRadialGradient(X(s.x), Y(s.y), 0, X(s.x), Y(s.y), 30 * Z);
+    q.addColorStop(0, 'rgba(0,0,0,1)'); q.addColorStop(0.6, 'rgba(0,0,0,.85)'); q.addColorStop(1, 'rgba(0,0,0,0)');
+    d.fillStyle = q; d.beginPath(); d.arc(X(s.x), Y(s.y), 30 * Z, 0, Math.PI * 2); d.fill();
+    g.c.drawImage(g.inkCv, 0, 0, W, H);
+    const warn = F.arms.find(a => a.st === 'warn'), side = warn ? warn.side : (s.x < rx ? -1 : 1), c = g.c, ex = X(rx), ey = Y(OCTO_HEAD_Y() + 40.5);
+    c.globalAlpha = k;
+    const gl = c.createRadialGradient(ex, ey, 2, ex, ey, 26); gl.addColorStop(0, 'rgba(255,220,80,.35)'); gl.addColorStop(1, 'rgba(255,220,80,0)'); c.fillStyle = gl; c.beginPath(); c.arc(ex, ey, 26, 0, Math.PI * 2); c.fill();
+    if (im) c.drawImage(im, (side < 0 ? 1 : 2) * 320, 160, 320, 240, ex - 160 * 0.26 * Z, ey - 120 * 0.26 * Z, 320 * 0.26 * Z, 240 * 0.26 * Z);
+    else { txt(c, ex, ey, side < 0 ? '◀ ◀' : '▶ ▶', 8, '#ffd040', 'center', true); }
+    c.globalAlpha = 1;
+  }
   function fightRetry(g) { g.panel = null; startFight(g); }
-  function fightLater(g) { g.panel = null; g.fight = null; g.boss = null; const s = g.seal; s.land = true; s.y = GY; s.x = SPOT.pot - 16; s.hurt = 0; }
+  function fightLater(g) { g.panel = null; g.fight = null; g.boss = null; restoreBoulders(g); const s = g.seal; s.land = true; s.y = GY; s.x = SPOT.pot - 16; s.hurt = 0; }
+
+  // 第三位吃完两道菜：进一段戏（11-25 作者）——海狗走到栈道上固定一处 → 大白鲨说话 → 海狗吓得"！"跳下水 → 大白鲨也跳下来 → 开打
+  const SAYS = { shark: [L.sharkSay1, L.sharkEye], leopard: [L.leoSay1, L.leoEye], octo: [L.octoSay1, L.octoEye] };   // 吃完两道菜说的两句
+  const SHOW_SPOT = 330, SHOW_CX = 272;   // 海狗站的地方（正好在打架那片水上头）；镜头对着大白鲨座位和海狗中间
+  function showStep(g, dt) {
+    const B = g.boss, s = g.seal;
+    s.vx = s.vy = 0;
+    if (B.step === 0) {   // 走过去
+      s.land = true; s.y = GY;
+      const d = SHOW_SPOT - s.x;
+      s.moving = Math.abs(d) > 1;
+      if (s.moving) { s.x += Math.sign(d) * Math.min(Math.abs(d), 62 * dt); s.face = Math.sign(d); }
+      if (!s.moving || B.t > 7) { s.moving = false; s.face = -1; B.step = 1; B.t = 0; B.line = SAYS[BOSSES[B.i].fight][0]; B.say = 1.8; }
+    } else if (B.step === 1 && B.t > 1.8) { B.step = 2; B.t = 0; B.line = SAYS[BOSSES[B.i].fight][1]; B.say = 2; B.glare = 1; sfx(g, 'rxAlarm'); }
+    else if (B.step === 2 && B.t > 2) { B.step = 3; B.t = 0; flt(g, s.x, GY - 30, L.scared, '#ff5a3a', 0.9); sfx(g, 'ysErr'); s.biteT = 0.28; }
+    else if (B.step === 3 && B.t > 0.7) { B.step = 4; B.t = 0; B.jx = s.x; s.land = false; s.face = 1; s.dashT = 0.6; sfx(g, 'pop'); }   // 吓得跳下水
+    else if (B.step === 4) {
+      const k = Math.min(1, B.t / 0.55);
+      s.x = B.jx + 16 * k; s.y = GY - 6 + (WY + 24 - (GY - 6)) * k - Math.sin(k * Math.PI) * 16; s.dashT = 0.3;
+      if (k >= 1) { B.step = 5; B.t = 0; splash(g, s.x, WY, 1); sfx(g, 'splash'); }
+    } else if (B.step === 5 && B.t > 0.5) { B.step = 6; B.t = 0; sfx(g, 'mbWhoosh'); }   // 大白鲨也跳
+    else if (B.step === 6 && B.t >= 0.6) { splash(g, SHOW_SPOT - 10, WY, 2); g.shake = 0.5; sfx(g, 'splash'); sfx(g, 'mbBoom'); startFight(g, [SHOW_SPOT - 10, WY + 40]); }
+  }
+  // 扑通：溅起一圈水珠、水面一道圈
+  function splash(g, x, y, big) {
+    g.drops = g.drops || [];
+    for (let i = 0; i < 10 + big * 8; i++) g.drops.push({ x: x + rnd(-6, 6) * big, y, vx: rnd(-34, 34) * big, vy: rnd(-90, -40) * (0.7 + big * 0.3), t: 0, r: rnd(0.8, 1.6) });
+    g.drops.push({ ring: true, x, y, t: 0, big });
+  }
+  function dropsStep(g, dt) {
+    if (!g.drops) return;
+    g.drops.forEach(d => { d.t += dt; if (!d.ring) { d.vy += 220 * dt; d.x += d.vx * dt; d.y += d.vy * dt; } });
+    g.drops = g.drops.filter(d => d.ring ? d.t < 0.8 : d.t < 1.5 && !(d.vy > 0 && d.y > WY + 2));
+  }
+  function drawDrops(g) {
+    const c = g.c;
+    (g.drops || []).forEach(d => {
+      if (d.ring) { const k = d.t / 0.8; c.strokeStyle = 'rgba(235,250,255,' + (0.8 * (1 - k)) + ')'; c.lineWidth = 1; c.beginPath(); c.ellipse(d.x, d.y, 6 + k * 18 * d.big, 1.5 + k * 3, 0, 0, Math.PI * 2); c.stroke(); return; }
+      c.fillStyle = 'rgba(220,245,255,.9)'; c.beginPath(); c.arc(d.x, d.y, d.r, 0, Math.PI * 2); c.fill();
+    });
+  }
+  // 后门（作者要的，测试用）：三位大胃王都服了以后，敲锣弹出来的那句话连点三下 → 重打第三位
+  function openBackdoor(g) { g.panel = { kind: 'backdoor' }; sfx(g, 'chime'); }
+  function backdoor(g, how) {
+    const s = g.seal;
+    g.panel = null; g.session = null; g.tourists.forEach(o => { if (o.ph !== 'eat') { o.bid = null; o.ph = 'out'; o.slot = null; } });
+    if (!s.land) { s.land = true; s.y = GY; s.x = SPOT.gong; g.camSnap = true; }
+    if (how === 'order') { g.boss = { i: 2, dish: 0, phase: 'alarm', t: 0, left: BOSSES[2].t, say: 0, replay: true }; sfx(g, 'rxAlarm'); }
+    else if (how === 'show') g.boss = { i: 2, dish: 2, phase: 'show', t: 0, step: 0, say: 0, replay: true, landed: true };
+    else { g.boss = { i: 2, dish: 2, phase: 'fight', t: 0, say: 0, replay: true }; startFight(g); }
+  }
 
   /* ================= 家里的水族箱（怪怪水族箱的样子） ================= */
   const TK = { top: 36, floor: 214 };
@@ -1326,15 +2256,7 @@
     if (y < TK.top) return;
     const ci = S.tank.coins.findIndex(c => dist(x, y, c.x, c.y) < 9);
     if (ci >= 0) { const c = S.tank.coins.splice(ci, 1)[0]; S.money += c.v; flt(g, c.x, c.y - 8, '+' + c.v, '#ffe36a', 1, true); sfx(g, 'chip'); return; }
-    // 点鱼：捞出来放进盆里
-    const fi = S.tank.fish.findIndex(f => dist(x, y, f.x, f.y) < SPECIES[f.sp].len[f.size] * 0.9 + 4);
-    if (fi >= 0) {
-      if (S.basin.length >= caps(S).basin) { flt(g, x, y - 10, L.basinFull, '#ffd0d0', 1.2, true); return; }
-      const f = S.tank.fish.splice(fi, 1)[0];
-      S.basin.push({ sp: f.sp, size: f.size });
-      flt(g, x, y - 10, L.tankTake, '#ffffff', 1.4, true); sfx(g, 'splash');
-      return;
-    }
+    // 点鱼不再直接捞出来（作者：撒鱼食太容易把鱼捞走）——捞鱼去顶上"管理"里挑
     // 水里：撒鱼食，撒不出来就是敲玻璃
     if (y < TK.floor) {
       if (g.tankPellets.length < 3 && S.money >= 5) { S.money -= 5; g.tankPellets.push({ x, y }); g.tap = null; sfx(g, 'bubble'); }
@@ -1429,9 +2351,17 @@
     txt(c, x + w / 2, y + h / 2 + 0.5, label, o.size || Math.min(11, h * 0.55), o.off ? '#6a665e' : o.red ? '#fff' : '#5a1f00', 'center', true);
     g.btns.push({ x, y, w, h, fn, off: !!o.off });
   }
+  // icons6b 小图标（96×96 一格）：画上了返回 true，图还没到返回 false（用原来的表情符号顶着）
+  function icon6b(c, i, x, y, size) {
+    const im = art('icons6b');
+    if (!im) return false;
+    c.drawImage(im, i * 96, 0, 96, 96, x - size / 2, y - size / 2, size, size);
+    return true;
+  }
   function icon(c, it, x, y, size) {
-    const im = art('icons6');
-    if (im && it.ic != null) { c.drawImage(im, (it.ic % 8) * 64, Math.floor(it.ic / 8) * 64, 64, 64, x - size / 2, y - size / 2, size, size); return; }
+    if (it.ic8 != null) { const im8 = art('kelp/icons8'); if (im8) { c.drawImage(im8, it.ic8 * 96, 0, 96, 96, x - size / 2, y - size / 2, size, size); return; } }   // 海草林那张小图标
+    else if (it.ic7 != null) { const im7 = art('reef/icons7'); if (im7) { c.drawImage(im7, it.ic7 * 96, 0, 96, 96, x - size / 2, y - size / 2, size, size); return; } }   // 珊瑚礁那张小图标
+    else { const im = art('icons6'); if (im && it.ic != null) { c.drawImage(im, (it.ic % 8) * 64, Math.floor(it.ic / 8) * 64, 64, 64, x - size / 2, y - size / 2, size, size); return; } }
     emoji(c, it.e || '❔', x, y, size * 0.8);
   }
 
@@ -1449,7 +2379,17 @@
       const x = f.screen ? f.x : (f.x - g.cam.x) * Z, y = f.screen ? f.y : (f.y - g.cam.y) * Z;
       c.globalAlpha = a; txt(c, x, y, f.text, 7.5, f.col, 'center', true, 'rgba(0,0,0,.75)'); c.globalAlpha = 1;
     });
-    if (g.fade) { const t = g.fade.t; c.fillStyle = 'rgba(0,0,0,' + clamp(t < 0.45 ? t / 0.45 : 1 - (t - 0.45) / 0.45, 0, 1) + ')'; c.fillRect(0, 0, W, H); }
+    if (g.fade) {
+      const F = g.fade, t = F.t, [a, h, b] = fadeT(F);
+      c.fillStyle = 'rgba(0,0,0,' + clamp(t < a ? t / a : t < a + h ? 1 : 1 - (t - a - h) / b, 0, 1) + ')'; c.fillRect(0, 0, W, H);
+      if (F.sleep && t > a * 0.6 && t < a + h + b * 0.3) {   // 黑着的时候：几个 Z 慢慢往上飘
+        const k = clamp((t - a * 0.6) / 0.4, 0, 1) * clamp((a + h + b * 0.3 - t) / 0.4, 0, 1);
+        c.globalAlpha = k;
+        for (let i = 0; i < 3; i++) { const q = ((t * 0.5 + i / 3) % 1); txt(c, W / 2 + 14 + i * 9 + Math.sin(q * 6) * 3, H / 2 - 4 - q * 26, 'Z', 9 + i * 3, 'rgba(230,236,255,' + (1 - q) + ')', 'center', true); }
+        txt(c, W / 2, H / 2 + 22, L.zzz, 9, '#c8d0e8', 'center', true);
+        c.globalAlpha = 1;
+      }
+    }
     if (g.panel) drawPanel(g);
     if ((g.screen === 'play' || g.screen === 'tank') && !discIn()) { c.fillStyle = 'rgba(0,0,0,.7)'; c.fillRect(0, 0, W, H); txt(c, W / 2, H / 2, L.disc, 12, '#fff', 'center', true, '#000'); }
     if (g.shatter) {
@@ -1491,10 +2431,10 @@
     return (TEXD[key] = { w, h: w, d });
   }
   const sdRR = (x, y, r, rad) => { const hx = (r[2] - r[0]) / 2 - rad, hy = (r[3] - r[1]) / 2 - rad, dx = Math.abs(x - (r[0] + r[2]) / 2) - hx, dy = Math.abs(y - (r[1] + r[3]) / 2) - hy; return Math.hypot(Math.max(dx, 0), Math.max(dy, 0)) + Math.min(Math.max(dx, dy), 0) - rad; };
-  const shapeBox = sh => (sh[0] === 'ell' ? [sh[1] - sh[3], sh[2] - sh[4], sh[1] + sh[3], sh[2] + sh[4]] : [-1e9, -1e9, 1e9, 1e9]);
-  const SANDBOX = (() => { const xs = BAY.SAND.map(p => p[0]), ys = BAY.SAND.map(p => p[1]); return [Math.min(...xs) - 20, Math.min(...ys) - 20, Math.max(...xs) + 20, Math.max(...ys) + 20]; })();
+  const shapeBox = sh => (sh[0] === 'ell' ? [sh[1] - sh[3], sh[2] - sh[4], sh[1] + sh[3], sh[2] + sh[4]] : sh[0] === 'rect' ? sh.slice(1, 5) : [-1e9, -1e9, 1e9, 1e9]);
+  let SANDBOX = SANDBOX_OF(BAY);
   // 沙子和石头的分界：离沙子那圈边多远（每段线先看框，离得远的不算）；再加一点噪声让边弯弯扭扭
-  const SAND_SEG = BAY.SAND.map((a, i) => { const b = BAY.SAND[(i + 1) % BAY.SAND.length]; return [a[0], a[1], b[0], b[1], Math.min(a[0], b[0]) - 18, Math.min(a[1], b[1]) - 18, Math.max(a[0], b[0]) + 18, Math.max(a[1], b[1]) + 18]; });
+  let SAND_SEG = SANDSEG_OF(BAY);
   function sandEdge(x, y) {
     let d = 18;
     for (const q of SAND_SEG) {
@@ -1514,13 +2454,15 @@
     const M = g.map, S = g.S, cv = document.createElement('canvas'), N = CHP + 2 * EDGE;
     cv.width = cv.height = N;
     const cx = cv.getContext('2d'), im = cx.createImageData(N, N), D = im.data;
-    const T = texData('rock') || procTex('_rock', [120, 110, 98], 30, 42), SD = texData('sand') || procTex('_sand', [224, 200, 146], 16, 20);
+    const T = texData(an('rock')) || procTex('_rock', [120, 110, 98], 30, 42), SD = texData(an('sand')) || procTex('_sand', [224, 200, 146], 16, 20);
     const x0 = ci * CH, y0 = cj * CH, o = [0, 0, 0], bb = BAY.BOAT.box;
     const covers = BAY.COVERS.filter(Q => !has(S, Q.id) && Q.r[2] > x0 && Q.r[0] < x0 + CH && Q.r[3] > y0 && Q.r[1] < y0 + CH);
     const sandHere = SANDBOX[2] > x0 && SANDBOX[0] < x0 + CH && SANDBOX[3] > y0 && SANDBOX[1] < y0 + CH;
     const near = (b, m) => b[2] > x0 - m && b[0] < x0 + CH + m && b[3] > y0 - m && b[1] < y0 + CH + m;
     const rocksHere = sandHere ? BAY.ROCK.filter(sh => near(shapeBox(sh), 4)).concat(BAY.CRACKS.filter(K => !has(S, K.id)).map(K => K.shape)) : [];
-    const boatHere = near(bb, 4);
+    const boatHere = near(bb, 4) && !BAY.BOAT.art;   // 沉船的墙涂成木头色；潜水艇的墙有图盖着
+    const CT = BAY.CORAL ? texData('reef/coral') : null, coralHere = CT && BAY.CORAL.some(r => near(r, 12));   // 珊瑚迷宫：石头换成珊瑚墙
+    const boul = (BAY.BOULDERS ? BAY.BOULDERS.map(BAY.BOULDER_SH) : []).concat((BAY.KWALLS || []).filter(K => !has(S, K.id)).map(K => ['rect', K.x - K.w / 2, K.y - K.h / 2, K.x + K.w / 2, K.y + K.h / 2])).filter(sh => near(shapeBox(sh), 6));   // 大礁石、海带墙：这层不画，另外贴图
     for (let py = 0; py < N; py++) {
       const wy = y0 + (py - EDGE + 0.5) / PX;
       if (wy < WY - 1) continue;
@@ -1533,6 +2475,7 @@
         let f = o[0], gx = o[1], gy = o[2];
         for (const Q of covers) { const v = -sdRR(wx, wy, Q.r, 9); if (v > f) { f = v; gx = sdRR(wx - 1, wy, Q.r, 9) - sdRR(wx + 1, wy, Q.r, 9); gy = sdRR(wx, wy - 1, Q.r, 9) - sdRR(wx, wy + 1, Q.r, 9); } }
         if (f < -0.45) continue;
+        if (boul.length && boul.some(sh => BAY.sd(sh, wx, wy) < 1.5) && BAY.solid(wx, wy, S.got, true) < -0.45) continue;
         const gl = Math.hypot(gx, gy) || 1, nx = -gx / gl, ny = -gy / gl;
         const e = f < 18 ? Math.exp(-f / 6) : 0, l = -(nx * 0.45 + ny * 0.89);
         let sh = 0.9 + e * 0.42 * l - (1 - e) * 0.12;
@@ -1543,6 +2486,14 @@
         if (boatHere && wx > bb[0] && wx < bb[2] && wy > bb[1] && wy < bb[3] && BAY.BOAT.walls.some(sh => BAY.sd(sh, wx, wy) < 0.8)) { r = 124; gg = 80; b = 42; }
         else {
           const k = (trow + ((tx % T.w) + T.w) % T.w) * 4; r = T.d[k]; gg = T.d[k + 1]; b = T.d[k + 2];
+          if (coralHere) {
+            let cw = 0;
+            for (const q of BAY.CORAL) { const dd = Math.max(q[0] - wx, wx - q[2], q[1] - wy, wy - q[3]); cw = Math.max(cw, clamp((-dd + vnoise(wx / 9, wy / 9) * 7) / 8 + 0.5, 0, 1)); }
+            if (cw > 0) {   // 珊瑚墙太花太亮会抢鱼：压暗一点、往灰里拉一点（背景灰淡、角色鲜亮）
+              const k3 = (((ty % CT.h) + CT.h) % CT.h * CT.w + ((tx % CT.w) + CT.w) % CT.w) * 4, cr = CT.d[k3], cg = CT.d[k3 + 1], cb = CT.d[k3 + 2], lum = (cr + cg + cb) / 3;
+              r += ((cr * 0.68 + lum * 0.32) * 0.82 - r) * cw; gg += ((cg * 0.68 + lum * 0.32) * 0.82 - gg) * cw; b += ((cb * 0.68 + lum * 0.32) * 0.86 - b) * cw;
+            }
+          }
           if (sandHere) {
             // 沙子这一片：边上弯弯扭扭、软一点过渡；靠边的石头上落一层沙灰，靠边的沙子压一点暗（像沙子堆在石头脚下）
             const e2 = sandEdge(wx, wy), sd2 = (inPoly(wx, wy, BAY.SAND) ? e2 : -e2) + (e2 < 16 ? vnoise(wx / 13, wy / 13) * 5 + vnoise(wx / 4.5 + 17, wy / 4.5) * 1.8 : 0);
@@ -1567,7 +2518,7 @@
     const M = g.map, cv = document.createElement('canvas'), N = BCHP + 2 * EDGE;
     cv.width = cv.height = N;
     const cx = cv.getContext('2d'), im = cx.createImageData(N, N), D = im.data;
-    const own = texData('backwall'), T = own || texData('rock') || procTex('_rock', [120, 110, 98], 30, 42), bp = PX / 2;
+    const own = texData(an('backwall')), T = own || texData(an('rock')) || procTex('_rock', [120, 110, 98], 30, 42), bp = PX / 2;
     const x0 = ci * CH, y0 = cj * CH, o = [0, 0, 0];
     for (let py = 0; py < N; py++) {
       const wy = y0 + (py - EDGE + 0.5) / bp;
@@ -1578,8 +2529,10 @@
       for (let px = 0; px < N; px++) {
         const wx = x0 + (px - EDGE + 0.5) / bp;
         sample3(M, wx, wy, o);
-        const f = o[0];
-        if (f < -40 || (wx > bb[0] - 12 && wx < bb[2] + 12 && wy > bb[1] - 12 && wy < bb[3])) continue;
+        let f = o[0];
+        const BF = g.boatF, fx = BF && (wx - BF.x0) / BAY.CELL, fy = BF && (wy - BF.y0) / BAY.CELL;
+        if (BF && fx >= 0 && fy >= 0 && fx < BF.nx - 1 && fy < BF.ny - 1) { const i = Math.floor(fx), j = Math.floor(fy), tx = fx - i, ty = fy - j, k = j * BF.nx + i, a = BF.F[k], b = BF.F[k + 1], c2 = BF.F[k + BF.nx], d = BF.F[k + BF.nx + 1]; f = a + (b - a) * tx + (c2 - a) * ty + (a - b - c2 + d) * tx * ty; }
+        if (f < -40) continue;
         const k = (trow + ((Math.floor(wx * bp * 1.4) % T.w) + T.w) % T.w) * 4;
         let r = T.d[k], gg = T.d[k + 1], b = T.d[k + 2];
         if (!own) { r *= 0.5; gg *= 0.52; b *= 0.68; }
@@ -1704,8 +2657,8 @@
   function drawFar(g) {
     const c = g.c, cy = g.cam.y, Ly = layers(g), top = Math.max(0, (WY - cy) * Z);
     if (top >= H) return;
-    const d = cy + VH / 2, w1 = clamp((520 - d) / 180, 0, 1), w3 = clamp((d - 760) / 180, 0, 1), w2 = clamp(1 - w1 - w3, 0, 1);
-    const names = ['far-shallow', 'far-mid', 'far-deep'], off = -(((g.cam.x * Z * 0.3) % 640) + 640) % 640;
+    const FA = BAY.LOOK.far, d = cy + VH / 2, w1 = clamp((FA[0] - d) / 180, 0, 1), w3 = clamp((d - FA[1]) / 180, 0, 1), w2 = clamp(1 - w1 - w3, 0, 1);
+    const names = ['far-shallow', 'far-mid', 'far-deep'].map(an), off = -(((g.cam.x * Z * 0.3) % 640) + 640) % 640;
     c.save(); c.beginPath(); c.rect(0, top, W, H - top); c.clip();
     [w1, w2, w3].forEach((wgt, i) => {
       if (wgt <= 0.01) return;
@@ -1720,7 +2673,7 @@
   function drawSky(g) {
     const c = g.c, cy = g.cam.y, Ly = layers(g);
     if (cy >= WY) return;
-    const far = art('shore-far') || Ly.shoreFar, mid = art('shore-mid') || Ly.shoreMid;
+    const far = aart('shore-far') || Ly.shoreFar, mid = aart('shore-mid') || Ly.shoreMid;
     const y0 = (0 - cy) * Z, hFar = (WY - 0) * Z + 2;
     for (let x = -(((g.cam.x * Z * 0.12) % 640) + 640) % 640; x < W; x += 640) c.drawImage(far, x, y0, 640, hFar);
     const mb = (GY - cy) * Z + 2;
@@ -1767,10 +2720,10 @@
   // 海底的小摆设：海草、珊瑚、海星、贝壳、海葵、深海发光的小植物（Codex 的 decor 到了换图）
   const DECOR_FOOT = [123, 93, 116, 116, 117, 96, 114, 126];   // decor.webp 每格东西最下面在第几行（量出来的）
   function drawDecor(g) {
-    const c = g.c, tm = g.anim, im = art('decor'), x0 = g.cam.x - 30, x1 = g.cam.x + VW + 30, y0 = g.cam.y - 30, y1 = g.cam.y + VH + 40;
+    const c = g.c, tm = g.anim, im = aart('decor'), FT = BAY.DECOR_FOOT || DECOR_FOOT, x0 = g.cam.x - 30, x1 = g.cam.x + VW + 30, y0 = g.cam.y - 30, y1 = g.cam.y + VH + 40;
     g.decor.forEach(d => {
       if (d.x < x0 || d.x > x1 || d.y < y0 || d.y > y1) return;
-      if (im) { const sz = 24 * d.s; onGround(g, d.x, d.y, sz * 0.32, 1.5, cc => { cc.translate(0, sz * (128 - DECOR_FOOT[d.k]) / 128); cc.rotate(Math.sin(tm * 1.2 + d.ph) * (d.k < 2 ? 0.06 : 0)); cc.drawImage(im, d.k * 128, 0, 128, 128, -sz / 2, -sz, sz, sz); }); return; }
+      if (im) { const sz = 24 * d.s, sway = LOOK.sway.indexOf(d.k) >= 0; onGround(g, d.x, d.y, sz * 0.32, 1.5, cc => { cc.translate(0, sz * (128 - FT[d.k]) / 128); cc.rotate(Math.sin(tm * 1.2 + d.ph) * (sway ? 0.06 : 0)); cc.drawImage(im, d.k * 128, 0, 128, 128, -sz / 2, -sz, sz, sz); }); return; }
       const s = d.s, sw = Math.sin(tm * 1.3 + d.ph);
       if (d.k === 0 || d.k === 1) { c.strokeStyle = d.k ? '#4a9a52' : '#3a8a48'; c.lineWidth = 1.8; c.lineCap = 'round'; for (let j = -1; j <= 1; j++) { const h = (d.k ? 9 : 20) * s * (1 - Math.abs(j) * 0.2); c.beginPath(); c.moveTo(d.x + j * 2.5, d.y); c.quadraticCurveTo(d.x + j * 3 + sw * 3, d.y - h * 0.6, d.x + j * 4 + sw * 5, d.y - h); c.stroke(); } }
       else if (d.k === 2) { c.strokeStyle = '#e88aa8'; c.lineWidth = 1.2; for (let j = -2; j <= 2; j++) { c.beginPath(); c.moveTo(d.x, d.y); c.lineTo(d.x + j * 3.5 * s, d.y - 11 * s + Math.abs(j) * 2); c.stroke(); } }
@@ -1785,24 +2738,24 @@
   // 石台按深浅压暗偏蓝（跟按地形算光的石头同一个算法），分 6 档存起来
   const LEDGE_T = {};
   function ledgeTint(im, y) {
-    const t = clamp((y - 200) / 1200, 0, 1), lv = Math.round(t * 5);
+    const t = clamp((y - 200) / 1200, 0, 1), lv = an('ledges') + Math.round(t * 5);
     if (LEDGE_T[lv]) return LEDGE_T[lv];
     const cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height;
     const x = cv.getContext('2d'); x.drawImage(im, 0, 0);
-    const d = x.getImageData(0, 0, cv.width, cv.height), tt = lv / 5, tr = (1 - 0.55 * tt) * 0.85, tg = (1 - 0.4 * tt) * 0.85, tb = (1 - 0.14 * tt) * 0.88;
+    const d = x.getImageData(0, 0, cv.width, cv.height), tt = Math.round(t * 5) / 5, tr = (1 - 0.55 * tt) * 0.85, tg = (1 - 0.4 * tt) * 0.85, tb = (1 - 0.14 * tt) * 0.88;
     for (let i = 0; i < d.data.length; i += 4) { d.data[i] *= tr; d.data[i + 1] *= tg; d.data[i + 2] *= tb; }
     x.putImageData(d, 0, 0);
     return (LEDGE_T[lv] = cv);
   }
   function drawLedges(g) {
-    const c = g.c, im = art('ledges');
+    const c = g.c, im = aart('ledges');
     if (!im) return;
     const x0 = g.cam.x - 50, x1 = g.cam.x + VW + 50, y0 = g.cam.y - 40, y1 = g.cam.y + VH + 40;
     g.ledges.forEach(L2 => { if (L2.x < x0 || L2.x > x1 || L2.y < y0 || L2.y > y1) return; const col = L2.k % 4, row = L2.up ? 0 : 1; c.drawImage(ledgeTint(im, L2.y), col * 320, row * 200, 320, 200, L2.x - 30, L2.y - 19, 60, 38); });   // 嵌进石头里一半
   }
   // 最前面的剪影：比画面跑得快（以画面中间为准放大一点）
   function drawFronts(g) {
-    const c = g.c, im = art('front'), k = 1.22, tm = g.anim;
+    const c = g.c, im = aart('front'), k = 1.22, tm = g.anim, FF = BAY.FRONT_FOOT || [395, 274, 325, 258, 339, 379];
     c.save(); c.translate(W / 2, H / 2); c.scale(k, k); c.translate(-W / 2, -H / 2); c.scale(Z, Z); c.translate(-g.cam.x, -g.cam.y);
     const mx = g.cam.x + VW / 2, my = g.cam.y + VH / 2;
     g.fronts.forEach(F => {
@@ -1810,7 +2763,7 @@
       const ex = Math.abs(F.x - mx) / (VW / 2), ey = (F.y - my) / (VH / 2), edge = clamp(Math.max(ex, ey) * 1.6 - 0.9, 0, 1);
       if (edge <= 0.02) return;
       c.globalAlpha = edge;
-      if (im) { c.drawImage(im, (F.k % 3) * 400, Math.floor(F.k / 3) * 400, 400, 400, F.x - 30, F.y + 2 - [395, 274, 325, 258, 339, 379][F.k] * 60 / 400, 60, 60); c.globalAlpha = 1; return; }
+      if (im) { c.drawImage(im, (F.k % 3) * 400, Math.floor(F.k / 3) * 400, 400, 400, F.x - 30, F.y + 2 - FF[F.k] * 60 / 400, 60, 60); c.globalAlpha = 1; return; }
       c.fillStyle = 'rgba(2,10,20,.88)'; c.strokeStyle = 'rgba(2,10,20,.88)'; c.lineCap = 'round';
       if (F.k < 3) { c.lineWidth = 4; for (let j = -2; j <= 2; j++) { const h = 26 + (j * j * 4) + F.k * 6, sw = Math.sin(tm * 0.9 + F.ph + j) * 6; c.beginPath(); c.moveTo(F.x + j * 6, F.y + 4); c.bezierCurveTo(F.x + j * 7 + sw, F.y - h * 0.4, F.x + j * 9 - sw, F.y - h * 0.7, F.x + j * 10 + sw * 1.5, F.y - h); c.stroke(); } }
       else { c.beginPath(); c.ellipse(F.x, F.y + 4, 22 + F.k * 2, 12, 0, Math.PI, 0); c.fill(); c.beginPath(); c.ellipse(F.x + 13, F.y + 2, 11, 8, 0, Math.PI, 0); c.fill(); }
@@ -1844,14 +2797,15 @@
     });
     // 裂了缝的石头
     BAY.CRACKS.forEach(K => {
-      if (has(S, K.id)) return;
+      if (has(S, K.id) || K.sub) return;   // 潜水艇的玻璃罩画在潜水艇那张图里
       const [, kx, ky, rx, ry] = K.shape, im = art('crack');
       if (im) { c.drawImage(im, kx - rx - 4, ky - ry - 6, (rx + 4) * 2, (ry + 6) * 2); return; }
       c.strokeStyle = 'rgba(40,20,0,.8)'; c.lineWidth = 1.2;
       [[-0.75, -0.2, -0.25, 0.25, 0.2, -0.15, 0.7, 0.1], [0.05, -0.65, -0.05, -0.1, 0.35, 0.55], [-0.35, 0.6, -0.15, 0.1]].forEach(q => { c.beginPath(); for (let i = 0; i < q.length; i += 2) { const x = kx + q[i] * rx, y = ky + q[i + 1] * ry; if (i) c.lineTo(x, y); else c.moveTo(x, y); } c.stroke(); });
     });
     // 气泡泉
-    const vim = art('vent');
+    drawReefBits(g, x0, x1, y0, y1);
+    const vim = aart('vent');
     g.pos.vents.forEach(([x, y]) => {
       if (x < x0 - 20 || x > x1 + 20 || y < y0 - 60 || y > y1 + 20) return;
       const gl = c.createRadialGradient(x, y - 4, 0, x, y - 4, 16); gl.addColorStop(0, 'rgba(190,250,255,.35)'); gl.addColorStop(1, 'rgba(190,250,255,0)'); c.fillStyle = gl; c.beginPath(); c.arc(x, y - 4, 16, 0, Math.PI * 2); c.fill();
@@ -1860,10 +2814,11 @@
       for (let i = 0; i < 8; i++) { const t = (tm * 0.8 + i / 8) % 1; c.beginPath(); c.arc(x + Math.sin(t * 9 + i * 2) * 3, y - 3 - t * 46, 0.7 + t * 1.8, 0, Math.PI * 2); c.stroke(); }
     });
     drawInlet(g);
+    drawKelp(g, false);   // 海带林后面那层：在栈道、木桩后面
     // 栈道、栏杆、去珊瑚礁的门、岸上的水管、水面
     if (y0 < WY + 24) {
       const sh = c.createLinearGradient(0, WY, 0, WY + 22); sh.addColorStop(0, 'rgba(0,20,40,.28)'); sh.addColorStop(1, 'rgba(0,20,40,0)'); c.fillStyle = sh; c.fillRect(x0, WY, x1 - x0, 22);   // 栈道底下的影子
-      const post = art('post'), deck = art('deck'), rail = art('rail'), gate = art('gate'), pipe = art('pipe-shore');
+      const post = aart('post'), deck = aart('deck'), rail = aart('rail'), gate = aart(S[LOOK.lic] ? 'gate-open' : 'gate'), pipe = art('pipe-shore');
       for (let x = Math.floor(x0 / 60) * 60 + 10; x < x1; x += 60) { if (post) c.drawImage(post, x - 4, GY + 2, 14.4, 42); else { c.fillStyle = '#6a4822'; c.fillRect(x, GY + 4, 5, WY - GY + 16); c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(x + 3, GY + 4, 2, WY - GY + 16); } }
       if (deck) for (let x = Math.floor(x0 / 153.6) * 153.6; x < x1; x += 153.6) c.drawImage(deck, x, GY - 2, 154, 21.6);
       else {
@@ -1880,7 +2835,8 @@
         if (gate) c.drawImage(gate, SPOT.gate - 36, GY + 1.5 - 209 * 0.3, 72, 72);   // gate.webp 门柱脚底在图里第 209 行，对到栈道面（原来悬空，作者）
         else { c.fillStyle = '#c8402a'; c.fillRect(SPOT.gate - 18, GY - 44, 5, 44); c.fillRect(SPOT.gate + 13, GY - 44, 5, 44); c.fillRect(SPOT.gate - 22, GY - 48, 44, 7); c.fillStyle = '#f0d040'; c.fillRect(SPOT.gate - 14, GY - 18, 28, 3); }
       }
-      if (SPOT.pipe > x0 - 10 && SPOT.pipe < x1 + 10) {
+      if (SPOT.gateL != null && SPOT.gateL - 40 < x1) { const go = aart('gate-open'); if (go) c.drawImage(go, SPOT.gateL - 36, GY + 1.5 - 209 * 0.3, 72, 72); }   // 珊瑚礁最左头：回浅水湾的门（一直开着）
+      if (SPOT.pipe != null && SPOT.pipe > x0 - 10 && SPOT.pipe < x1 + 10) {
         drawShorePipe(g, pipe, has(S, 'valve'));
       }
       c.fillStyle = 'rgba(255,255,255,.28)'; for (let x = Math.floor(x0 / 9) * 9; x < x1; x += 9) { const w = 3 + 3 * Math.abs(Math.sin(x * 0.37)); c.fillRect(x + Math.sin(tm * 1.6 + x * 0.21) * 3, WY - 0.4 + Math.sin(x * 0.13 + tm) * 0.5, w, 0.8); }
@@ -1968,7 +2924,7 @@
   }
   // 沉船：外面一层船壳（海狗钻进去就变透明），里面是隔出来的船舱
   function drawBoatInside(g) {
-    const c = g.c, im = art('boatin'), b = BAY.BOAT.box;
+    const c = g.c, im = art(BAY.BOAT.art ? BAY.BOAT.art.in : 'boatin'), b = BAY.BOAT.box;
     c.globalAlpha = g.inBoat;
     if (im) c.drawImage(im, b[0], b[1], b[2] - b[0], b[3] - b[1]);
     else {
@@ -1982,9 +2938,10 @@
   function drawBoatFront(g) {
     const a = 1 - g.inBoat, b = BAY.BOAT.box;
     if (a <= 0.01 || b[2] < g.cam.x || b[0] > g.cam.x + VW || b[3] < g.cam.y || b[1] > g.cam.y + VH) return;
-    const c = g.c, im = art('boat');
+    const c = g.c, BA = BAY.BOAT.art, im = art(BA ? BA.out : 'boat');
     c.globalAlpha = a;
-    if (im) c.drawImage(im, b[0], b[1], b[2] - b[0], b[3] - b[1]);
+    if (im && BA && BA.cells) { const cw = im.width / BA.cells, cell = has(g.S, BA.broke) ? 1 : 0; c.drawImage(im, cell * cw, 0, cw, im.height, b[0], b[1], b[2] - b[0], b[3] - b[1]); }   // 潜水艇：玻璃罩裂着 ／ 碎了
+    else if (im) c.drawImage(im, b[0], b[1], b[2] - b[0], b[3] - b[1]);
     else {
       c.save();
       c.beginPath(); c.moveTo(34, 264); c.lineTo(242, 264); c.lineTo(214, 316); c.quadraticCurveTo(200, 336, 120, 338); c.quadraticCurveTo(60, 336, 46, 322); c.closePath();
@@ -2001,6 +2958,136 @@
     }
     c.globalAlpha = 1;
   }
+  // 珊瑚礁水下的东西：大礁石（打架时撞裂了换裂的那格）、海胆（推开的时候滚开几只）、石斑鱼的小洞（洞口压暗）、通道口、没头盔的时候那条深度线
+  function drawReefBits(g, x0, x1, y0, y1) {
+    const c = g.c, S = g.S, tm = g.anim, vis = (x, y, m) => x > x0 - m && x < x1 + m && y > y0 - m && y < y1 + m;
+    (BAY.HOLES || []).forEach(([x, y, fc]) => {
+      if (!vis(x, y, 20)) return;
+      const r = c.createRadialGradient(x - fc * 3, y, 1, x - fc * 3, y, 13); r.addColorStop(0, 'rgba(8,6,10,.85)'); r.addColorStop(0.7, 'rgba(8,6,10,.5)'); r.addColorStop(1, 'rgba(8,6,10,0)');
+      c.fillStyle = r; c.beginPath(); c.ellipse(x - fc * 3, y, 13, 10, 0, 0, Math.PI * 2); c.fill();
+    });
+    // 海带墙：密密的一堵 → 正在割 → 割开剩下短茬
+    const kwim0 = art('kelp/kelpwall');
+    (BAY.KWALLS || []).forEach(K => {
+      const kwim = kwim0 && kwTint(kwim0, K.y);   // 照深浅压暗一点，别比四周亮一截
+      if (!vis(K.x, K.y, 40)) return;
+      const fr = !has(S, K.id) ? 0 : g.kwCut && g.kwCut[K.id] > 0 ? 1 : 2, dh = K.h + 14, dw = dh * 200 / 240;
+      const wob = fr === 0 && g.seal && !g.seal.land && dist(g.seal.x, g.seal.y, K.x, K.y) < K.w / 2 + 14 ? Math.sin(tm * 24) * 0.6 : 0;   // 顶上去的时候晃
+      if (kwim) c.drawImage(kwim, fr * 200, 0, 200, 240, K.x - dw / 2 + wob, K.y + K.h / 2 + 5 - dh, dw, dh);
+      else if (fr === 0) { c.fillStyle = '#3a7a30'; c.fillRect(K.x - K.w / 2, K.y - K.h / 2, K.w, K.h); }
+    });
+    // 打大章鱼那片空地中间的大礁石（打的时候 drawOcto 自己画，它躲在后面）
+    if (BAY.OCTO_ROCK && !(g.fight && g.fight.kind === 'octo')) { const [rx, ry] = BAY.OCTO_ROCK, rk = art('kelp/octorock'); if (rk && vis(rx, ry - 40, 80)) c.drawImage(rk, rx - 75.6, ry + 4 - 100.8, 151.2, 100.8); }
+    const bim = art('reef/boulder');
+    (BAY.BOULDERS || []).forEach(([x, y], i) => {
+      if (!vis(x, y - 24, 40)) return;
+      if (boulderGone(g, i)) { if (bim) c.drawImage(bim, 200, 0, 200, 160, x - 17, y - 11, 34, 12); return; }   // 砸碎了：剩一小堆碎石
+      const cr = g.fight && g.fight.rocks && g.fight.rocks[i] > 0 ? 1 : 0;
+      if (bim) c.drawImage(bim, cr * 200, 0, 200, 160, x - 30, y - 47, 60, 48);
+      else { c.fillStyle = '#c8b898'; c.beginPath(); c.ellipse(x, y - 21, 23, 19, 0, 0, Math.PI * 2); c.fill(); }
+    });
+    (g.rubble || []).forEach(q => { c.save(); c.translate(q.x, q.y); c.rotate(q.rot); c.globalAlpha = clamp(1.6 - q.t, 0, 1); c.fillStyle = '#c9b48e'; c.strokeStyle = '#7a6448'; c.lineWidth = 0.5; c.beginPath(); c.moveTo(-q.r, -q.r * 0.4); c.lineTo(q.r * 0.2, -q.r); c.lineTo(q.r, q.r * 0.3); c.lineTo(-q.r * 0.3, q.r * 0.8); c.closePath(); c.fill(); c.stroke(); c.restore(); });   // 礁石碎块
+    const uim = art('reef/urchin');
+    (BAY.URCHINS || []).forEach(U => {
+      if (has(S, U.id) || !vis(U.x, U.y, 30)) return;
+      const z = U.r * 2.7, wob = g.seal && dist(g.seal.x, g.seal.y, U.x, U.y) < U.r + 14 ? Math.sin(tm * 30) * 0.06 : 0;
+      c.save(); c.translate(U.x, U.y); c.rotate(wob);
+      if (uim) c.drawImage(uim, 0, 0, 128, 128, -z / 2, -z / 2, z, z); else { c.fillStyle = '#3a1a4a'; c.beginPath(); c.arc(0, 0, U.r, 0, Math.PI * 2); c.fill(); }
+      c.restore();
+    });
+    g.urchinFly.forEach(u => {   // 推开：三只海胆往两边滚开、淡掉
+      const k = u.t / 0.9, z = u.r * 1.3;
+      c.globalAlpha = 1 - k;
+      [[-1, -0.6], [1, -0.3], [0.2, 1]].forEach(([dx, dy], i) => { c.save(); c.translate(u.x + dx * k * 26 + u.dir * k * 10, u.y + dy * k * 14); c.rotate(k * 3 * (i % 2 ? 1 : -1)); if (uim) c.drawImage(uim, 2 * 128, 0, 128, 128, -z / 2, -z / 2, z, z); c.restore(); });
+      c.globalAlpha = 1;
+    });
+    tunnelsOf().forEach(T => {   // 水下通道口：铁栅栏锁着 ／ 开着（图里口子朝左，朝右的翻过来）
+      const [tx, ty] = T.at, tim = art('reef/tunnel');
+      if (!vis(tx, ty, 50)) return;
+      c.save(); c.translate(tx, ty); if (T.face > 0) c.scale(-1, 1);
+      if (tim) c.drawImage(tim, tunnelOpen(S, T) ? 240 : 0, 0, 240, 240, -32, -32, 64, 64); else { c.fillStyle = '#4a4a50'; c.beginPath(); c.arc(0, 0, 26, 0, Math.PI * 2); c.fill(); }
+      c.restore();
+    });
+    const DG = BAY.DEPTH;
+    if (DG.line && y1 > DG.y - 20 && y0 < DG.y + 20) {   // 水压线：一条晃动的淡蓝线，没头盔的时候亮
+      const on = !has(S, DG.need);
+      c.strokeStyle = on ? 'rgba(150,220,255,.55)' : 'rgba(150,220,255,.14)'; c.lineWidth = on ? 1.2 : 0.7; c.setLineDash([5, 4]);
+      c.beginPath(); let pen = false; for (let x = Math.floor(x0 / 6) * 6; x < x1; x += 6) { const yy = DG.y + Math.sin(x * 0.08 + tm * 2) * 1.2; if (fieldAt(g, x, yy) > -1) { pen = false; continue; } if (pen) c.lineTo(x, yy); else c.moveTo(x, yy); pen = true; } c.stroke(); c.setLineDash([]);   // 只画在水里
+      if (on) { c.fillStyle = 'rgba(200,240,255,.5)'; for (let i = 0; i < 6; i++) { const x = x0 + ((i * 53 + tm * 12) % (x1 - x0)); c.beginPath(); c.arc(x, DG.y - 2 - ((tm * 6 + i * 3) % 10), 0.7, 0, Math.PI * 2); c.fill(); } }
+    }
+  }
+  // 海带墙按深浅压暗（跟石台一个算法），分 6 档存起来
+  const KW_T = {};
+  function kwTint(im, y) {
+    const t = clamp((y - 200) / 1200, 0, 1), lv = Math.round(t * 5);
+    if (KW_T[lv] && KW_T[lv].im === im) return KW_T[lv].cv;
+    const cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height;
+    const x = cv.getContext('2d'); x.drawImage(im, 0, 0);
+    const d = x.getImageData(0, 0, cv.width, cv.height), tt = lv / 5, tr = (1 - 0.55 * tt) * 0.72, tg = (1 - 0.4 * tt) * 0.7, tb = (1 - 0.14 * tt) * 0.76;
+    for (let i = 0; i < d.data.length; i += 4) { d.data[i] *= tr; d.data[i + 1] *= tg; d.data[i + 2] *= tb; }
+    x.putImageData(d, 0, 0);
+    KW_T[lv] = { im, cv };
+    return cv;
+  }
+  // 海带林（作者 1A）：一根根从海底长到水面——底下一节根、中间一节节往上摞、最上面一节浮在水面；
+  // 后面那层在海狗后面，前面那层（更暗、大一点）盖在海狗前面；整根慢慢晃，越往上晃得越多
+  const KELP_T = {};
+  function kelpTinted(im, front) {
+    const key = front ? 'f' : 'b';
+    if (KELP_T[key] && KELP_T[key].im === im) return KELP_T[key].cv;
+    const cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height;
+    const x = cv.getContext('2d'); x.drawImage(im, 0, 0);
+    const d = x.getImageData(0, 0, cv.width, cv.height), m = front ? [0.3, 0.36, 0.32] : [0.84, 0.88, 0.84];
+    for (let i = 0; i < d.data.length; i += 4) { d.data[i] *= m[0]; d.data[i + 1] *= m[1]; d.data[i + 2] *= m[2]; }
+    x.putImageData(d, 0, 0);
+    KELP_T[key] = { im, cv };
+    return cv;
+  }
+  function drawKelp(g, front) {
+    const K = BAY.KELP, im0 = K && art('kelp/kelp');
+    if (!im0 || g.cam.y > 470) return;
+    const c = g.c, tm = g.anim, im = kelpTinted(im0, front), sc = front ? 0.36 : 0.3, w = 160 * sc, h = 320 * sc;
+    const x0 = g.cam.x - w, x1 = g.cam.x + VW + w;
+    c.save(); c.beginPath(); c.rect(x0, GY + 20, x1 - x0, 500); c.clip();   // 只在水里（顶上那节浮在水面底下，别冒到栈道上）
+    K.forEach((k, i) => {
+      if (!!k.front !== front || k.x < x0 || k.x > x1) return;
+      const fl = kelpFloor(g, k) + 4, top = WY - 9, depth = fl - top, ph = i * 1.7;
+      const sway = yy => { const q = clamp((fl - yy) / depth, 0, 1); return Math.sin(tm * 0.7 + ph) * 6 * Math.pow(q, 1.4) + Math.sin(tm * 1.9 + ph * 2) * 1.2 * q; };
+      const seg = (col, yb, hh) => {   // 一节：底边在 yb，高 hh；上下两头按晃的多少斜一点，接得上
+        const ob = sway(yb), ot = sway(yb - hh);
+        c.save(); c.translate(k.x + ob, yb); c.transform(1, 0, -(ot - ob) / hh, 1, 0, 0);
+        c.drawImage(im, col * 160, k.v * 320, 160, 320, -w / 2, -hh, w, hh);
+        c.restore();
+      };
+      if (front) { const sl = g.seal, near = sl && !sl.land ? clamp((Math.abs(sl.x - k.x) - 8) / 34, 0, 1) : 1; c.globalAlpha = 0.3 + 0.56 * near; }   // 前面那层：海狗钻到后面的时候淡下去，别把海狗整个挡住
+      const rootTop = fl - h, topBot = top + h;
+      for (let yb = rootTop; yb > topBot + 10; yb -= h) seg(1, yb, h);   // 中间一节节往上摞，最上面那节被顶上的叶子盖住
+      seg(0, fl, h);
+      seg(2, topBot, h);
+      c.globalAlpha = 1;
+    });
+    c.restore();
+  }
+  // 电鳗：游的两格来回换；放电那格周围一团蓝光；被顶开那格
+  function drawEels(g) {
+    const c = g.c, im = art('kelp/eel'), tm = g.anim;
+    (g.eels || []).forEach((e, i) => {
+      if (Math.abs(e.x - g.cam.x - VW / 2) > VW || Math.abs(e.y - g.cam.y - VH / 2) > VH) return;
+      const fr = e.knock > 0 ? 3 : e.zap > 0 ? 2 : Math.floor(tm * 5 + i) % 2, gl = e.zap > 0 ? 0.55 : 0.16 + 0.06 * Math.sin(tm * 3 + i);
+      const r = c.createRadialGradient(e.x, e.y, 2, e.x, e.y, e.zap > 0 ? 26 : 16); r.addColorStop(0, 'rgba(150,220,255,' + gl + ')'); r.addColorStop(1, 'rgba(150,220,255,0)');
+      c.fillStyle = r; c.beginPath(); c.arc(e.x, e.y, e.zap > 0 ? 26 : 16, 0, Math.PI * 2); c.fill();
+      c.save(); c.translate(e.x, e.y); if (e.face < 0) c.scale(-1, 1); c.rotate(e.tilt + (e.knock > 0 ? Math.sin(tm * 9) * 0.3 : 0));
+      if (im) c.drawImage(im, fr * 240, 0, 240, 96, -17, -6.8, 34, 13.6);
+      else { c.fillStyle = '#4a4440'; c.beginPath(); c.ellipse(0, 0, 11, 2.6, 0, 0, Math.PI * 2); c.fill(); }
+      c.restore();
+    });
+  }
+  // 回声：一圈圈往外扩的声波；按住攻击蓄的时候海狗身边一圈越来越亮
+  function drawEcho(g) {
+    const c = g.c, s = g.seal;
+    g.echoes.forEach(e => { const k = e.t, r = 8 + k * 140; c.strokeStyle = 'rgba(170,240,255,' + (0.8 * (1 - k)) + ')'; c.lineWidth = 1.6 * (1 - k) + 0.4; c.beginPath(); c.arc(e.x, e.y, r, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.arc(e.x, e.y, r * 0.72, 0, Math.PI * 2); c.stroke(); });
+    if (s && !s.land && s.echoC > 0.08) { const k = clamp(s.echoC / 0.55, 0, 1); c.strokeStyle = 'rgba(170,240,255,' + (0.3 + 0.5 * k) + ')'; c.lineWidth = 0.8; c.beginPath(); c.arc(s.x, s.y, 14 - k * 4, 0, Math.PI * 2); c.stroke(); }
+  }
   // 暗道：没发现之前盖一块石头
 
   // 海狗游到跟前了：能点的东西外面一圈亮环一跳一跳
@@ -2010,7 +3097,7 @@
     if (s.land || g.fight || g.panel) return;
     const t = actTarget(g);
     if (!t) return;
-    const top = { octo: 20, valve: 13, inlet: 22 }[t.k] || 16, y = t.y - top - 3 - Math.abs(Math.sin(g.anim * 4)) * 2;
+    const top = { shop: 20, valve: 13, inlet: 22, tunnel: 28 }[t.k] || 16, y = t.y - top - 3 - Math.abs(Math.sin(g.anim * 4)) * 2;
     c.fillStyle = '#fff6a0'; c.strokeStyle = 'rgba(60,30,0,.85)'; c.lineWidth = 0.8;
     c.beginPath(); c.moveTo(t.x - 3, y - 3); c.lineTo(t.x + 3, y - 3); c.lineTo(t.x, y + 1); c.closePath(); c.fill(); c.stroke();
   }
@@ -2018,7 +3105,9 @@
   // 底座往地里沉 4，再把这块的石头盖回去一遍，看着是坐在洞底上；地上一团影子
   const OCTO_SINK = 4;
   function octoTinted(im) {
-    if (octoTinted.cv || !im) return octoTinted.cv || null;
+    if (!im) return null;
+    if (octoTinted.im === im) return octoTinted.cv;
+    octoTinted.im = im;
     const cv = document.createElement('canvas'); cv.width = 200; cv.height = 160;
     const x = cv.getContext('2d'); x.drawImage(im, 600, 0, 200, 160, 0, 0, 200, 160);
     x.globalCompositeOperation = 'source-atop';
@@ -2027,11 +3116,11 @@
     return (octoTinted.cv = cv);
   }
   function drawOctoShop(g) {
-    const c = g.c, [x, y] = g.pos.octo, size = 26, w = size * 2, h = size * 1.6;
+    const c = g.c, [x, y] = g.pos.shop, size = 26, w = size * 2, h = size * 1.6;
     if (Math.abs(x - g.cam.x - VW / 2) > VW || Math.abs(y - g.cam.y - VH / 2) > VH) return;
     const top = y - size * 0.8 + OCTO_SINK, fl = 0.92 + 0.08 * Math.sin(g.anim * 7) * Math.sin(g.anim * 3.1);
-    const cv = octoTinted(art('merchants'));
-    if (cv) c.drawImage(cv, x - size, top, w, h); else drawMerchant(g, 'octopus', x, y + OCTO_SINK, size);
+    const cv = octoTinted(aart('merchants'));
+    if (cv) c.drawImage(cv, x - size, top, w, h); else drawMerchant(g, BAY.SHOP.mk, x, y + OCTO_SINK, size);
     rockOver(g, x - size - 3, top + h - 14, w + 6, 16);   // 沉进地里的那截让石头盖住
     const sh = c.createRadialGradient(x, y + 21, 2, x, y + 21, 32); sh.addColorStop(0, 'rgba(0,0,0,.32)'); sh.addColorStop(1, 'rgba(0,0,0,0)');   // 铺子脚下压暗一圈
     c.fillStyle = sh; c.beginPath(); c.ellipse(x, y + 21, 32, 6, 0, 0, Math.PI * 2); c.fill();
@@ -2067,6 +3156,7 @@
   const hiddenByCover = (S, x, y) => BAY.COVERS.some(Q => !has(S, Q.id) && inRect(x, y, Q.r));
   // 进水口：右边石壁上的粗水管口 + 阀门
   function drawInlet(g) {
+    if (!BAY.INLET) return;
     const c = g.c, [ix, iy] = BAY.INLET, tm = g.anim, open = has(g.S, 'valve');
     if (Math.abs(ix - g.cam.x - VW / 2) > VW || Math.abs(iy - g.cam.y - VH / 2) > VH) return;
     const pim = art('inlet'), vim = art('valve'), [vx, vy] = g.pos.things.valve;
@@ -2103,7 +3193,7 @@
 
   function drawPlay(g) {
     const c = g.c, S = g.S, P = g.pos;
-    const tv = (art('rock') ? 1 : 0) + (art('sand') ? 2 : 0) + (art('backwall') ? 4 : 0);
+    const tv = AREA + (aart('rock') ? 1 : 0) + (aart('sand') ? 2 : 0) + (aart('backwall') ? 4 : 0) + (BAY.CORAL && art('reef/coral') ? 8 : 0);
     if (tv !== g.tv) { g.tv = tv; g.rc.rock.clear(); g.rc.back.clear(); g.bakeAll = true; }
     const need = [];
     const sh = g.shake > 0 ? g.shake * 6 : 0;
@@ -2116,11 +3206,12 @@
     { const L2 = paintChunks(g, 'back', need); c.drawImage(L2.cv, 0, 0, L2.sw, L2.sh, 0, 0, W, H); }
     drawSnow(g);   // 海雪在石头后面，只在水里飘
     // 3 沉船里面、石头
-    c.save(); c.scale(Z, Z); c.translate(-g.cam.x, -g.cam.y); if (g.inBoat > 0 && !art('boatin')) drawBoatInside(g); c.restore();
+    const boatIn = () => art(BAY.BOAT.art ? BAY.BOAT.art.in : 'boatin');
+    c.save(); c.scale(Z, Z); c.translate(-g.cam.x, -g.cam.y); if (g.inBoat > 0 && !boatIn()) drawBoatInside(g); c.restore();
     drawRockLayer(g, need);
     // 4 能游这层的东西
     c.save(); c.scale(Z, Z); c.translate(-g.cam.x, -g.cam.y);
-    if (g.inBoat > 0 && art('boatin')) drawBoatInside(g);
+    if (g.inBoat > 0 && boatIn()) drawBoatInside(g);
     drawWorld(g);
     P.clams.forEach(([x, y], i) => onGround(g, x, y + 4, 9, 1.5, cc => drawClam(cc, 0, -4, clamOpen(g, i), S.world.clams[i].pearl)));
     S.world.junk.forEach(j => { if (!j.gone) onGround(g, j.x, floorAt(g, j.x), 6, 1.2, cc => drawSeabed(cc, { shoe: 5, can: 6, tire: 7 }[j.k], 0, -5, 14)); });
@@ -2131,21 +3222,40 @@
     const vx0 = g.cam.x - 30, vx1 = g.cam.x + VW + 30, vy0 = g.cam.y - 30, vy1 = g.cam.y + VH + 30;
     if (!g.fight) g.fish.forEach(f => {
       if (!(f.x > vx0 && f.x < vx1 && f.y > vy0 && f.y < vy1 && !hiddenByCover(S, f.x, f.y))) return;
-      shadowUnder(g, f.x, f.y + 3, SPECIES[f.sp].len[f.size]);
-      if (f.dizzy > 0) { c.save(); c.translate(f.x, f.y); c.rotate(Math.PI + Math.sin(g.anim * 3) * 0.2); drawFish(g, f.sp, f.size, 0, 0, -f.face, 1, 0); c.restore(); dizzyStars(c, f.x, f.y - SPECIES[f.sp].len[f.size] * 0.4 - 3, g.anim); }   // 被顶晕：翻肚皮、冒星星
-      else drawFish(g, f.sp, f.size, f.x, f.y, f.face, 1, f.ph);
+      const camo = SPECIES[f.sp].camo && !(f.seen > 0) && !(f.glow > 0);
+      if (camo || f.esc > 0) c.globalAlpha = camo ? 0.42 : clamp(f.esc / 0.6, 0, 1);   // 叶海龙没露馅：跟一片海草似的；吓跑的鱼：淡掉
+      if (!camo) shadowUnder(g, f.x, f.y + 3, SPECIES[f.sp].len[f.size]);
+      if (f.glow > 0) { const len = SPECIES[f.sp].len[f.size], r = c.createRadialGradient(f.x, f.y, 2, f.x, f.y, len); r.addColorStop(0, 'rgba(170,240,255,' + 0.5 * Math.min(1, f.glow) + ')'); r.addColorStop(1, 'rgba(170,240,255,0)'); c.fillStyle = r; c.beginPath(); c.arc(f.x, f.y, len, 0, Math.PI * 2); c.fill(); }   // 回声照到：亮一下
+      if (f.hide && f.ls === 'out') {   // 狼鳗探出洞来：尾巴那截还在洞里
+        const [hx, hy] = BAY.HOLES[f.hole];
+        c.save(); c.beginPath(); c.rect(f.face > 0 ? hx - 9 : hx - 200, hy - 40, 209, 80); c.clip();
+        drawFish(g, f.sp, f.size, f.x, f.y, f.face, 1, f.ph, f.lt > 0.75);   // 刚扑出来那下是张大嘴那格
+        c.restore();
+      } else if (f.hide) {   // 躲在洞里：只露出半截脑袋
+        const [hx, hy] = BAY.HOLES[f.hole], len = SPECIES[f.sp].len[f.size], wind = f.ls === 'wind' ? Math.sin(g.anim * 60) * 0.8 : 0;
+        c.save(); c.beginPath(); c.ellipse(hx - f.face * 3, hy, 13, 10, 0, 0, Math.PI * 2); c.clip();
+        drawFish(g, f.sp, f.size, hx - f.face * len * 0.32 + Math.sin(f.ph * 1.3) * f.face + wind, hy, f.face, 1, f.ph * 0.3);   // 身子在洞里，只露个脑袋（狼鳗要扑之前一抖）
+        c.restore();
+      } else if (f.dizzy > 0) { c.save(); c.translate(f.x, f.y); c.rotate(Math.PI + Math.sin(g.anim * 3) * 0.2); drawFish(g, f.sp, f.size, 0, 0, -f.face, 1, 0, true); c.restore(); dizzyStars(c, f.x, f.y - SPECIES[f.sp].len[f.size] * 0.4 - 3, g.anim); }   // 被顶晕：翻肚皮、冒星星
+      else drawFish(g, f.sp, f.size, f.x, f.y, f.face, 1, f.ph, f.flee > 0 || f.spike > 0 || f.ram > 0 || f.flinch > 0);
+      c.globalAlpha = 1;
     });   // 大白鲨下水，鱼都吓跑了
+    drawEels(g);
+    drawEcho(g);
     drawBoatFront(g);
     drawShore(g);
     drawActHint(g);
     if (g.fight) drawShark(g);
     if (!g.seal.land) shadowUnder(g, g.seal.x, g.seal.y + 6, 24);
     if (!cookingBehind(g)) drawSeal(g);   // 做饭的时候在 drawShore 里画（柜台后面）
+    drawKelp(g, true);
     drawBubs(g);
+    drawDrops(g);
     fishTags(g);   // 鱼的小牌子压在最上面，别被海狗挡住
     c.restore();
     // 5 前景剪影
     drawFronts(g);
+    drawInk(g);
     c.restore();
     bakeSome(g, need);
     drawDarkness(g);
@@ -2158,8 +3268,8 @@
   function drawDarkness(g) {
     const s = g.seal, S = g.S, cx = g.cam.x, cy = g.cam.y, lamp = has(S, 'lamp');
     // 越往下越暗：到最黑的深海那一段不再是一刀切，而是像光照衰减一样慢慢黑下去（11-25 作者：明暗交界太明显）
-    const D0 = BAY.DARK_Y - 70, D1 = BAY.DARK_Y + 110, deep = lamp ? 0.82 : 0.95, mid = (D0 - 280) / (BAY.DARK_Y - 280) * 0.5;
-    const dk = y => { if (y < 280) return 0; if (y < D0) return (y - 280) / (BAY.DARK_Y - 280) * 0.5; if (y > D1) return deep; const t = (y - D0) / (D1 - D0); return mid + (deep - mid) * t * t * (3 - 2 * t); };
+    const L0 = BAY.LOOK.light0, D0 = BAY.DARK_Y - 70, D1 = BAY.DARK_Y + 110, deep = lamp ? 0.82 : 0.95, mid = (D0 - L0) / (BAY.DARK_Y - L0) * 0.5;
+    const dk = y => { if (y < L0) return 0; if (y < D0) return (y - L0) / (BAY.DARK_Y - L0) * 0.5; if (y > D1) return deep; const t = (y - D0) / (D1 - D0); return mid + (deep - mid) * t * t * (3 - 2 * t); };
     if (dk(cy + VH) <= 0.01) { drawVignette(g); return; }
     if (!g.dark) { g.dark = document.createElement('canvas'); g.dark.width = W * SC; g.dark.height = H * SC; }
     const d = g.dark.getContext('2d');
@@ -2176,7 +3286,8 @@
     const X = x => (x - cx) * Z, Y = y => (y - cy) * Z;
     if (!s.land) hole(X(s.x), Y(s.y), (lamp && s.y > 300 ? 80 : 36) * Z);
     g.pos.vents.forEach(([x, y]) => hole(X(x), Y(y - 14), 26 * Z));
-    hole(X(g.pos.octo[0]), Y(g.pos.octo[1] - 4), 46 * Z);   // 铺子的灯照亮一大圈
+    hole(X(g.pos.shop[0]), Y(g.pos.shop[1] - 4), 46 * Z);   // 铺子的灯照亮一大圈
+    (g.eels || []).forEach(e => { if (Math.abs(e.x - cx - VW / 2) < VW && Math.abs(e.y - cy - VH / 2) < VH) hole(X(e.x), Y(e.y), (e.zap > 0 ? 34 : 16) * Z); });
     g.decor.forEach(d => { if (d.k === 7 && Math.abs(d.x - cx - VW / 2) < VW && Math.abs(d.y - cy - VH / 2) < VH) hole(X(d.x), Y(d.y - 10), 12 * Z); });
     TREASURE.forEach(k => { if (has(S, k)) return; const [x, y] = g.pos.things[k]; if (!hiddenByCover(S, x, y)) hole(X(x), Y(y), 14 * Z); });
     g.c.drawImage(g.dark, 0, 0, W, H);
@@ -2193,12 +3304,12 @@
   }
 
   // 鱼：新图 fish6（4 行 × 2 列，头冲右）；没来之前代码画
-  function drawFish(g, sp, size, x, y, face, scale, ph) {
+  function drawFish(g, sp, size, x, y, face, scale, ph, alt) {
     const c = g.c, D = SPECIES[sp];
     const len = D.len[size] * (scale || 1);
-    const im = art('fish6');
+    const im = art(D.sheet || 'fish6');
     c.save(); c.translate(x, y); if (face < 0) c.scale(-1, 1);
-    if (im) { const fr = Math.floor((ph || 0) * 4) % 2; c.drawImage(im, fr * 144, D.row * 96, 144, 96, -len * 0.6, -len * 0.4, len * 1.2, len * 0.8); }
+    if (im) { const fr = alt && D.sheet ? 2 : Math.floor((ph || 0) * 4) % 2; c.drawImage(im, fr * 144, D.row * 96, 144, 96, -len * 0.6, -len * 0.4, len * 1.2, len * 0.8); }   // 珊瑚礁的鱼第 3 格：受惊 ／ 顶出洞 ／ 刺炸起来
     else {
       const h = len * (D.squid ? 0.55 : 0.42), wig = Math.sin((ph || 0) * 9) * 0.3;
       c.fillStyle = D.col;
@@ -2224,7 +3335,7 @@
   function fishTags(g) {
     const c = g.c, s = g.seal, S = g.S;
     if (s.land || g.fight || s.clamp) return;
-    const near = g.fish.filter(f => !f.gone && (!f.lead || f.lead.gone || f.dizzy > 0) && !hiddenByCover(S, f.x, f.y) && dist(f.x, f.y, s.x, s.y) < 46)
+    const near = g.fish.filter(f => !f.gone && !(f.esc > 0) && (!f.lead || f.lead.gone || f.dizzy > 0) && !(f.hide && !(f.glow > 0) && f.ls !== 'out') && !(SPECIES[f.sp].camo && !(f.seen > 0) && !(f.glow > 0)) && !hiddenByCover(S, f.x, f.y) && dist(f.x, f.y, s.x, s.y) < 46)
       .sort((a, b) => dist(a.x, a.y, s.x, s.y) - dist(b.x, b.y, s.x, s.y)).slice(0, 3);
     c.font = 'bold 5px ' + FONT;
     near.forEach(f => {
@@ -2236,7 +3347,7 @@
     });
   }
   // 岸上能"用"的东西头上一个小三角：攻击键这时候是"用"
-  const TOPH = { tent: 34, tank: 30, gong: 21, basin: 23, pot: 40, pipe: 19, mA: 36, mB: 36, mC: 36, gate: 72 };
+  const TOPH = { tent: 34, tank: 30, gong: 21, basin: 23, pot: 40, pipe: 19, mA: 36, mB: 36, mC: 36, gate: 72, gateL: 72 };
   function drawActHint(g) {
     const s = g.seal, c = g.c;
     if (!s.land || g.panel || locked(g) || (g.boss && g.boss.phase === 'alarm') || g.screen !== 'play') return;
@@ -2274,7 +3385,7 @@
   }
   function drawMerchant(g, k, x, y, size) {
     const c = g.c, M = MERCHANTS[k];
-    const im = art('merchants');
+    const im = aart('merchants');
     if (im) { c.drawImage(im, M.cell * 200, 0, 200, 160, x - size, y - size * 0.8, size * 2, size * 1.6); return; }
     const old = art('helpers2');
     if (old) c.drawImage(old, M.cell * 96, 0, 96, 96, x - size / 2, y - size / 2, size, size); else emoji(c, M.e, x, y, size * 0.7);
@@ -2286,9 +3397,9 @@
   function drawShore(g) {
     const c = g.c, S = g.S, tm = g.anim;
     const C = caps(S);
-    const tent = art('tent');
-    if (tent) c.drawImage(tent, SPOT.tent - 22, FOOT - 104 * 33 / 120, 44, 33); else emoji(c, '⛺', SPOT.tent, GY - 12, 24);
-    if (C.tank) {
+    const tent = aart('tent');
+    if (tent) c.drawImage(tent, SPOT.tent - 22, FOOT - LOOK.tentFoot * 33 / 120, 44, 33); else emoji(c, '⛺', SPOT.tent, GY - 12, 24);
+    if (C.tank && SPOT.tank != null) {
       // 家里的水族箱：每个大小在图里实际占的框（量出来的），按玻璃宽 16 ／ 24 ／ 32 ／ 40 摆，脚贴栈道；鱼只在玻璃里面游（作者：鱼怎么跑到缸外面了）
       const tk = art('tanks'), sz = lvOf(S, 'tank') - 1;
       const CB = [[71, 34, 128, 106], [36, 28, 164, 111], [18, 23, 182, 117], [2, 39, 198, 101]][sz], k = [16, 24, 32, 40][sz] / (CB[2] - CB[0]);
@@ -2305,28 +3416,30 @@
     }
     drawPot(g);
     if (cookingBehind(g)) drawSeal(g);
-    const st = art('stall');
+    const st = aart('stall');
     if (st) c.drawImage(st, SPOT.pot - 30, FOOT - 35, 60, 35);
     else { c.fillStyle = '#c8402a'; c.fillRect(SPOT.pot - 28, GY - 40, 64, 6); c.fillStyle = '#e8d8b0'; c.fillRect(SPOT.pot - 26, GY - 34, 2, 34); c.fillRect(SPOT.pot + 32, GY - 34, 2, 34); c.fillStyle = '#9a6a3a'; c.fillRect(SPOT.pot - 24, GY - 9, 50, 9); }
     drawPoster(g);
     drawSteam(g, g.potSteam, 1);
     drawWarm(g);
     drawTub(g);
-    const gg = art('gong');
-    if (gg) c.drawImage(gg, SPOT.gong - 8, FOOT - 17.6, 16, 20);
+    const gg = aart('gong');
+    if (gg) c.drawImage(gg, SPOT.gong - 8, FOOT - LOOK.gongFoot, 16, 20);
     else { c.strokeStyle = '#6a4a2a'; c.lineWidth = 1.5; c.strokeRect(SPOT.gong - 7, GY - 20, 14, 20); c.fillStyle = '#e0a020'; c.beginPath(); c.arc(SPOT.gong, GY - 12, 5.5, 0, Math.PI * 2); c.fill(); }
     if (art('bin')) c.drawImage(art('bin'), SPOT.bin - 6.5, FOOT - 16.25, 13, 16.25);
     else { const bx = SPOT.bin; c.fillStyle = 'rgba(0,0,0,.2)'; c.beginPath(); c.ellipse(bx, GY, 6, 1.4, 0, 0, Math.PI * 2); c.fill(); const bg = c.createLinearGradient(bx - 4, 0, bx + 4, 0); bg.addColorStop(0, '#5a8a5a'); bg.addColorStop(0.4, '#3f7044'); bg.addColorStop(1, '#2a4e30'); c.fillStyle = bg; c.beginPath(); c.moveTo(bx - 4, GY - 9); c.lineTo(bx + 4, GY - 9); c.lineTo(bx + 3.4, GY); c.lineTo(bx - 3.4, GY); c.closePath(); c.fill(); c.fillStyle = '#2e5634'; rrect(c, bx - 4.8, GY - 10.6, 9.6, 2.2, 1); c.fill(); c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 0.4; for (let k = -2; k <= 2; k += 2) { c.beginPath(); c.moveTo(bx + k, GY - 8); c.lineTo(bx + k * 0.85, GY - 1); c.stroke(); } }
     Object.keys(SHORE).forEach(k => drawMerchant(g, SHORE[k], SPOT[k], GY - 14, 22));
     if (g.boss && !g.fight) drawJudge(g);
     g.tourists.forEach(o => drawTourist(g, o));
-    if (S.license) txt(c, SPOT.gate, GY - 26, L.fix, 6, '#fff', 'center', true, '#5a1a00');
+    if (AREA === 'kelp' && S.license3) txt(c, SPOT.gate, GY - 26, L.fix, 6, '#fff', 'center', true, '#5a1a00');   // 下一个展区（深海沟）还没做
   }
 
   function potStage(g) { const se = g.session; return !se ? 0 : se.phase === 'prep' ? 1 + Math.min(3, Math.floor(se.t / 0.8)) : se.phase === 'heat' ? (se.p >= 1 ? 6 : zoneName(se.p) === 'best' ? 5 : 4) : se.phase === 'bid' ? 4 : 0; }
   // 岸上的锅：侧面，灶大半在柜台后面；热气、泡、最佳的金光、糊了的黑烟（Codex 的 potside 到了换图）
   function drawPot(g) {
     const c = g.c, se = g.session, tm = g.anim, x = SPOT.pot + 7, y = FOOT, st = potStage(g);   // 锅在柜台后面靠右，左边留给掌勺的海狗
+    const raw = se && se.recipe && RECIPES[se.recipe].raw, plat = raw && art('reef/platter');
+    if (plat) { c.drawImage(plat, (se.phase === 'bid' ? 1 : 0) * 160, 0, 160, 140, x - 17, y - 5 - 29.75, 34, 29.75); return; }   // 做刺身：锅换成冰盘（生鱼片不进锅）
     const side = art('potside'), burning = st > 0 || (se && se.phase === 'bid');
     if (side) { c.drawImage(side, [0, 1, 1, 1, 2, 3, 4][st] * 160, 50, 160, 90, x - 17, y - 5 - 19.1, 34, 19.1); return; }   // 只取锅和灶（第 50 行往下），垫高 5；热气在 drawSteam 里飘（作者：锅快看不见了、没有蒸汽动画）
     else {
@@ -2398,12 +3511,13 @@
     box(c, x, y, w, h);
     const iw = 104, ih = 70, ix = cx - iw / 2, iy = y + 16;
     g.pclBox = [cx, iy + ih / 2, ih];   // 特写里锅的位置（热气从这儿冒）
-    const close = art('potclose'), p6 = art('pot6'), row = se.recipe ? Math.max(0, ['clear', 'spicy', 'sour'].indexOf(se.recipe)) : 0;
+    const R0 = se.recipe && RECIPES[se.recipe], two = R0 && R0.close != null, raw = R0 && R0.raw;
+    const close = art(two ? (R0.closeSheet || 'reef/potclose2') : 'potclose'), p6 = art('pot6'), row = two ? R0.close : se.recipe ? Math.max(0, ['clear', 'spicy', 'sour'].indexOf(se.recipe)) : 0;
     const frame = (s2, a, z) => {
       if (a <= 0.01 || s2 == null) return;
       c.globalAlpha = pop * a;
       c.save(); c.translate(cx, iy + ih / 2); c.scale(z, z); c.translate(-cx, -(iy + ih / 2));
-      if (close) c.drawImage(close, s2 * 400, (s2 === 0 ? 0 : row) * 300, 400, 300, cx - ih * 2 / 3, iy, ih * 4 / 3, ih);
+      if (close) c.drawImage(close, s2 * 400, (s2 === 0 && !two ? 0 : row) * 300, 400, 300, cx - iw / 2, iy + ih / 2 - iw * 3 / 8, iw, iw * 3 / 4);   // 铺满框的宽，上下多出来的被圆角框裁掉（作者：特写两边有黑边）
       else if (p6) c.drawImage(p6, s2 * 160, 0, 160, 140, cx - ih * 0.57, iy, ih * 1.14, ih);
       c.restore();
     };
@@ -2416,9 +3530,9 @@
     c.restore();
     c.globalAlpha = pop;
     c.strokeStyle = 'rgba(90,50,10,.6)'; c.lineWidth = 1.2; rrect(c, ix, iy, iw, ih, 8); c.stroke();
-    if (se.phase === 'prep') txt(c, cx, y + 9, L.steps[Math.min(3, Math.floor(se.t / 0.8))], 7.5, '#4a2000', 'center', true);
+    if (se.phase === 'prep') txt(c, cx, y + 9, (raw ? L.stepsRaw : L.steps)[Math.min(3, Math.floor(se.t / 0.8))], 7.5, '#4a2000', 'center', true);
     else {
-      txt(c, cx, y + 9, st === 6 ? L.burnt : L.openPot, 7.5, st === 6 ? '#a01a0a' : '#4a2000', 'center', true);
+      txt(c, cx, y + 9, st === 6 ? (raw ? L.burntRaw : L.burnt) : raw ? L.openRaw : L.openPot, 7.5, st === 6 ? '#a01a0a' : '#4a2000', 'center', true);
       const bx = x + 12, by = y + h - 15, bw = w - 24;
       const gr = c.createLinearGradient(bx, 0, bx + bw, 0);
       gr.addColorStop(0, '#e03020'); gr.addColorStop(G0 - 0.05, '#e0a020'); gr.addColorStop(G0, '#40c040'); gr.addColorStop(BEST, '#b0ff60'); gr.addColorStop(G1, '#40c040'); gr.addColorStop(0.92, '#e0a020'); gr.addColorStop(1, '#3a2010');
@@ -2437,7 +3551,7 @@
   //   tourists6c 每行 7 格：0 夹一口、1 嚼、2 爽到、3 拍肚子、4 竖大拇指、5 皱眉硬咽、6 招牌爽法
   function eatPose(g, o) {
     const E = o.show || { tier: 1 }, t = o.t, tm = g.anim;
-    const im6b = art('tourists6b'), im6c = art('tourists6c');
+    const T0 = TOURISTS[o.k], im6b = art(tsheet(T0, 'b')), im6c = art(tsheet(T0, 'c'));
     const P = { sheet: null, col: 5, foot: null, dx: 0, dy: 0, rot: 0, fx: null, stage: t < 0.45 ? 'lift' : t < 1.6 ? 'chew' : t < 2.4 ? 'react' : 'pat' };
     if (P.stage === 'lift') P.dy = -Math.min(1, t / 0.45) * 1.2;
     else if (P.stage === 'chew') { P.dy = -Math.abs(Math.sin(t * 16)) * 1.2; P.fx = 'chew'; }
@@ -2472,7 +3586,7 @@
       c.fillStyle = '#fff27a'; c.globalAlpha = 1 - k * 0.5;
       for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2 + tm * 3; sparkle(c, o.x + P.dx + Math.cos(a) * 12, FOOT - 18 + P.dy + Math.sin(a) * 6, 0.9); }
       c.globalAlpha = 1;
-      if (art('tourists6c')) return;   // 补图里自己画了招牌（喷火、飘起来、打哆嗦），程序就不再画一遍
+      if (art(tsheet(TOURISTS[o.k], 'c'))) return;   // 补图里自己画了招牌（喷火、飘起来、打哆嗦），程序就不再画一遍
       if (o.k === 'shark') {   // 喷火
         for (let i = 0; i < 7; i++) { const q = (tm * 2.6 + i / 7) % 1; c.globalAlpha = 1 - q; c.fillStyle = q < 0.35 ? '#fff0a0' : q < 0.7 ? '#ffa020' : '#e8401a'; c.beginPath(); c.arc(mx + face * (1 + q * 11), my - 1 + Math.sin(i * 2.3 + tm * 9) * q * 2.5, 0.7 + q * 1.9, 0, Math.PI * 2); c.fill(); }
         c.globalAlpha = 1;
@@ -2493,17 +3607,18 @@
     const c = g.c, T = TOURISTS[o.k], tm = g.anim;
     const y = GY;
     const face = o.ph === 'out' ? (o.x < SPOT.pot ? -1 : 1) : o.ph === 'in' ? (o.slot > o.x ? 1 : -1) : (o.x < SPOT.pot ? 1 : -1);
-    const im6 = art('tourists6'), im6b = art('tourists6b'), se = g.session;
+    const im6 = art(tsheet(T, '')), im6b = art(tsheet(T, 'b')), se = g.session;
     const smell = se && (se.phase === 'prep' || se.phase === 'heat') && (potStage(g) === 4 || potStage(g) === 5);   // 烧开、最佳的时候闻香味；糊了不闻
     let sheet = im6, col, foot, P = null;
-    if (o.ph === 'out' && o.huff > 0) col = 3;                                   // 摇摇头，要走了
+    if (o.ph === 'out' && (o.huff > 0 || (T.puff && o.mad))) col = 3;            // 摇摇头，要走了（河豚：气鼓鼓的刺球，一路滚走）
     else if (o.ph === 'in' || o.ph === 'out') col = Math.floor(tm * 6) % 2;
     else if (o.ph === 'eat') { P = eatPose(g, o); col = P.col; if (P.sheet) sheet = P.sheet; foot = P.foot; }   // 吃的演出
     else if (o.bid) col = 4;
     else if (im6b) { sheet = im6b; col = smell ? 1 : 0; foot = 91; }              // 站着等 ／ 锅开了伸着脖子闻
     else col = 0;
-    if (foot == null) foot = TFOOT[T.row][col];
-    if (im6) { c.save(); c.translate(o.x + (P ? P.dx : 0), FOOT + 12 - foot * 0.25 + (P ? P.dy : 0)); if (face < 0) c.scale(-1, 1); if (P && P.rot) c.rotate(P.rot); c.drawImage(sheet, col * 96, T.row * 96, 96, 96, -12, -12, 24, 24); c.restore(); }
+    if (foot == null) foot = T.set ? 90 : TFOOT[T.row][col];
+    const roll = T.puff && o.mad && o.ph === 'out' && !(o.huff > 0);
+    if (im6) { c.save(); c.translate(o.x + (P ? P.dx : 0), FOOT + 12 - foot * 0.25 + (P ? P.dy : 0)); if (face < 0) c.scale(-1, 1); if (P && P.rot) c.rotate(P.rot); if (roll) c.rotate(face * o.x / 9); c.drawImage(sheet, col * 96, T.row * 96, 96, 96, -12, -12, 24, 24); c.restore(); }
     else {
       const old = art('tourists');
       const oc = o.ph === 'eat' ? 2 : (o.ph === 'in' || o.ph === 'out') ? Math.floor(tm * 6) % 2 : 0;
@@ -2531,7 +3646,19 @@
   function drawJudge(g) {
     const c = g.c, B = g.boss, D = BOSSES[B.i];
     const x = SPOT.pot + 40, y = GY;
-    const im = D.who === 'shark' ? art('shark') : art('judges');
+    const sk2 = D.fight === 'shark' ? art('shark2') : D.fight === 'leopard' ? art('reef/leopard') : D.fight === 'octo' ? art('kelp/octo') : null, im = D.fight === 'shark' ? (sk2 || art('shark')) : D.fight ? sk2 : aart('judges');
+    const bigFoot = D.fight === 'shark' ? 156 : 154;   // 上排桌腿底边在第几行
+    // 第三位吃完：跳下水（往打架那片水扑过去，一道弧线、扎下去）
+    if (B.phase === 'show' && B.step >= 6) {
+      const k = clamp(B.t / 0.6, 0, 1), tx = SHOW_SPOT - 10, ty = WY + 30, sim = art('shark');
+      if (sk2) c.drawImage(sk2, 3 * 160, 0, 160, 160, x - 18, FOOT - bigFoot * 0.225, 36, 36);   // 桌子和碗留在原地
+      const lx = x + (tx - x) * k, ly = FOOT - 16 + (ty - FOOT + 16) * k - Math.sin(k * Math.PI) * 34;
+      c.save(); c.translate(lx, ly);
+      if (sk2) { c.rotate(-0.35 + k * 0.7); c.drawImage(sk2, 4 * 160, 0, 160, 160, -20, -20, 40, 40); }   // 系着餐巾扑下去的那格
+      else { c.rotate(-0.5 + k * 1.6); if (sim) c.drawImage(sim, 2 * 320, 160, 320, 160, -32, -16, 64, 32); else emoji(c, '🦈', 0, 0, 20); }
+      c.restore();
+      return;
+    }
     // 进场：从天上掉下来（先是地上一块影子越来越大），砸下来压扁一下、起一圈灰
     let drop = 0, squash = 0;
     if (B.phase === 'alarm') {
@@ -2542,16 +3669,16 @@
     }
     c.save(); c.translate(x, FOOT + drop); c.scale(1 + squash, 1 - squash); c.translate(-x, -FOOT);
     if (im) {
-      if (D.who === 'shark') { const f = B.phase === 'eye' ? 2 : B.eat > 0 ? 1 : 0; c.drawImage(im, f * 160, 0, 160, 160, x - 18, FOOT - [156, 153, 150][f] * 0.225, 36, 36); }
-      else { const f = B.eat > 0 ? 2 : B.mad > 0 ? 3 : 0, r = D.who === 'bear' ? 1 : 0; c.drawImage(im, f * 160, r * 160, 160, 160, x - 18, FOOT - [[151, 145, 148, 148], [154, 158, 158, 158]][r][f] * 0.225, 36, 36); }
-    } else emoji(c, TOURISTS[D.who].e, x, y - 14, 26, true);
+      if (D.fight) { const f = B.glare ? 2 : B.eat > 0 ? 1 : 0; c.drawImage(im, f * 160, 0, 160, 160, x - 18, FOOT - (sk2 ? bigFoot : [156, 153, 150][f]) * 0.225, 36, 36); }
+      else { const f = B.eat > 0 ? 2 : B.mad > 0 ? 3 : 0; c.drawImage(im, f * 160, D.row * 160, 160, 160, x - 18, FOOT - D.foot[f] * 0.225, 36, 36); }
+    } else emoji(c, D.e || TOURISTS[D.who].e, x, y - 14, 26, true);
     c.restore();
     if (B.phase === 'alarm' && B.t >= DROP.land && B.t - DROP.land < 0.9) {   // 落地起的灰，往两边滚开（画在大胃王前面）
       const q = (B.t - DROP.land) / 0.9;
       c.fillStyle = 'rgba(236,224,200,' + (0.85 * (1 - q)) + ')';
       for (let i = 0; i < 10; i++) { const sd = i % 2 ? 1 : -1, j = Math.floor(i / 2); c.beginPath(); c.arc(x + sd * (10 + q * (16 + j * 5)), FOOT - 1.5 - q * (1.5 + j * 1.6), 2.4 + q * 3.6 - j * 0.2, 0, Math.PI * 2); c.fill(); }
     }
-    if (B.say > 0 && B.line) { const sim = art('say'); if (sim) { c.drawImage(sim, x - 38, y - 50, 76, 16); txt(c, x, y - 43.4, B.line, 6.5, '#7a1a0a', 'center', true); } else { rrect(c, x - 36, y - 48, 72, 13, 4); c.fillStyle = 'rgba(255,255,255,.95)'; c.fill(); txt(c, x, y - 41.5, B.line, 6.5, '#7a1a0a', 'center', true); } }
+    if (B.say > 0 && B.line) { const sim = art('say'); c.font = 'bold 6.5px ' + FONT; const bw = Math.max(76, c.measureText(B.line).width + 16); if (sim) { c.drawImage(sim, x - bw / 2, y - 50, bw, 16); txt(c, x, y - 43.4, B.line, 6.5, '#7a1a0a', 'center', true); } else { rrect(c, x - 36, y - 48, 72, 13, 4); c.fillStyle = 'rgba(255,255,255,.95)'; c.fill(); txt(c, x, y - 41.5, B.line, 6.5, '#7a1a0a', 'center', true); } }   // 泡泡跟字一样宽（作者：字出去了）
   }
   const SEAL_FOOT = [64, 70, 67, 69, 88, 73, 75, 88, 87, 71];   // seal.webp 每格海狗最下面在第几行（量出来的）
   function drawSeal(g) {
@@ -2560,8 +3687,9 @@
     if (s.hurt > 0 && Math.floor(tm * 12) % 2) return;
     let fr, f2 = -1, lx = 0, hop = 0, rot = 0;   // f2：seal2 里的格（0 张嘴扑、1 咬住、2 顶、3 被夹）
     const bk = s.biteT > 0 ? Math.sin((1 - s.biteT / 0.28) * Math.PI) : 0, ak = s.atkT > 0 ? Math.sin((1 - s.atkT / 0.3) * Math.PI) : 0;
-    if (s.land) { fr = g.session && ['prep', 'heat'].indexOf(g.session.phase) >= 0 ? 8 : s.moving ? 5 + Math.floor(tm * 6) % 2 : 7; hop = Math.max(bk, ak) * 2; }
+    if (s.land) { fr = g.session && ['prep', 'heat'].indexOf(g.session.phase) >= 0 ? 8 : s.moving ? 5 + Math.floor(tm * 6) % 2 : 7; hop = Math.max(bk, ak) * 2; if (LOOK.cart && cookingBehind(g)) hop += 7; }   // 珊瑚礁起的推车比浅水湾的柜台高：做菜的时候站高一点，露出脑袋
     else if (s.clamp) { fr = 4; f2 = 3; rot = Math.sin(tm * 22) * (s.clamp.kick > 0 ? 0.3 : 0.12); }   // 被夹住：使劲扭
+    else if (g.fight && g.fight.grab) { fr = 4; f2 = 3; rot = Math.sin(tm * 22) * (g.fight.grab.kick > 0 ? 0.3 : 0.12); }   // 被触手缠住：使劲扭
     else if (s.biteT > 0) { fr = s.biteT > 0.13 ? 3 : 0; f2 = s.biteT > 0.13 ? 0 : 1; lx = bk * 3; }   // 叼：张嘴往前一扑、咬住
     else if (s.atkT > 0) { fr = 2; f2 = 2; lx = ak * 5; }                                              // 攻击：低头往前一顶
     // seal2 第一次交的头小脖子细（作者：太奇怪了），Codex 照 seal.webp 的比例重画过了（11-25）
@@ -2573,6 +3701,15 @@
     else if (im) c.drawImage(im, fr * 120, 0, 120, 90, -14, -10.5, 28, 21);
     else { if (!s.land) c.rotate(clamp(s.vy / 140, -0.6, 0.6)); emoji(c, '🦭', 0, 0, 16, true); }
     c.restore();
+    if (!s.land && s.zapCD > 0.75) {   // 被电鳗电了：身上几道蓝白电弧
+      c.strokeStyle = 'rgba(210,245,255,.9)'; c.lineWidth = 0.7;
+      for (let i = 0; i < 4; i++) { const a = tm * 13 + i * 1.6; c.beginPath(); let px = s.x + Math.cos(a) * 5, py = s.y + Math.sin(a) * 4; c.moveTo(px, py); for (let k = 0; k < 3; k++) { px += Math.cos(a + k) * 3.5 + Math.sin(tm * 40 + k) * 1.5; py += Math.sin(a + k) * 3 + Math.cos(tm * 37 + k) * 1.5; c.lineTo(px, py); } c.stroke(); }
+    }
+    if (!s.land && s.flickT > 0) {   // 甩尾：身后两道弯弯的速度线
+      const k = s.flickT / 0.45, ang = Math.atan2(s.vy, s.vx), bx = s.x - Math.cos(ang) * 12, by = s.y - Math.sin(ang) * 12;
+      c.strokeStyle = 'rgba(235,250,255,' + (0.85 * k) + ')'; c.lineWidth = 0.9; c.lineCap = 'round';
+      [-1, 1].forEach(sd => { const px = -Math.sin(ang) * sd * 4, py = Math.cos(ang) * sd * 4; c.beginPath(); c.moveTo(bx + px, by + py); c.quadraticCurveTo(bx + px - Math.cos(ang) * 8 + px, by + py - Math.sin(ang) * 8 + py, bx - Math.cos(ang) * 16 + px * 0.5, by - Math.sin(ang) * 16 + py * 0.5); c.stroke(); });
+    }
     if (s.clamp) { const P = seatAt(g, s.clamp.x, s.clamp.y + 4, 9); c.save(); c.translate(s.clamp.x, P.y + 1.5); c.rotate(P.ang); drawClam(c, 0, -4, false, false); c.restore(); }   // 合上的贝壳压在海狗脑袋上（跟地上那只一样歪）
     if (!s.land && S.basket.length && !(s.biteT > 0.13) && !s.clamp) {
       const f = S.basket[0];
@@ -2580,14 +3717,69 @@
       else drawSeabed(c, { shoe: 5, can: 6, tire: 7 }[f.junk], s.x + s.face * 11, s.y + 2, 8);
     }
   }
+  // 豹海豹（reef/leopard 下排 9 格：0 1 游、2 蓄力发红、3 猛冲、4 刹车掉头、5 被撞、6 撞晕了、7 服了、8 被惹急了）
+  function drawLeopard(g) {
+    const c = g.c, F = g.fight, K = F.shark, tm = g.anim, im = art('reef/leopard'), A = BAY.FIGHT;
+    if (K.st === 'gone') return;
+    if (K.st === 'mark') {   // 要从哪儿扎下来：顶上一圈圈红波纹 + 一条淡红的光柱，定住了更亮
+      const lock = K.t <= 0.35, k = (tm * 3) % 1, x = K.mx, y = A.y0 + 8;
+      const ca = lock ? 0.42 + 0.2 * Math.sin(tm * 30) : 0.3, col = c.createLinearGradient(0, A.y0, 0, A.y1);   // 定住了：一闪一闪
+      col.addColorStop(0, 'rgba(255,50,30,' + ca + ')'); col.addColorStop(0.75, 'rgba(255,50,30,' + ca * 0.45 + ')'); col.addColorStop(1, 'rgba(255,50,30,0)');
+      c.fillStyle = col; c.fillRect(x - 15, A.y0, 30, A.y1 - A.y0);
+      c.strokeStyle = 'rgba(255,80,60,' + (lock ? 0.8 : 0.45) + ')'; c.lineWidth = 0.8; c.setLineDash([3, 3]);
+      c.beginPath(); c.moveTo(x - 15, A.y0); c.lineTo(x - 15, A.y1); c.moveTo(x + 15, A.y0); c.lineTo(x + 15, A.y1); c.stroke(); c.setLineDash([]);
+      c.strokeStyle = 'rgba(255,90,60,' + (0.8 * (1 - k)) + ')'; c.lineWidth = 1.2; c.beginPath(); c.ellipse(x, y, 6 + k * 16, 2 + k * 4, 0, 0, Math.PI * 2); c.stroke();
+      txt(c, x, y + 12 - Math.abs(Math.sin(tm * 9)) * 2, '！', lock ? 14 : 11, '#ff3a2a', 'center', true, '#fff');
+      return;
+    }
+    const fr = F.over && K.hp <= 0 ? 7 : K.st === 'hurt' || K.st === 'leap' ? 5 : K.st === 'stun' || K.st === 'sway' ? 6 : K.st === 'brake' ? 4 : K.st === 'rush' || K.st === 'dive' ? 3 : K.st === 'aim' ? 2 : K.hp <= 2 || K.st === 'land' ? 8 : Math.floor(tm * 4) % 2;
+    if (K.st === 'rush' || K.st === 'dive') {   // 冲的时候后面一串水线
+      c.strokeStyle = 'rgba(230,248,255,.6)'; c.lineWidth = 0.8;
+      for (let i = 0; i < 4; i++) { const o = (i - 1.5) * 6, bx = K.x - Math.cos(K.a) * 30, by = K.y - Math.sin(K.a) * 30; c.beginPath(); c.moveTo(bx - Math.sin(K.a) * o, by + Math.cos(K.a) * o); c.lineTo(bx - Math.cos(K.a) * (14 + (i % 2) * 8) - Math.sin(K.a) * o, by - Math.sin(K.a) * (14 + (i % 2) * 8) + Math.cos(K.a) * o); c.stroke(); }
+    }
+    if (K.st === 'aim') {   // 蓄力：身后一团红光一闪一闪
+      const r = c.createRadialGradient(K.x, K.y, 4, K.x, K.y, 34), a = 0.35 + 0.25 * Math.sin(tm * 18);
+      r.addColorStop(0, 'rgba(255,60,30,' + a + ')'); r.addColorStop(1, 'rgba(255,60,30,0)'); c.fillStyle = r; c.beginPath(); c.arc(K.x, K.y, 34, 0, Math.PI * 2); c.fill();
+    }
+    c.save(); c.translate(K.x, K.y); c.rotate(K.a);
+    if (Math.cos(K.a) < 0) c.scale(1, -1);
+    c.scale(0.875, 0.875);
+    if (K.st === 'aim') c.translate(Math.sin(tm * 70) * (K.lock ? 1.6 : 0.5), 0);   // 定死方向了：抖得更厉害
+    if (K.hp <= 2 && K.st === 'circle') c.rotate(Math.sin(tm * 14) * 0.06);
+    if (K.st === 'sway') c.rotate(Math.sin(tm * 6) * 0.28);   // 喝醉一样晃
+    if (im) c.drawImage(im, fr * 320, 160, 320, 160, -36, -18, 72, 36);
+    else { c.fillStyle = K.st === 'aim' ? '#d07070' : '#8a9098'; c.beginPath(); c.ellipse(0, 0, 32, 11, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = '#222'; c.beginPath(); c.arc(22, -3, 1.8, 0, Math.PI * 2); c.fill(); }
+    c.restore();
+    if (K.st === 'stun' || K.st === 'sway') dizzyStars(c, K.x + Math.cos(K.a) * 20, K.y - 14, tm);
+  }
+  // 豹海豹的血（右上角三个小脑袋）：从水里游那格切个头
+  function leoHead(c, full, x, y) {
+    const im = art('reef/leopard');
+    if (!im) { c.globalAlpha = full ? 1 : 0.3; emoji(c, '🦭', x + 5, y + 5, 8); c.globalAlpha = 1; return; }
+    c.globalAlpha = full ? 1 : 0.3; c.drawImage(im, 196, 160 + 34, 100, 84, x - 1, y, 12, 10); c.globalAlpha = 1;
+  }
   function drawShark(g) {
-    const c = g.c, K = g.fight.shark, tm = g.anim;
-    const im = art('shark');
+    if (g.fight.kind === 'leopard') { drawLeopard(g); return; }
+    if (g.fight.kind === 'octo') { drawOcto(g); return; }
+    const c = g.c, K = g.fight.shark, tm = g.anim, A = BAY.FIGHT;
+    const sk2 = art('shark2'), im = sk2 || art('shark');
+    if (K.st === 'away') return;
+    if (K.st === 'warn') {   // 要从哪边冲进来：那边水里一个一跳一跳的红"！"、一圈圈波纹
+      const wx = K.side < 0 ? A.x0 + 12 : A.x1 - 12, k = (tm * 3) % 1;
+      c.strokeStyle = 'rgba(255,90,60,' + (0.7 * (1 - k)) + ')'; c.lineWidth = 1.2; c.beginPath(); c.arc(wx, K.ey, 6 + k * 14, 0, Math.PI * 2); c.stroke();
+      txt(c, wx, K.ey - Math.abs(Math.sin(tm * 9)) * 2, '！', 13, '#ff3a2a', 'center', true, '#fff');
+      return;
+    }
     if (K.st === 'tired') { c.fillStyle = 'rgba(255,255,255,.7)'; for (let i = 0; i < 3; i++) { c.beginPath(); c.arc(K.x + Math.cos(K.a) * 30 + Math.sin(tm * 3 + i) * 3, K.y - 8 - ((tm * 18 + i * 7) % 20), 1.6, 0, Math.PI * 2); c.fill(); } }
     c.save(); c.translate(K.x, K.y); c.rotate(K.a);
     if (Math.cos(K.a) < 0) c.scale(1, -1);
     c.scale(0.875, 0.875);   // 打架的地方就一屏大，鲨鱼小一号
-    if (im) { const fr = K.hp <= 0 ? 4 : K.hurt > 0 ? 3 : K.tel > 0 || K.lunge > 0 ? 2 : Math.floor(tm * 4) % 2; c.drawImage(im, fr * 320, 160, 320, 160, -36, -18, 72, 36); }
+    if (im) {
+      const mad = sk2 && K.hp <= 2 && K.st === 'chase';   // 血少了：追的时候是被惹急了那张脸，身子一扭一扭
+      const fr = K.hp <= 0 ? 4 : K.hurt > 0 || K.st === 'exit' ? 3 : K.tel > 0 || K.lunge > 0 ? 2 : mad ? 5 : Math.floor(tm * 4) % 2;
+      if (mad) c.rotate(Math.sin(tm * 14) * 0.06);
+      c.drawImage(im, fr * 320, 160, 320, 160, -36, -18, 72, 36);
+    }
     else {
       c.fillStyle = K.hurt > 0 ? '#ff9a9a' : '#7890a8';
       c.beginPath(); c.ellipse(0, 0, 32, 11, 0, 0, Math.PI * 2); c.fill();
@@ -2603,8 +3795,8 @@
   function drawHUD(g) {
     const c = g.c, S = g.S, s = g.seal, C = caps(S);
     const him = art('hud');
-    if (him) { c.drawImage(him, 2, 2, 96, 32); txt(c, 22, 15.4, fmt(S.money), 8.5, '#fff2c0', 'left', true, '#3a1600'); txt(c, 92, 15.4, L.day(S.day), 6.5, '#fff2d0', 'right', true, '#3a1600'); }   // 写在上面那块木板正中（板子从图里第 18 行到第 48 行，原来写高了压到边框上）
-    else { rrect(c, 4, 4, 92, 30, 5); c.fillStyle = 'rgba(30,14,4,.72)'; c.fill(); txt(c, 9, 12, '¥ ' + fmt(S.money), 9, '#ffe24a', 'left', true); txt(c, 90, 12, L.day(S.day), 7, '#fff2d0', 'right', true); }
+    if (him) { c.drawImage(him, 2, 2, 96, 32); txt(c, 22, 15.4, fmt(S.money), 8.5, '#fff2c0', 'left', true, '#3a1600'); }   // 不写第几天了（作者：多余）   // 写在上面那块木板正中（板子从图里第 18 行到第 48 行，原来写高了压到边框上）
+    else { rrect(c, 4, 4, 92, 30, 5); c.fillStyle = 'rgba(30,14,4,.72)'; c.fill(); txt(c, 9, 12, '¥ ' + fmt(S.money), 9, '#ffe24a', 'left', true); }
     for (let i = 0; i < C.basket; i++) {
       const x = 12 + i * 12, y = 26;
       c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = 0.8; c.strokeRect(x - 5, y - 4, 10, 8);
@@ -2612,7 +3804,7 @@
       if (f && f.sp) drawFish(g, f.sp, f.size, x, y, 1, 0.42, 0);
       else if (f) drawSeabed(c, { shoe: 5, can: 6, tire: 7 }[f.junk], x, y, 8);
     }
-    if (S.pearls) txt(c, 12 + C.basket * 12, 26, '⚪' + S.pearls, 6, '#fff', 'left', true);
+    if (S.pearls) { const px = 12 + C.basket * 12; if (icon6b(c, 6, px + 3, 26, 7.5)) txt(c, px + 7.5, 26.3, '×' + S.pearls, 6, '#fff', 'left', true, '#3a1600'); else txt(c, px, 26, '⚪' + S.pearls, 6, '#fff', 'left', true); }
     if ((!s.land || s.air < C.air - 0.05) && !g.fight) {   // 岸上回气的时候也看得见气条在涨
       const k = s.air / C.air;
       const aim = art('airbar'), kk = clamp(k, 0, 1);
@@ -2635,12 +3827,13 @@
       const sec = Math.max(0, Math.ceil(B.left));
       txt(c, x0 + cw - 6, 25.5, Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'), 7.5, sec < 30 ? '#e02010' : '#3a2008', 'right', true);
       txt(c, x0 + 6, 35.5, RECIPES[dish.r].n, 6.5, '#3a2008', 'left', true);
+      button(g, x0 + cw - 30, 30, 26, 10, L.giveUp, () => askGiveUp(g), { size: 6 });   // 随时能放弃（作者），做到一半也行：鱼退回盆里
       fl.forEach((sp, i) => {
         const y = 45.5 + i * 10, need = dish.f[sp], inB = S.basin.filter(f => f.sp === sp).length, inT = S.tank.fish.filter(f => f.sp === sp).length, ok = inB >= need;
         drawFish(g, sp, 1, x0 + 13, y, 1, 11 / SPECIES[sp].len[1], g.anim);
         txt(c, x0 + 22, y, SPECIES[sp].n + ' ×' + need, 6.5, '#3a2008', 'left', true);
         if (cooking) return;
-        txt(c, x0 + cw - 15, y, L.inBasin(inB, inT), 5.5, ok ? '#1a7a1a' : '#7a5a3a', 'right', true);
+        txt(c, x0 + cw - 15, y, SPOT.tank != null ? L.inBasin(inB, inT) : L.inBasinOnly(inB), 5.5, ok ? '#1a7a1a' : '#7a5a3a', 'right', true);
         if (ok) txt(c, x0 + cw - 8, y, '✓', 7, '#1a9a1a', 'center', true);
       });
     }
@@ -2649,7 +3842,8 @@
       const F = g.fight;
       const fim = art('fighticons');
       for (let i = 0; i < C.hp; i++) { if (fim) c.drawImage(fim, i < F.hp ? 0 : 48, 0, 48, 48, 105 + i * 10, 5, 10, 10); else txt(c, 110 + i * 10, 10, '❤', 8, i < F.hp ? '#ff4060' : 'rgba(255,255,255,.3)', 'center', true); }
-      for (let i = 0; i < 3; i++) { if (fim) c.drawImage(fim, i < F.shark.hp ? 96 : 144, 0, 48, 48, 263 - i * 11, 5, 10, 10); else { c.globalAlpha = i < F.shark.hp ? 1 : 0.3; emoji(c, '🦈', 268 - i * 11, 10, 8); c.globalAlpha = 1; } }
+      if (F.kind === 'octo') { const tim = art('kelp/tentacle'); for (let i = 0; i < OCTO_ARMS; i++) { const on = i < OCTO_ARMS - F.cuts; c.globalAlpha = on ? 1 : 0.28; if (tim) c.drawImage(tim, 330, 12, 150, 96, 262 - i * 13, 5, 13, 8.3); else emoji(c, '🐙', 268 - i * 13, 9, 8); c.globalAlpha = 1; } }
+      else for (let i = 0; i < (F.kind === 'leopard' ? LEO_HP : 3); i++) { if (F.kind === 'leopard') leoHead(c, i < F.shark.hp, 264 - i * 12, 5); else if (fim) c.drawImage(fim, i < F.shark.hp ? 96 : 144, 0, 48, 48, 263 - i * 11, 5, 10, 10); else { c.globalAlpha = i < F.shark.hp ? 1 : 0.3; emoji(c, '🦈', 268 - i * 11, 10, 8); c.globalAlpha = 1; } }
     }
     drawPotClose(g);
     const se = g.session;
@@ -2658,7 +3852,8 @@
       button(g, px - 20, py, 40, 12, L.sellAll, () => { g.tourists.filter(o => o.bid).forEach(o => sell(g, o)); }, { size: 6.5 });
     }
     button(g, W - 40, 4, 36, 13, '菜单', () => { g.panel = { kind: 'menu' }; g.hold = false; }, { size: 7 });
-    if (!s.land && !g.fight && !s.clamp && !g.fade) button(g, W - 46, 20, 42, 13, L.goShore, () => goShore(g), { size: 6.5 });   // 水下一键回岸上
+    const acting = g.boss && g.boss.phase === 'show';   // 演戏的时候水下那几个按钮不出来
+    if (!s.land && !g.fight && !s.clamp && !g.fade && !acting) button(g, W - 46, 20, 42, 13, L.goShore, () => goShore(g), { size: 6.5 });   // 水下一键回岸上
     drawMini(g);
     drawMapBtn(g);
     if (!g.fight) g.btns.push({ x: 2, y: 2, w: 96, h: 32, fn: () => { g.panel = { kind: 'status' }; g.hold = false; } });   // 点左上角的钱牌子：海狗状态
@@ -2703,8 +3898,8 @@
   }
 
   // 海狗状态（菜单 ▸ 海狗状态，或者点左上角的钱牌子）：各项本事是多少、升了几级；海里找到了什么、学会了哪些配方（11-25 作者）
-  function pips(c, x, y, n, max) {
-    for (let i = 0; i < max; i++) { c.beginPath(); c.arc(x + i * 5.2, y, 1.7, 0, Math.PI * 2); c.fillStyle = i < n ? '#e8a020' : 'rgba(120,90,50,.25)'; c.fill(); if (i < n) { c.strokeStyle = '#8a5010'; c.lineWidth = 0.5; c.stroke(); } }
+  function pips(c, x, y, n, max, gap) {
+    for (let i = 0; i < max; i++) { c.beginPath(); c.arc(x + i * (gap || 5.2), y, 1.7, 0, Math.PI * 2); c.fillStyle = i < n ? '#e8a020' : 'rgba(120,90,50,.25)'; c.fill(); if (i < n) { c.strokeStyle = '#8a5010'; c.lineWidth = 0.5; c.stroke(); } }
   }
   function drawStatusPanel(g) {
     const c = g.c, S = g.S, C = caps(S);
@@ -2712,14 +3907,14 @@
     txt(c, 160, 20, L.statT, 11, '#8a1a14', 'center', true);
     // 左边：本事
     txt(c, 24, 36, L.statLeft, 8, '#5a2a00', 'left', true);
-    const o2 = ['o2a', 'o2b', 'o2c'].filter(k => has(S, k)).length;
+    const o2 = O2S.filter(k => has(S, k)).length + lvOf(S, 'breath');
     const rows = [
-      [GEAR.o2, L.stat.air, L.statSec(C.air), o2, 3],
-      [ITEMS.speed, L.stat.speed, String(C.speed), lvOf(S, 'speed'), 3],
-      [ITEMS.basket, L.stat.basket, L.statGe(C.basket), lvOf(S, 'basket'), 3],
-      [ITEMS.hp, L.stat.hp, L.statDi(C.hp), lvOf(S, 'hp'), 1],
-      [ITEMS.pot, L.stat.pot, L.statTiao(C.pot), lvOf(S, 'pot'), 2],
-      [ITEMS.warm, L.stat.warm, L.statSec(C.warm), lvOf(S, 'warm'), 2],
+      [GEAR.o2, L.stat.air, L.statSec(C.air), o2, O2S.length + ITEMS.breath.cost.length],
+      [ITEMS.speed, L.stat.speed, String(C.speed), lvOf(S, 'speed'), ITEMS.speed.cost.length],
+      [ITEMS.basket, L.stat.basket, L.statGe(C.basket), lvOf(S, 'basket'), ITEMS.basket.cost.length],
+      [ITEMS.hp, L.stat.hp, L.statDi(C.hp), lvOf(S, 'hp'), ITEMS.hp.cost.length],
+      [ITEMS.pot, L.stat.pot, L.statTiao(C.pot), lvOf(S, 'pot'), ITEMS.pot.cost.length],
+      [ITEMS.warm, L.stat.warm, L.statSec(C.warm), lvOf(S, 'warm'), ITEMS.warm.cost.length],
       [ITEMS.tank, L.stat.tank, C.tank ? L.statTiao(C.tank) : L.statNone, lvOf(S, 'tank'), 4],
       [ITEMS.food, L.stat.food, lvOf(S, 'food') ? L.statGood : L.statPlain, lvOf(S, 'food'), 1],
       [{ tub: true, e: '🪣' }, L.stat.basin, L.statTiao(C.basin), 0, 0]
@@ -2730,25 +3925,27 @@
       if (it.tub) { const tb = art('tub'); if (tb) c.drawImage(tb, 240, 0, 120, 100, 23, y - 6, 14, 11.7); else emoji(c, it.e, 30, y, 9); } else icon(c, it, 30, y, 12);
       txt(c, 40, y, name, 7, '#5a3a1a', 'left', true);
       txt(c, 112, y, val, 7.5, '#3a2008', 'right', true);
-      if (max) pips(c, 120, y, n, max);
+      if (max) pips(c, 120, y, n, max, max > 8 ? 3.7 : max > 5 ? 4.6 : 5.2);
     });
     // 右边：海里找到的东西、配方
     txt(c, 172, 36, L.statGear, 8, '#5a2a00', 'left', true);
-    ['thruster', 'fins', 'lamp'].forEach((k, i) => {
-      const x = 192 + i * 40, y = 58, got = has(S, k);
-      c.beginPath(); c.arc(x, y, 12, 0, Math.PI * 2); c.fillStyle = got ? 'rgba(255,236,170,.6)' : 'rgba(60,50,40,.18)'; c.fill();
-      if (got) icon(c, GEAR[k], x, y, 18); else txt(c, x, y + 0.5, '？', 10, 'rgba(90,70,50,.55)', 'center', true);
-      txt(c, x, y + 18, got ? GEAR[k].n : L.dexUnknown, 6.5, got ? '#3a2008' : '#9a8a7a', 'center', true);
-    });
-    txt(c, 172, 100, L.statRecipe, 8, '#5a2a00', 'left', true);   // 菜谱单独一页（五个箱庭的菜放这儿放不下，作者）
-    { const all = RECIPE_PAGES.reduce((q, p) => q.concat(p.list), []), n = all.filter(r => S.recipes.indexOf(r) >= 0).length;
-      S.recipes.slice(0, 5).forEach((r, i) => icon(c, { ic: RECIPES[r].ic }, 182 + i * 15, 118, 13));
-      txt(c, 296, 100, L.recipeN(n, all.length), 7, '#1a6a1a', 'right', true);
-      button(g, 220, 132, 76, 16, L.openRecipes, () => { g.panel = { kind: 'recipes', from: 'status' }; }, { size: 7 }); }
+    // 一个展区一排三样（还没去过的那个展区先不露）
+    const gearRows = [['thruster', 'fins', 'lamp']].concat(S.license ? [['r_gloves', 'r_echo', 'r_helmet']] : [], S.license2 ? [['k_knife', 'k_suit', 'k_flick']] : []);
+    gearRows.forEach((row, ri) => row.forEach((k, i) => {
+      const x = 192 + i * 40, y = 50 + ri * 25, got = has(S, k);
+      c.beginPath(); c.arc(x, y, 9, 0, Math.PI * 2); c.fillStyle = got ? 'rgba(255,236,170,.6)' : 'rgba(60,50,40,.18)'; c.fill();
+      if (got) icon(c, GEAR[k], x, y, 13); else txt(c, x, y + 0.5, '？', 8, 'rgba(90,70,50,.55)', 'center', true);
+      txt(c, x, y + 12.5, got ? GEAR[k].n : L.dexUnknown, 5.5, got ? '#3a2008' : '#9a8a7a', 'center', true);
+    }));
+    txt(c, 172, 127, L.statRecipe, 8, '#5a2a00', 'left', true);   // 菜谱单独一页（五个箱庭的菜放这儿放不下，作者）
+    { const all = RECIPE_PAGES.filter((p, i) => i <= licenses(S)).reduce((q, p) => q.concat(p.list), []), n = all.filter(r => S.recipes.indexOf(r) >= 0).length;
+      S.recipes.slice(0, 8).forEach((r, i) => icon(c, RECIPES[r], 180 + i * 14, 139, 12));
+      txt(c, 296, 127, L.recipeN(n, all.length), 7, '#1a6a1a', 'right', true);
+      button(g, 220, 148, 76, 13, L.openRecipes, () => { g.panel = { kind: 'recipes', from: 'status' }; }, { size: 7 }); }
     // 底下一行：进度
     const known = Object.keys(SPECIES).filter(k => S.dex && S.dex[k]).length, tr = TREASURE.filter(t => has(S, t)).length;
     rrect(c, 168, 164, 132, 40, 5); c.fillStyle = 'rgba(255,255,255,.3)'; c.fill();
-    txt(c, 176, 174, L.day(S.day) + '　' + L.statBoss(S.boss), 7, '#3a2008', 'left', true);
+    txt(c, 176, 174, BAY.LOOK.zone + L.statBoss(S.boss), 7, '#3a2008', 'left', true);
     txt(c, 176, 186, L.mapN(tr, TREASURE.length) + '　' + L.dexN(known, Object.keys(SPECIES).length), 7, '#3a2008', 'left', true);
     txt(c, 176, 198, '¥ ' + fmt(S.money), 7, '#1a6a1a', 'left', true);
     button(g, 120, 210, 80, 16, L.back, () => { g.panel = null; }, { size: 7.5 });
@@ -2775,26 +3972,30 @@
     }
   }
   // 没学会的菜：图标压成黑影子
-  function iconShadow(g, ic, x, y, size) {
-    const im = art('icons6');
+  function iconShadow(g, it, x, y, size) {
+    const eight = it.ic8 != null, seven = !eight && it.ic7 != null, key = eight ? 'k' + it.ic8 : seven ? 'r' + it.ic7 : it.ic, im = art(eight ? 'kelp/icons8' : seven ? 'reef/icons7' : 'icons6');
     g.icSil = g.icSil || {};
-    if (!g.icSil[ic] && im) {
+    if (!g.icSil[key] && im) {
       const cv = document.createElement('canvas'); cv.width = cv.height = 64;
-      const d = cv.getContext('2d'); d.drawImage(im, (ic % 8) * 64, Math.floor(ic / 8) * 64, 64, 64, 0, 0, 64, 64);
+      const d = cv.getContext('2d');
+      if (eight || seven) d.drawImage(im, (eight ? it.ic8 : it.ic7) * 96, 0, 96, 96, 0, 0, 64, 64); else d.drawImage(im, (it.ic % 8) * 64, Math.floor(it.ic / 8) * 64, 64, 64, 0, 0, 64, 64);
       d.globalCompositeOperation = 'source-in'; d.fillStyle = '#3a3a44'; d.fillRect(0, 0, 64, 64);
-      g.icSil[ic] = cv;
+      g.icSil[key] = cv;
     }
-    if (g.icSil[ic]) g.c.drawImage(g.icSil[ic], x - size / 2, y - size / 2, size, size);
+    if (g.icSil[key]) g.c.drawImage(g.icSil[key], x - size / 2, y - size / 2, size, size);
     txt(g.c, x, y, '？', size * 0.32, 'rgba(255,255,255,.85)', 'center', true);
   }
   // 菜谱（菜单 ▸ 菜谱，或海狗状态里"看菜谱"）：按展区一页一页；学会的写星级、口味、卖价、谁爱吃谁怕、怎么学会的（11-25 作者）
   function drawRecipePanel(g) {
-    const c = g.c, P = g.panel, S = g.S, pg = RECIPE_PAGES[P.page || 0];
-    const all = RECIPE_PAGES.reduce((a, p) => a.concat(p.list), []), got = all.filter(r => S.recipes.indexOf(r) >= 0).length;
+    const c = g.c, P = g.panel, S = g.S;
+    const pages = RECIPE_PAGES.filter((p, i) => i <= licenses(S));
+    if (P.page == null) P.page = Math.min(LOOK.page, pages.length - 1);
+    const pg = pages[Math.min(P.page, pages.length - 1)];
+    const all = pages.reduce((a, p) => a.concat(p.list), []), got = all.filter(r => S.recipes.indexOf(r) >= 0).length;
     box(c, 10, 8, 300, 224);
     txt(c, 160, 20, L.recipeT, 11, '#8a1a14', 'center', true);
     txt(c, 300, 20, L.recipeN(got, all.length), 7.5, '#1a6a1a', 'right', true);
-    RECIPE_PAGES.forEach((p, i) => {   // 展区一页一个签（现在只有浅水湾）
+    pages.forEach((p, i) => {   // 展区一页一个签
       const x = 18 + i * 56, on = i === (P.page || 0);
       rrect(c, x, 28, 52, 13, 4); c.fillStyle = on ? 'rgba(255,214,120,.75)' : 'rgba(255,255,255,.35)'; c.fill();
       c.strokeStyle = on ? '#c07a10' : 'rgba(140,100,50,.4)'; c.lineWidth = 0.8; c.stroke();
@@ -2804,14 +4005,14 @@
     pg.list.forEach((r, i) => {
       const R = RECIPES[r], know = S.recipes.indexOf(r) >= 0, x = 18 + i * 96, y = 46, w = 92, h = 160, cx = x + w / 2;
       rrect(c, x, y, w, h, 6); c.fillStyle = 'rgba(255,255,255,.4)'; c.fill(); c.strokeStyle = 'rgba(140,100,50,.45)'; c.lineWidth = 0.8; c.stroke();
-      if (know) icon(c, { ic: R.ic }, cx, y + 25, 40); else iconShadow(g, R.ic, cx, y + 25, 40);
+      if (know) icon(c, R, cx, y + 25, 40); else iconShadow(g, R, cx, y + 25, 40);
       txt(c, cx, y + 53, know ? R.n : L.dexUnknown, 9, know ? '#3a2008' : '#8a7a6a', 'center', true);
       if (!know) { txt(c, cx, y + 70, L.dexNot.replace('抓到', '学会'), 6.5, '#8a7a6a', 'center', false); return; }
       stars(c, cx - ((STAR_MAX - 1) * 3.6 * 2.3 + 7.2) / 2, y + 66, R.star, STAR_MAX, 3.6);
-      const like = Object.keys(TOURISTS).filter(k => TOURISTS[k].like === r).map(k => TOURISTS[k].n), hate = Object.keys(TOURISTS).filter(k => TOURISTS[k].hate === r).map(k => TOURISTS[k].n);
+      const like = Object.keys(TOURISTS).filter(k => likes(TOURISTS[k], r)).map(k => TOURISTS[k].n), hate = Object.keys(TOURISTS).filter(k => hates(TOURISTS[k], r)).map(k => TOURISTS[k].n);
       const who = BOSSES.filter((B, bi) => (bi < S.boss || (g.boss && g.boss.i === bi)) && B.dishes.some(q => q.r === r)).map(B => B.n);
       let ly = y + 80;
-      const line = t => { ly += wrap(c, t, x + 6, ly, w - 12, 9, 6.5, '#5a3a1a', 'left', false) * 9 + 1; };
+      const line = t => { ly += wrap(c, t, x + 6, ly, w - 12, 8.4, 6.5, '#5a3a1a', 'left', false) * 8.4 + 0.8; };   // 海草林的菜爱吃的人多，行距收一点别出框
       line(L.statFl(R.fl));
       line(L.recipeMul(STAR_MUL[R.star]));
       if (like.length) line(L.recipeLike + like.join('、'));
@@ -2820,6 +4021,38 @@
       if (who.length) line(L.dexBoss + who.join('、'));
     });
     button(g, 120, 212, 80, 16, L.back, () => { g.panel = P.from === 'status' ? { kind: 'status' } : null; }, { size: 7.5 });
+  }
+
+  // 水族箱管理（作者：撒鱼食太容易把鱼捞出来，改成在管理里挑；顺便能看鱼的状态）：每条鱼一格，写个头、还要喂几回、掉多少钱；选中一条捞进盆里
+  function drawTankMgPanel(g) {
+    const c = g.c, P = g.panel, S = g.S, C = caps(S), list = S.tank.fish;
+    box(c, 14, 14, 292, 212);
+    txt(c, 160, 27, L.tankMgT + '　' + list.length + '/' + C.tank, 11, '#8a1a14', 'center', true);
+    if (P.sel >= list.length) P.sel = Math.max(0, list.length - 1);
+    if (!list.length) txt(c, 160, 110, L.tankMgEmpty, 9, '#7a5a3a', 'center', true);
+    list.forEach((f, i) => {
+      const D = SPECIES[f.sp], x = 24 + (i % 5) * 55, y = 36 + Math.floor(i / 5) * 54, w = 52, h = 51, on = i === P.sel;
+      rrect(c, x, y, w, h, 5); c.fillStyle = on ? 'rgba(255,214,120,.6)' : 'rgba(255,255,255,.38)'; c.fill();
+      c.strokeStyle = on ? '#d07a00' : 'rgba(140,100,50,.4)'; c.lineWidth = on ? 1.6 : 0.8; c.stroke();
+      const len = D.len[f.size], sc = Math.min(1.5, 36 / (len * 1.2));
+      drawFish(g, f.sp, f.size, x + w / 2, y + 14, 1, sc, on ? g.anim : 0);
+      txt(c, x + w / 2, y + 30, D.n + '·' + SIZE_N[f.size], 6.5, '#3a2008', 'center', true);
+      const need = [3, 5, 8][f.size], left = f.size >= 3 ? 0 : Math.max(0, need - (f.meals || 0));
+      txt(c, x + w / 2, y + 39, f.size >= 3 ? L.tankKing : L.tankGrow(left), 5.5, '#7a5a3a', 'center', false);
+      txt(c, x + w / 2, y + 47, (f.full > 0 ? L.tankFed + '　' : '') + L.tankCoin([1, 2, 4, 8][f.size]), 5.5, f.full > 0 ? '#1a7a1a' : '#7a5a3a', 'center', false);
+      g.btns.push({ x, y, w, h, fn: () => { P.sel = i; } });
+    });
+    const f = list[P.sel], room = S.basin.length < C.basin;
+    button(g, 60, 200, 110, 18, f && !room ? L.basinFull : L.tankOut, () => tankTakeOut(g, P.sel), { size: 7.5, off: !f || !room });
+    button(g, 180, 200, 80, 18, L.back, () => { g.panel = null; }, { size: 7.5 });
+  }
+  function tankTakeOut(g, i) {
+    const S = g.S, f = S.tank.fish[i];
+    if (!f || S.basin.length >= caps(S).basin) return;
+    S.tank.fish.splice(i, 1);
+    S.basin.push({ sp: f.sp, size: f.size });
+    flt(g, W / 2, 120, L.tankTake, '#ffffff', 1.4, true); sfx(g, 'splash');
+    save(g);
   }
 
   /* ---------- 木盆、鱼谱、按键设置 ---------- */
@@ -2849,7 +4082,7 @@
   }
   // 没抓到过的鱼：黑影子
   function drawSilhouette(g, sp, x, y, len) {
-    const c = g.c, D = SPECIES[sp], im = art('fish6');
+    const c = g.c, D = SPECIES[sp], im = art(D.sheet || 'fish6');
     g.sil = g.sil || {};
     if (!g.sil[sp] && im) {
       const cv = document.createElement('canvas'); cv.width = 144; cv.height = 96;
@@ -2884,10 +4117,20 @@
     button(g, 246, 196, 46, 18, L.back, () => { g.panel = null; }, { size: 7 });
   }
   function drawDexPanel(g) {
-    const c = g.c, S = g.S, sps = Object.keys(SPECIES), known = sps.filter(k => S.dex && S.dex[k]).length;
+    const c = g.c, S = g.S, P = g.panel, all = Object.keys(SPECIES), known = all.filter(k => S.dex && S.dex[k]).length;
+    const pages = DEX_PAGES.filter((p, i) => i <= licenses(S));   // 还没拿到那个展区的许可证，那页先不露
+    if (P.page == null) P.page = Math.min(LOOK.page, pages.length - 1);
+    const sps = DEX_PAGES[Math.min(P.page, pages.length - 1)].list;
     box(c, 10, 8, 300, 224);
-    txt(c, 160, 20, L.dexT, 11, '#8a1a14', 'center', true);
-    txt(c, 300, 20, L.dexN(known, sps.length), 7.5, '#1a6a1a', 'right', true);
+    txt(c, pages.length > 2 ? 214 : 160, 20, L.dexT, 11, '#8a1a14', 'center', true);   // 三个展区的签：标题挪到右边，别压着签
+    txt(c, 300, 20, L.dexN(known, all.length), 7.5, '#1a6a1a', 'right', true);
+    if (pages.length > 1) pages.forEach((p, i) => {
+      const x = 18 + i * 50, on = i === P.page;
+      rrect(c, x, 14, 46, 12, 4); c.fillStyle = on ? 'rgba(255,214,120,.75)' : 'rgba(255,255,255,.35)'; c.fill();
+      c.strokeStyle = on ? '#c07a10' : 'rgba(140,100,50,.4)'; c.lineWidth = 0.8; c.stroke();
+      txt(c, x + 23, 20.3, p.n, 6.5, on ? '#5a2a00' : '#8a6a4a', 'center', true);
+      g.btns.push({ x, y: 14, w: 46, h: 12, fn: () => { P.page = i; } });
+    });
     sps.forEach((sp, i) => {
       const D = SPECIES[sp], d = S.dex && S.dex[sp], x = 16 + (i % 2) * 147, y = 30 + Math.floor(i / 2) * 91, w = 141, h = 86;
       rrect(c, x, y, w, h, 6); c.fillStyle = 'rgba(255,255,255,.4)'; c.fill(); c.strokeStyle = 'rgba(140,100,50,.45)'; c.lineWidth = 0.8; c.stroke();
@@ -2944,15 +4187,47 @@
     } else if (P.kind === 'note') {
       box(c, 56, 60, 208, 112);
       wrap(c, P.text, 160, 84, 188, 13, 9, '#4a2000', 'center', true);
+      if (P.secret) g.btns.push({ x: 56, y: 60, w: 208, h: 76, fn: () => { P.taps = (P.taps || 0) + 1; if (P.taps >= 3) P.secret(); } });   // 看不见的后门
       button(g, 120, 144, 80, 20, L.yes, () => { g.panel = null; if (P.after) P.after(); });
+    } else if (P.kind === 'gong') {   // 敲锣前：下一位大胃王要点什么（第三位想吃海狗那件事不写）
+      const D = BOSSES[S.boss], bh = 70 + D.dishes.length * 34, by = (H - bh) / 2;
+      box(c, 44, by, 232, bh);
+      txt(c, 160, by + 14, L.gongT(S.boss + 1, D.n), 10, '#8a1a14', 'center', true);
+      txt(c, 160, by + 28, L.gongLimit(D.t), 7, '#7a5a3a', 'center', true);
+      D.dishes.forEach((d, i) => {
+        const y = by + 38 + i * 34, R = RECIPES[d.r], know = S.recipes.indexOf(d.r) >= 0;
+        rrect(c, 54, y, 212, 30, 5); c.fillStyle = 'rgba(255,255,255,.4)'; c.fill();
+        txt(c, 60, y + 8, L.gongDish(i + 1), 6.5, '#7a5a3a', 'left', true);
+        if (know) icon(c, R, 74, y + 19, 16); else iconShadow(g, R, 74, y + 19, 16);
+        txt(c, 86, y + 19, R.n, 8, '#3a2008', 'left', true);
+        if (!know) txt(c, 86 + c.measureText(R.n).width + 4, y + 19.5, L.gongNoRecipe, 6, '#c0281a', 'left', true);
+        let fx = 262;
+        Object.keys(d.f).reverse().forEach(sp => {
+          c.font = 'bold 6.5px ' + FONT; const t = SPECIES[sp].n + '×' + d.f[sp], tw = c.measureText(t).width;
+          txt(c, fx, y + 19, t, 6.5, '#3a2008', 'right', true); fx -= tw + 2;
+          drawFish(g, sp, 1, fx - 6, y + 19, 1, 11 / SPECIES[sp].len[1], g.anim); fx -= 15;
+        });
+      });
+      button(g, 76, by + bh - 24, 80, 18, L.gongYes, () => callBoss(g), { red: true, size: 8 });
+      button(g, 164, by + bh - 24, 80, 18, L.no, () => { g.panel = null; }, { size: 8 });
+    } else if (P.kind === 'backdoor') {
+      box(c, 50, 40, 220, 160);
+      wrap(c, L.backdoorT(BOSSES[2].n), 160, 60, 196, 12, 8.5, '#4a2000', 'center', true);
+      button(g, 70, 100, 180, 20, L.backdoorBtns[0], () => backdoor(g, 'order'), { size: 8 });
+      button(g, 70, 124, 180, 20, L.backdoorBtns[1], () => backdoor(g, 'show'), { size: 8 });
+      button(g, 70, 148, 180, 20, L.backdoorBtns[2], () => backdoor(g, 'fight'), { size: 8, red: true });
+      button(g, 120, 174, 80, 18, L.no, () => { g.panel = null; }, { size: 7.5 });
     } else if (P.kind === 'recipe') {
-      const list = Object.keys(RECIPES).filter(r => S.recipes.indexOf(r) >= 0);
-      box(c, 50, 54, 220, 40 + list.length * 30);
-      txt(c, 160, 70, L.pickRecipe, 11, '#8a1a14', 'center', true);
+      const list = Object.keys(RECIPES).filter(r => S.recipes.indexOf(r) >= 0), want = g.boss && g.boss.phase === 'order' ? BOSSES[g.boss.i].dishes[g.boss.dish].r : null;
+      const rh = list.length > 4 ? 24 : 28, top = want ? 40 : 30, bh = top + 26 + list.length * rh, by = Math.max(4, (H - bh) / 2);
+      box(c, 50, by, 220, bh);
+      txt(c, 160, by + 14, L.pickRecipe, 11, '#8a1a14', 'center', true);
+      if (want) txt(c, 160, by + 28, L.bossWants(RECIPES[want].n), 7.5, '#a01a0a', 'center', true);   // 大胃王点的哪道，面板上也写着（作者：面板把点菜单挡住了）
+      button(g, 120, by + bh - 22, 80, 16, L.recipeClose, () => { g.panel = null; }, { size: 7.5 });   // 关掉：鱼还在盆里
       list.forEach((r, i) => {
-        const R = RECIPES[r], y = 84 + i * 30;
-        const ic = { clear: 0, spicy: 1, sour: 2 }[r];
-        icon(c, { ic, e: ['🥣', '🌶', '🥬'][ic] }, 76, y + 12, 22);
+        const R = RECIPES[r], y = by + top + i * rh;
+        if (r === want) { rrect(c, 58, y + 1, 204, rh - 2, 4); c.fillStyle = 'rgba(255,214,120,.55)'; c.fill(); }
+        icon(c, R, 76, y + 12, rh > 26 ? 22 : 20);
         txt(c, 92, y + 7, R.n, 9, '#3a2008', 'left', true);
         stars(c, 92 + c.measureText(R.n).width + 4, y + 7, R.star, 5);
         txt(c, 92, y + 18, '口味：' + R.fl, 7, '#7a5a3a', 'left', false);
@@ -2963,15 +4238,16 @@
       box(c, 26, 22, 268, 196);
       txt(c, 160, 36, L.shop(M.n), 11, '#8a1a14', 'center', true);
       txt(c, 286, 36, '¥ ' + fmt(S.money), 8, '#1a6a1a', 'right', true);
-      M.items.forEach((id, i) => {
-        const it = ITEMS[id], y = 50 + i * 34, lv = lvOf(S, id);
+      itemsOf(P.mk).forEach((id, i) => {
+        const it = ITEMS[id], y = 48 + i * 35, lv = lvOf(S, id);
         const done = lv >= it.cost.length;
         icon(c, it, 48, y + 14, 22);
         const name = it.names ? it.names[Math.min(lv, it.names.length - 1)] : it.n + (it.cost.length > 1 ? ' ' + Math.min(lv + 1, it.cost.length) + '/' + it.cost.length : '');
         txt(c, 64, y + 8, name, 8.5, '#3a2008', 'left', true);
         wrap(c, it.d, 64, y + 20, 150, 9, 6.5, '#7a5a3a', 'left', false);
         if (done) txt(c, 250, y + 14, it.cost.length > 1 ? L.maxed : L.owned, 8, '#888', 'center', true);
-        else { const p = it.cost[lv]; button(g, 222, y + 5, 58, 18, L.buy(p), () => buyItem(g, id), { size: 7.5, off: S.money < p }); }
+        else if (lv >= itemCap(S, id, P.mk)) txt(c, 250, y + 14, M.local != null ? L.otherArea : L.nextArea, 7, '#9a8a7a', 'center', true);   // 这一档要后面的展区才进货
+        else { const p = it.cost[lv]; button(g, 222, y + 5, 58, 18, L.buy(p), () => buyItem(g, id, P.mk), { size: 7.5, off: S.money < p }); }
       });
       button(g, 120, 194, 80, 18, L.back, () => { g.panel = null; });
     } else if (P.kind === 'menu') {
@@ -2985,13 +4261,14 @@
     } else if (P.kind === 'basin') drawBasinPanel(g);
     else if (P.kind === 'status') drawStatusPanel(g);
     else if (P.kind === 'recipes') drawRecipePanel(g);
+    else if (P.kind === 'tankmg') drawTankMgPanel(g);
     else if (P.kind === 'dex') drawDexPanel(g);
     else if (P.kind === 'keys') drawKeysPanel(g);
     else if (P.kind === 'map') {
       drawMap(g);
     } else if (P.kind === 'eaten') {
       box(c, 60, 66, 200, 100);
-      wrap(c, L.eaten, 160, 92, 180, 13, 11, '#a01a0a', 'center', true);
+      wrap(c, L.eaten(BOSSES[2].n), 160, 92, 180, 13, 11, '#a01a0a', 'center', true);
       button(g, 72, 136, 84, 20, L.retry, () => fightRetry(g), { red: true });
       button(g, 164, 136, 84, 20, L.later, () => fightLater(g));
     }
@@ -3011,8 +4288,9 @@
       let col;
       if (y < GY) col = [200, 232, 250];
       else if (y < WY) col = [176, 132, 82];
+      else if ((BAY.KWALLS || []).some(K => !has(S, K.id) && Math.abs(x - K.x) < K.w / 2 && Math.abs(y - K.y) < K.h / 2)) col = [70, 150, 70];   // 海带墙：地图上是绿的
       else if (solid(x, y)) col = solid(x, y - MAP_U * 1.5) ? [104, 90, 76] : [168, 146, 112];   // 石头；朝上的那层边亮一点，看得出地面
-      else { const t = Math.min(1, (y - WY) / 1100); col = [96 - 76 * t, 186 - 138 * t, 232 - 128 * t]; }
+      else { const t = Math.min(1, (y - WY) / (WH - 100)); col = [96 - 76 * t, 186 - 138 * t, 232 - 128 * t]; }
       D[i] = col[0]; D[i + 1] = col[1]; D[i + 2] = col[2]; D[i + 3] = 255;
     }
     d.putImageData(im, 0, 0);
@@ -3020,16 +4298,17 @@
   }
   const FOG_K = 6;   // 迷雾图一格放大成 6×6 再糊一下，边是圆的、像一团团的雾
   function mapFog(g) {
-    if (!g.fogCv) { g.fogCv = document.createElement('canvas'); g.fogCv.width = 34; g.fogCv.height = 32; g.fogBig = document.createElement('canvas'); g.fogBig.width = 32 * FOG_K; g.fogBig.height = 30 * FOG_K; g.fogDirty = true; }
+    const SW = SEEN_W(), SH = SEEN_H();
+    if (!g.fogCv) { g.fogCv = document.createElement('canvas'); g.fogCv.width = SW + 2; g.fogCv.height = SH + 2; g.fogBig = document.createElement('canvas'); g.fogBig.width = SW * FOG_K; g.fogBig.height = SH * FOG_K; g.fogDirty = true; }
     if (g.fogDirty) {
       // 小图四周多一圈（一直是雾），糊的时候地图边上不会糊出一道亮边
-      const d = g.fogCv.getContext('2d'), im = d.createImageData(34, 32), D = im.data;
-      for (let j = 0; j < 32; j++) for (let i = 0; i < 34; i++) { const q = (j * 34 + i) * 4, in_ = i > 0 && i < 33 && j > 0 && j < 31; D[q] = 44; D[q + 1] = 50; D[q + 2] = 62; D[q + 3] = in_ && g.seen[(j - 1) * 32 + i - 1] ? 0 : 255; }
+      const d = g.fogCv.getContext('2d'), im = d.createImageData(SW + 2, SH + 2), D = im.data;
+      for (let j = 0; j < SH + 2; j++) for (let i = 0; i < SW + 2; i++) { const q = (j * (SW + 2) + i) * 4, in_ = i > 0 && i < SW + 1 && j > 0 && j < SH + 1; D[q] = 44; D[q + 1] = 50; D[q + 2] = 62; D[q + 3] = in_ && g.seen[(j - 1) * SW + i - 1] ? 0 : 255; }
       d.putImageData(im, 0, 0);
       const b = g.fogBig.getContext('2d');
       b.clearRect(0, 0, g.fogBig.width, g.fogBig.height);
       b.imageSmoothingEnabled = false; b.filter = 'blur(' + (FOG_K * 0.45) + 'px)';
-      b.drawImage(g.fogCv, -FOG_K, -FOG_K, 34 * FOG_K, 32 * FOG_K);
+      b.drawImage(g.fogCv, -FOG_K, -FOG_K, (SW + 2) * FOG_K, (SH + 2) * FOG_K);
       b.filter = 'none';
       g.fogDirty = false;
     }
@@ -3045,16 +4324,16 @@
   // 左上角的小地图：电脑按 M、手机点右上角"地图"开关；点小地图看大地图
   const MINI = { x: 4, y: 37, w: 78, h: 58, ww: 390 };
   function drawMini(g) {
-    if (!g.mini || g.fight || g.screen !== 'play' || g.seal.land) return;   // 上了岸不显示（作者）
+    if (!g.mini || g.fight || g.screen !== 'play' || g.seal.land || (g.boss && g.boss.phase === 'show')) return;   // 上了岸不显示（作者）
     const c = g.c, s = g.seal, S = g.S, tm = g.anim, { x, y, w, h } = MINI, ww = MINI.ww, wh = ww * h / w;
     const sy0 = s.land ? GY : s.y, wx = clamp(s.x - ww / 2, 0, WW - ww), wy = clamp(sy0 - wh / 2, 0, WH - wh), k = w / ww;
     c.save();
     rrect(c, x, y, w, h, 4); c.fillStyle = '#2c323e'; c.fill(); c.clip();
     drawMapArea(g, wx, wy, ww, wh, x, y, w, h);
     const M = (px, py) => [x + (px - wx) * k, y + (py - wy) * k];
-    const seen = (px, py) => g.seen[Math.min(29, Math.floor(py / 40)) * 32 + Math.min(31, Math.floor(px / 40))];
+    const seen = (px, py) => seenAt(g, px, py);
     g.pos.vents.forEach(([vx, vy]) => { if (!seen(vx, vy)) return; const [a, b] = M(vx, vy - 6); c.strokeStyle = '#d8faff'; c.lineWidth = 0.8; c.beginPath(); c.arc(a, b, 1.6, 0, Math.PI * 2); c.stroke(); });
-    if (has(S, 'octo')) { const [a, b] = M(g.pos.octo[0], g.pos.octo[1]); c.fillStyle = '#ff9ac0'; c.beginPath(); c.arc(a, b, 1.8, 0, Math.PI * 2); c.fill(); }
+    if (has(S, BAY.SHOP.flag)) { const [a, b] = M(g.pos.shop[0], g.pos.shop[1]); c.fillStyle = '#ff9ac0'; c.beginPath(); c.arc(a, b, 1.8, 0, Math.PI * 2); c.fill(); }
     { const [a, b] = M(SPOT.pot, GY - 3); c.fillStyle = '#ffb030'; c.beginPath(); c.arc(a, b, 1.8, 0, Math.PI * 2); c.fill(); }
     const [sa, sb] = M(s.x, s.land ? GY - 2 : s.y);
     c.fillStyle = Math.floor(tm * 3) % 2 ? '#ff3a2a' : '#ffd040'; c.beginPath(); c.arc(sa, sb, 2, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 0.7; c.stroke();
@@ -3066,11 +4345,11 @@
   // 最右下角的小地图按钮（电脑、手机都有）：圆按钮里一张折起来的小地图；电脑上旁边一个键帽写着快捷键（作者）
   const MAPBTN = { x: W - 15, y: H - 15, r: 11 };
   function drawMapBtn(g) {
-    if (g.fight || g.screen !== 'play' || g.seal.land) return;   // 岸上小地图不显示，按钮也收起来
+    if (g.fight || g.screen !== 'play' || g.seal.land || (g.boss && g.boss.phase === 'show')) return;   // 岸上小地图不显示，按钮也收起来
     const c = g.c, { x, y, r } = MAPBTN, pim = art('pad');
     if (pim) { const D = r * 2 * 120 / 104; c.drawImage(pim, (g.mini ? 4 : 2) * 120, 0, 120, 120, x - D / 2, y - D / 2, D, D); }
     else { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fillStyle = g.mini ? 'rgba(255,190,60,.55)' : 'rgba(10,30,50,.45)'; c.fill(); c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 1.2; c.stroke(); }
-    mapIcon(c, x, y + 0.3, g.mini);
+    if (!icon6b(c, 9, x, y, 15)) mapIcon(c, x, y + 0.3, g.mini);
     if (!g.touchUI) {   // 快捷键提示
       const km = g.km || (g.km = keyMap()), k = km.map[0] || km.map[1];
       if (k) {
@@ -3104,24 +4383,25 @@
   function drawMap(g) {
     const c = g.c, S = g.S, tm = g.anim;
     box(c, 10, 8, 300, 224);
-    const k = 0.16, mx = 18, my = 26;
-    txt(c, mx, 18, L.mapT, 10, '#5a2a00', 'left', true);
+    const k = Math.min(0.16, 205 / WW, 196 / WH), mx = 18, my = 26;
+    txt(c, mx, 18, BAY.LOOK.zone, 10, '#5a2a00', 'left', true);
     const got = TREASURE.filter(t => has(S, t)).length;
     txt(c, mx + WW * k, 18, L.mapN(got, TREASURE.length), 8, '#1a6a1a', 'right', true);
     c.save(); c.beginPath(); c.rect(mx, my, WW * k, WH * k); c.clip(); drawMapArea(g, 0, 0, WW, WH, mx, my, WW * k, WH * k); c.restore();
     c.strokeStyle = '#a8701a'; c.lineWidth = 1; c.strokeRect(mx, my, WW * k, WH * k);
     const M = (x, y) => [mx + x * k, my + y * k];
-    const seen = (x, y) => g.seen[Math.min(29, Math.floor(y / 40)) * 32 + Math.min(31, Math.floor(x / 40))];
-    if (has(S, 'valve')) { const [ax, ay] = M(SPOT.pipe, GY), [bx, by] = M(BAY.INLET[0], BAY.INLET[1]); c.strokeStyle = 'rgba(80,90,100,.8)'; c.lineWidth = 1.2; c.setLineDash([2, 2]); c.beginPath(); c.moveTo(ax, ay); c.lineTo(ax, by); c.lineTo(bx, by); c.stroke(); c.setLineDash([]); }
+    const seen = (x, y) => seenAt(g, x, y);
+    if (BAY.INLET && has(S, 'valve')) { const [ax, ay] = M(SPOT.pipe, GY), [bx, by] = M(BAY.INLET[0], BAY.INLET[1]); c.strokeStyle = 'rgba(80,90,100,.8)'; c.lineWidth = 1.2; c.setLineDash([2, 2]); c.beginPath(); c.moveTo(ax, ay); c.lineTo(ax, by); c.lineTo(bx, by); c.stroke(); c.setLineDash([]); }
     g.pos.vents.forEach(([x, y]) => { if (!seen(x, y)) return; const [a, b] = M(x, y - 6); c.strokeStyle = '#d8faff'; c.lineWidth = 1; c.beginPath(); c.arc(a, b, 2.2, 0, Math.PI * 2); c.stroke(); });
-    if (has(S, 'octo')) { const [a, b] = M(g.pos.octo[0], g.pos.octo[1]); emoji(c, '🐙', a, b, 7); }
+    if (has(S, BAY.SHOP.flag)) { const [a, b] = M(g.pos.shop[0], g.pos.shop[1]); if (LOOK.shopIc) icon(c, LOOK.shopIc, a, b, 11); else if (!icon6b(c, 8, a, b, 10)) emoji(c, '🐙', a, b, 7); }
+    tunnelsOf().forEach(T => { if (!seen(T.at[0], T.at[1])) return; const [a, b] = M(T.at[0] + T.face * 6, T.at[1]); if (art('kelp/icons8')) icon(c, { ic8: 7, e: '🕳' }, a, b, 10); });   // 水下通道口
     TREASURE.forEach(t => { if (!has(S, t)) return; const [a, b] = M(g.pos.things[t][0], g.pos.things[t][1]); txt(c, a, b, '✓', 7, '#30c040', 'center', true, '#003a00'); });
-    const [pa, pb] = M(SPOT.pot, GY - 4); emoji(c, '🍲', pa, pb, 7);
+    const [pa, pb] = M(SPOT.pot, GY - 4); if (!icon6b(c, 7, pa, pb - 1, 10)) emoji(c, '🍲', pa, pb, 7);
     const s = g.seal, [sa, sb] = M(s.x, s.land ? GY - 2 : s.y);
     if (Math.floor(tm * 3) % 2 === 0) { c.fillStyle = '#ff3a2a'; c.beginPath(); c.arc(sa, sb, 2.4, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 0.8; c.stroke(); }
     // 右边的说明
     const lx = 236;
-    emoji(c, '🍲', lx + 4, 48, 7); txt(c, lx + 12, 48, L.mapKey[0], 7, '#5a3a1a', 'left', true);
+    if (!icon6b(c, 7, lx + 4, 47.5, 10)) emoji(c, '🍲', lx + 4, 48, 7); txt(c, lx + 12, 48, L.mapKey[0], 7, '#5a3a1a', 'left', true);
     c.fillStyle = '#ff3a2a'; c.beginPath(); c.arc(lx + 4, 62, 2.4, 0, Math.PI * 2); c.fill(); txt(c, lx + 12, 62, L.mapKey[1], 7, '#5a3a1a', 'left', true);
     c.strokeStyle = '#4aa8c8'; c.lineWidth = 1; c.beginPath(); c.arc(lx + 4, 76, 2.2, 0, Math.PI * 2); c.stroke(); txt(c, lx + 12, 76, L.mapKey[2], 7, '#5a3a1a', 'left', true);
     txt(c, lx + 4, 90, '✓', 7, '#30c040', 'center', true, '#003a00'); txt(c, lx + 12, 90, L.mapKey[3], 7, '#5a3a1a', 'left', true);
@@ -3140,8 +4420,8 @@
       c.strokeStyle = '#3a9a4a'; c.lineWidth = 3; [30, 280].forEach((x, i) => { c.beginPath(); c.moveTo(x, TK.floor); for (let k = 1; k <= 4; k++) c.lineTo(x + Math.sin(tm * 1.5 + k + i) * 4, TK.floor - k * 12); c.stroke(); });
     }
     const fe = art('fish-extra');
-    g.tankPellets.forEach(p => { if (fe) c.drawImage(fe, 0, 0, 64, 64, p.x - 3, p.y - 3, 6, 6); else { c.fillStyle = '#c8a050'; c.beginPath(); c.arc(p.x, p.y, 2, 0, Math.PI * 2); c.fill(); } });
-    S.tank.coins.forEach(k => { c.fillStyle = '#ffd23a'; c.beginPath(); c.arc(k.x, k.y, 4, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#a87000'; c.lineWidth = 1; c.stroke(); txt(c, k.x, k.y + 0.5, '¥', 5, '#7a4a00', 'center', true); });
+    g.tankPellets.forEach(p => { if (icon6b(c, 5, p.x, p.y, 4.6)) return; if (fe) c.drawImage(fe, 0, 0, 64, 64, p.x - 3, p.y - 3, 6, 6); else { c.fillStyle = '#c8a050'; c.beginPath(); c.arc(p.x, p.y, 2, 0, Math.PI * 2); c.fill(); } });
+    S.tank.coins.forEach(k => { if (icon6b(c, 4, k.x, k.y, 10)) return; c.fillStyle = '#ffd23a'; c.beginPath(); c.arc(k.x, k.y, 4, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#a87000'; c.lineWidth = 1; c.stroke(); txt(c, k.x, k.y + 0.5, '¥', 5, '#7a4a00', 'center', true); });
     S.tank.fish.forEach((f, i) => drawFish(g, f.sp, f.size, f.x, f.y, f.face || 1, 1.6, tm + i));
     g.cracks.forEach(k => drawCrack(c, k, tm));
     // 顶上一排：照怪怪水族箱
@@ -3149,11 +4429,11 @@
     if (bar) c.drawImage(bar, 0, 0, W, TK.top); else { c.fillStyle = '#a81c10'; c.fillRect(0, 0, W, TK.top); }
     const slots = art('slot6') || art('slots');
     const C = caps(S);
-    const items = [[L.tankBtns[0], '🍚', null], [L.tankBtns[1], '🪣', () => tankPutIn(g)], [L.tankBtns[2], '⬅', () => { g.screen = 'play'; save(g); }]];
-    items.forEach(([t, e, fn], i) => {
+    const items = [[L.tankBtns[0], '🍚', null, 0], [L.tankBtns[1], '🪣', () => tankPutIn(g), 1], [L.tankBtns[3], '📋', () => { g.panel = { kind: 'tankmg', sel: 0 }; sfx(g, 'pop'); }, 2], [L.tankBtns[2], '⬅', () => { g.screen = 'play'; save(g); }, 3]];
+    items.forEach(([t, e, fn, ic], i) => {
       const x = 22 + i * 38, y = 15;
       if (slots) c.drawImage(slots, 0, 0, 70, 70, x - 14, y - 14, 28, 28); else { c.fillStyle = '#d89a2a'; c.beginPath(); c.arc(x, y, 13, 0, Math.PI * 2); c.fill(); }
-      emoji(c, e, x, y, 12);
+      if (!icon6b(c, ic, x, y - 0.5, 17)) emoji(c, e, x, y, 12);
       txt(c, x, 32, t, 5.5, '#ffe98a', 'center', true, '#3a0400');
       if (fn) g.btns.push({ x: x - 14, y: y - 14, w: 28, h: 28, fn });
     });
@@ -3176,8 +4456,14 @@
   function newGame(g) { OS.save.set(SAVE_KEY, null); const S = newState(); freshWorld(S); startGame(g, S); }
   function drawTitle(g) {
     const c = g.c;
-    const t = art('title6') || art('title');
-    if (t) c.drawImage(t, 0, 0, W, H); else { c.fillStyle = '#2a9ad0'; c.fillRect(0, 0, W, H); }
+    const t6 = art('title6'), t = t6 || art('title');
+    // title6 是一张 4:3 的画硬塞进上面 800×478、底下留了 122 像素灰条（任务单让留空放按钮），画面看着是扁的（11-27 作者：没平铺、扁的）。
+    // 只取上面那 478 行拉满整个画面：灰条没了，横竖比例也正好还原成 4:3
+    if (t6) {
+      c.drawImage(t6, 0, 0, 800, 478, 0, 0, W, H);
+      const sh = c.createLinearGradient(0, H - 52, 0, H); sh.addColorStop(0, 'rgba(30,12,4,0)'); sh.addColorStop(1, 'rgba(30,12,4,.38)');   // 按钮压在锅上：底下淡淡压暗一点，按钮看得清
+      c.fillStyle = sh; c.fillRect(0, H - 52, W, 52);
+    } else if (t) c.drawImage(t, 0, 0, W, H); else { c.fillStyle = '#2a9ad0'; c.fillRect(0, 0, W, H); }
     L.title.split('').forEach((ch, i) => {
       c.save(); c.translate(70 + i * 45, 42 + Math.sin(g.anim * 2 + i) * 2); c.rotate(i % 2 ? 0.08 : -0.08);
       c.font = 'bold 38px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';
@@ -3212,7 +4498,7 @@
 
   /* ================= 音乐：Suno 做的 5 首（assets/tank/music/，提示词见「怪怪水煮箱-Suno提示词.md」） =================
      作者嫌代码合成的音乐太吵，不要了。有文件就放，文件还没做好就不出声。换曲子的时候淡出淡入。 */
-  const MUSIC = { title: 'menu', day: 'shore', night: 'sea', tense: 'boss', fight: 'fight' };
+  const MUSIC = { title: 'menu', day: 'shore', night: 'sea', tense: 'boss', fight: 'fight', dayR: 'reef-shore', nightR: 'reef-sea', dayK: 'kelp-shore', nightK: 'kelp-sea' };
   const MUSIC_VOL = 0.45;
   const musicVolume = () => (OS.sound.muted ? 0 : MUSIC_VOL * (OS.sound.level == null ? 1 : OS.sound.level));
   function fadeTo(a, v, sec, done) {

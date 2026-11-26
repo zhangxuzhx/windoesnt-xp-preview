@@ -222,12 +222,14 @@
       // 附件 ▸ 系统工具 ▸ 磁盘清理（跟 XP 一样；cleanup.js）
       folder('附件', [folder('系统工具', [{ label: '磁盘清理', icon: 'recycle', action: closeThen(() => OS.cleanup && OS.cleanup.open()) }]), appItem('cmd'), appItem('notepad'), appItem('wordpad'), appItem('paint'), appItem('calc')]),
       folder('启动', [appItem('restore')]),
-      // 游戏：以后放 4 个仿 XP 的小游戏；装了光盘里的幻觉游戏，多一个文件夹
-      folder('游戏', [appItem('hearts'), appItem('freecell'), appItem('pinball'), appItem('sweep'), appItem('spider'), appItem('solitaire')].concat(OS.hj && OS.hj.installed() ? [folder('幻觉游戏', OS.hj.games.map(g => ({ label: g.name, icon: 'game-' + g.id, action: closeThen(() => OS.hj.run(g)) })))] : [])),
+      // 游戏：系统自带的那几个
+      folder('游戏', [appItem('hearts'), appItem('freecell'), appItem('pinball'), appItem('sweep'), appItem('spider'), appItem('solitaire')]),
       folder("Windoesn't XP 专业版", pro),
       // Offense 2003 三件套（offense.js）
       folder('Offense 2003', [appItem('wordy'), appItem('excuse'), appItem('ppt')], 'offense'),
       folder('实用小程序', [appItem('swatter'), appItem('coil'), appItem('bootcheck'), appItem('pulse'), appItem('lifespan'), appItem('activator')]),
+      // 光盘装的幻觉游戏：跟别的装上的软件一样，自己一个文件夹（原来藏在 游戏 里面，作者找不到）；六个游戏 + 卸载
+      OS.hj && OS.hj.installed() ? folder('幻觉游戏 V3.0', OS.hj.games.map(g => ({ label: g.name, icon: 'game-' + g.id, action: closeThen(() => OS.hj.run(g)) })).concat([{ label: '卸载 幻觉游戏 V3.0', icon: 'cd', action: closeThen(() => OS.soft.uninstall('hj')) }])) : null,
       // 照那几年装聊天软件的样子：一个文件夹，里面是软件本体 + 卸载（走 添加或删除程序 那一套，addremove.js）；卸掉了整个文件夹不显示
       // 超级秃子（baldy.js）：魔法设置 ／ 清理王 ／ 卸载
       has('baldy') ? folder('超级秃子', [{ label: '超级秃子魔法设置', icon: 'baldy', action: closeThen(() => OS.baldy && OS.baldy.open('magic')) }, { label: '超级秃子清理王', icon: 'baldy', action: closeThen(() => OS.baldy && OS.baldy.open('clean')) }, { label: '卸载超级秃子', icon: 'baldy', action: closeThen(() => OS.soft.uninstall('baldy')) }]) : null,
